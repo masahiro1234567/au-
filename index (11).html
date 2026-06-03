@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>au事業部 用語集</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    :root{
+      --bg:#fef6f0;--card:#fff;--border:#ffd9c0;--text:#1a0f08;--sub:#9a6e57;
+      --primary:#ff6600;--pl:#fff2ea;--pd:#cc4f00;
+      --grad:linear-gradient(135deg,#ff8c00,#ff6600);
+      --shu:#c0392b;--yu:#d97706;--ryo:#059669;--ka:#2563eb;
+      --sh-sm:0 1px 6px rgba(255,102,0,.10);--sh:0 3px 16px rgba(255,102,0,.13);--r:14px;
+    }
+    html,body{height:100%;overflow:hidden;}
+    body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+    .page{display:none;flex-direction:column;height:100%;overflow:hidden;position:absolute;inset:0;background:var(--bg);}
+    .page.active{display:flex;}
+    .hdr{background:#fff;border-bottom:2px solid var(--primary);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0;box-shadow:0 2px 10px rgba(255,102,0,.12);position:relative;z-index:50;}
+    .logo{display:flex;align-items:center;gap:8px;}
+    .logo-mark{width:32px;height:32px;background:var(--grad);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:.82rem;flex-shrink:0;}
+    .logo h1{font-size:.9rem;font-weight:800;color:var(--text);white-space:nowrap;}
+    .hdr-right{display:flex;align-items:center;gap:5px;}
+    .btn-add{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:7px 11px;font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+    .btn-toggle{width:36px;height:36px;background:var(--pl);border:1.5px solid var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;flex-shrink:0;}
+    .btn-toggle.active{background:var(--primary);border-color:var(--primary);}
+    .btn-toggle span{display:block;width:15px;height:2px;background:var(--primary);border-radius:2px;}
+    .btn-toggle.active span{background:#fff;}
+    .btn-back{background:var(--pl);border:1.5px solid var(--border);border-radius:7px;padding:5px 9px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;color:var(--pd);}
+    .btn-ghost{background:transparent;border:1.5px solid var(--border);border-radius:7px;padding:5px 9px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;color:var(--sub);}
+    .user-chip{background:var(--pl);border:1.5px solid var(--border);border-radius:20px;padding:4px 9px;font-size:.7rem;font-weight:700;color:var(--pd);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .btn-admin-hdr{background:#fff3eb;border:1.5px solid #ffb380;border-radius:7px;padding:5px 9px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;color:#cc4f00;white-space:nowrap;}
+    .app-body{flex:1;display:flex;overflow:hidden;position:relative;}
+    .main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:13px;}
+    .t-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 13px;}
+    .search-wrap{margin-bottom:11px;}
+    .search-box{background:#fff;border:2px solid var(--border);border-radius:999px;display:flex;align-items:center;gap:8px;padding:0 15px;height:46px;box-shadow:var(--sh);transition:border-color .2s;}
+    .search-box:focus-within{border-color:var(--primary);}
+    .search-box input{flex:1;border:none;outline:none;font-size:.9rem;font-family:inherit;background:transparent;}
+    .search-box input::placeholder{color:#cbb09e;}
+    .search-clear{background:none;border:none;cursor:pointer;color:var(--sub);font-size:.95rem;padding:3px;display:none;}
+    .search-clear.show{display:block;}
+    .active-filters{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;}
+    .filter-chip{padding:3px 8px;border-radius:20px;font-size:.7rem;font-weight:700;cursor:pointer;}
+    .fc-秀{background:#fde8e8;color:var(--shu);}
+    .fc-優{background:#fef3c7;color:var(--yu);}
+    .fc-良{background:#d1fae5;color:var(--ryo);}
+    .fc-可{background:#dbeafe;color:var(--ka);}
+    .fc-cat{background:var(--pl);color:var(--pd);}
+    .terms-count{font-size:.74rem;color:var(--sub);font-weight:600;margin-bottom:7px;}
+    .terms-grid{display:flex;flex-direction:column;gap:8px;}
+    .term-card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh-sm);overflow:hidden;border:1.5px solid var(--border);cursor:pointer;transition:transform .13s;}
+    .term-card:active{transform:scale(.98);}
+    .term-stripe{height:3px;}
+    .term-card[data-rank="秀"] .term-stripe{background:var(--shu);}
+    .term-card[data-rank="優"] .term-stripe{background:var(--yu);}
+    .term-card[data-rank="良"] .term-stripe{background:var(--ryo);}
+    .term-card[data-rank="可"] .term-stripe{background:var(--ka);}
+    .term-body{padding:10px 12px 12px;}
+    .term-top{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;margin-bottom:5px;}
+    .term-name{font-size:.93rem;font-weight:800;line-height:1.4;flex:1;}
+    .term-badges{display:flex;gap:3px;flex-shrink:0;}
+    .badge{padding:2px 6px;border-radius:20px;font-size:.64rem;font-weight:700;white-space:nowrap;}
+    .badge-cat{background:var(--pl);color:var(--pd);}
+    .badge-rank-秀{background:#fde8e8;color:var(--shu);}
+    .badge-rank-優{background:#fef3c7;color:var(--yu);}
+    .badge-rank-良{background:#d1fae5;color:var(--ryo);}
+    .badge-rank-可{background:#dbeafe;color:var(--ka);}
+    .term-desc{font-size:.79rem;color:var(--sub);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .empty-state{text-align:center;padding:50px 20px;color:var(--sub);}
+    .hl{background:#fff3c0;border-radius:2px;}
+    .sb-overlay{display:none;position:fixed;inset:0;background:rgba(26,15,8,.35);z-index:90;}
+    .sb-overlay.show{display:block;}
+    .sidebar{position:fixed;top:56px;right:0;bottom:0;width:245px;background:#fff;border-left:2px solid var(--border);z-index:100;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto;}
+    .sidebar.open{transform:translateX(0);}
+    .sb-sec{padding:13px;border-bottom:1px solid var(--border);}
+    .sb-lbl{font-size:.67rem;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+    .rank-btns{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+    .rank-btn{padding:8px 3px;border-radius:8px;border:2px solid var(--border);background:#fff;font-size:.82rem;font-weight:800;cursor:pointer;font-family:inherit;text-align:center;color:var(--sub);}
+    .rank-btn .rcnt{display:block;font-size:.6rem;margin-top:2px;color:var(--sub);}
+    .rank-btn[data-rank="all"].active{background:var(--pl);border-color:var(--primary);color:var(--primary);}
+    .rank-btn[data-rank="秀"].active{background:#fde8e8;border-color:var(--shu);color:var(--shu);}
+    .rank-btn[data-rank="優"].active{background:#fef3c7;border-color:var(--yu);color:var(--yu);}
+    .rank-btn[data-rank="良"].active{background:#d1fae5;border-color:var(--ryo);color:var(--ryo);}
+    .rank-btn[data-rank="可"].active{background:#dbeafe;border-color:var(--ka);color:var(--ka);}
+    .cat-btns{display:flex;flex-direction:column;gap:4px;}
+    .cat-btn{padding:8px 11px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:.8rem;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;color:var(--sub);display:flex;align-items:center;justify-content:space-between;}
+    .cat-btn .ccnt{font-size:.66rem;font-weight:700;background:var(--bg);padding:2px 5px;border-radius:20px;}
+    .cat-btn.active{background:var(--pl);border-color:var(--primary);color:var(--pd);}
+    .cat-btn.active .ccnt{background:var(--primary);color:#fff;}
+    .btn-reset{width:100%;padding:8px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit;color:var(--sub);margin-top:6px;}
+    .btn-test{width:100%;padding:12px;border-radius:10px;border:2px dashed var(--border);background:var(--bg);font-size:.86rem;font-weight:700;cursor:pointer;font-family:inherit;color:var(--sub);display:flex;align-items:center;justify-content:center;gap:6px;}
+    .btn-test:active{background:var(--pl);border-color:var(--primary);color:var(--primary);}
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,15,8,.5);z-index:200;align-items:flex-end;justify-content:center;}
+    .modal-overlay.open{display:flex;}
+    .modal{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    .modal-handle{width:34px;height:4px;background:var(--border);border-radius:2px;margin:11px auto 0;}
+    .modal-hdr{padding:12px 17px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .modal-hdr h3{font-size:.92rem;font-weight:800;}
+    .btn-close{background:var(--bg);border:none;width:26px;height:26px;border-radius:50%;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--sub);}
+    .modal-body{padding:13px 17px;}
+    .modal-footer{padding:10px 17px 24px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);}
+    .form-group{margin-bottom:12px;}
+    .form-group label{display:block;font-size:.74rem;font-weight:700;margin-bottom:4px;}
+    .req{color:var(--primary);}
+    .form-group input,.form-group select,.form-group textarea{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:10px 12px;font-size:.88rem;font-family:inherit;background:#fff;color:var(--text);-webkit-appearance:none;}
+    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--primary);}
+    .form-group textarea{resize:vertical;min-height:72px;}
+    .rank-select-row{display:flex;gap:6px;}
+    .rank-opt{flex:1;position:relative;}
+    .rank-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
+    .rank-opt label{display:block;text-align:center;padding:9px 3px;border-radius:8px;border:2px solid var(--border);cursor:pointer;font-size:.92rem;font-weight:800;color:var(--sub);margin:0;}
+    .rank-opt[data-rank="秀"] input:checked+label{background:#fde8e8;border-color:var(--shu);color:var(--shu);}
+    .rank-opt[data-rank="優"] input:checked+label{background:#fef3c7;border-color:var(--yu);color:var(--yu);}
+    .rank-opt[data-rank="良"] input:checked+label{background:#d1fae5;border-color:var(--ryo);color:var(--ryo);}
+    .rank-opt[data-rank="可"] input:checked+label{background:#dbeafe;border-color:var(--ka);color:var(--ka);}
+    .mbtn{padding:10px 18px;border-radius:9px;border:none;font-size:.83rem;font-weight:700;cursor:pointer;font-family:inherit;}
+    .mbtn-cancel{background:var(--bg);color:var(--sub);}
+    .mbtn-primary{background:var(--grad);color:#fff;}
+    .mbtn-danger{background:#fde8e8;color:var(--shu);margin-right:auto;}
+    .detail-rank-bar{height:4px;border-radius:2px;margin-bottom:11px;}
+    .detail-rank-bar.rank-秀{background:var(--shu);}
+    .detail-rank-bar.rank-優{background:var(--yu);}
+    .detail-rank-bar.rank-良{background:var(--ryo);}
+    .detail-rank-bar.rank-可{background:var(--ka);}
+    .detail-badges{display:flex;gap:5px;margin-bottom:11px;}
+    .detail-sec{margin-bottom:11px;}
+    .detail-sec .lbl{font-size:.66rem;color:var(--sub);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px;display:block;}
+    .detail-sec p{font-size:.88rem;line-height:1.75;}
+    .t-card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);border:1.5px solid var(--border);padding:16px;margin-bottom:12px;}
+    .t-card-title{font-size:.66rem;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+    .tbtn{width:100%;padding:12px;border-radius:10px;border:none;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s,transform .1s;}
+    .tbtn:active{transform:scale(.98);}
+    .tbtn-primary{background:var(--grad);color:#fff;box-shadow:0 3px 10px rgba(255,102,0,.3);}
+    .tbtn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary);}
+    .tbtn-gray{background:#f0ebe6;color:var(--sub);}
+    .tbtn+.tbtn{margin-top:8px;}
+    .mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+    .mode-card{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:13px 9px;text-align:center;cursor:pointer;transition:all .15s;}
+    .mc-icon{font-size:1.5rem;margin-bottom:4px;}
+    .mc-title{font-size:.8rem;font-weight:800;margin-bottom:3px;}
+    .mc-desc{font-size:.66rem;color:var(--sub);line-height:1.4;}
+    .mode-card.practice .mc-title{color:var(--ryo);}
+    .mode-card.official .mc-title{color:var(--primary);}
+    .mode-card.selected.practice{border-color:var(--ryo);background:#e6f9ef;}
+    .mode-card.selected.official{border-color:var(--primary);background:var(--pl);}
+    .rank-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+    .rank-card{border:2px solid var(--border);border-radius:9px;padding:10px;text-align:center;cursor:pointer;background:#fff;}
+    .rank-card .rk-label{font-size:.95rem;font-weight:900;}
+    .rank-card .rk-cnt{font-size:.62rem;color:var(--sub);margin-top:2px;}
+    .rank-card[data-rank="秀"].sel{border-color:var(--shu);background:#fde8e8;color:var(--shu);}
+    .rank-card[data-rank="優"].sel{border-color:var(--yu);background:#fef3c7;color:var(--yu);}
+    .rank-card[data-rank="良"].sel{border-color:var(--ryo);background:#d1fae5;color:var(--ryo);}
+    .rank-card[data-rank="可"].sel{border-color:var(--ka);background:#dbeafe;color:var(--ka);}
+    .quiz-prog-bar{height:4px;background:var(--border);border-radius:2px;margin-bottom:16px;overflow:hidden;}
+    .quiz-prog-fill{height:100%;background:var(--grad);border-radius:2px;transition:width .3s;}
+    .quiz-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;}
+    .quiz-no{font-size:.76rem;font-weight:700;color:var(--sub);}
+    .quiz-rbadge{padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:700;}
+    .quiz-q{font-size:.97rem;font-weight:800;line-height:1.6;margin-bottom:5px;}
+    .quiz-hint{font-size:.74rem;color:var(--sub);margin-bottom:14px;}
+    .quiz-choices{display:flex;flex-direction:column;gap:8px;}
+    .choice-btn{background:#fff;border:2px solid var(--border);border-radius:10px;padding:12px 14px;text-align:left;font-size:.83rem;font-family:inherit;cursor:pointer;line-height:1.5;width:100%;color:var(--text);}
+    .choice-btn:active{transform:scale(.98);}
+    .choice-btn.correct{border-color:var(--ryo);background:#d1fae5;color:#065f46;}
+    .choice-btn.wrong{border-color:var(--shu);background:#fde8e8;color:#991b1b;}
+    .choice-btn.reveal{border-color:var(--ryo);background:#d1fae5;color:#065f46;opacity:.6;}
+    .choice-btn:disabled{cursor:default;}
+    .score-circle{width:86px;height:86px;border-radius:50%;background:var(--grad);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 10px;box-shadow:0 4px 20px rgba(255,102,0,.3);}
+    .score-num{font-size:1.7rem;font-weight:900;color:#fff;line-height:1;}
+    .score-denom{font-size:.68rem;color:rgba(255,255,255,.85);}
+    .result-list{display:flex;flex-direction:column;gap:6px;}
+    .result-item{background:#fff;border-radius:8px;border:1.5px solid var(--border);padding:10px 12px;}
+    .result-item.ok{border-left:4px solid var(--ryo);}
+    .result-item.ng{border-left:4px solid var(--shu);}
+    .ri-top{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px;}
+    .ri-name{font-size:.83rem;font-weight:700;}
+    .ri-desc{font-size:.74rem;color:var(--sub);line-height:1.5;}
+    .tab-bar{display:flex;border-bottom:2px solid var(--border);margin-bottom:13px;overflow-x:auto;scrollbar-width:none;}
+    .tab-bar::-webkit-scrollbar{display:none;}
+    .tab{flex-shrink:0;padding:8px 12px;border:none;background:transparent;font-family:inherit;font-size:.78rem;font-weight:700;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;}
+    .tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+    .section-title{font-size:.92rem;font-weight:800;margin-bottom:12px;}
+    .mode-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.66rem;font-weight:700;}
+    .mode-practice{background:#d1fae5;color:var(--ryo);}
+    .mode-official{background:var(--pl);color:var(--pd);}
+    .member-card{background:#fff;border-radius:11px;border:1.5px solid var(--border);padding:13px;margin-bottom:9px;}
+    .member-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px;}
+    .member-name{font-size:.88rem;font-weight:800;}
+    .member-meta{font-size:.68rem;color:var(--sub);margin-top:2px;}
+    .overall-acc{font-size:1.05rem;font-weight:900;color:var(--primary);}
+    .rank-bars{display:flex;flex-direction:column;gap:4px;margin-bottom:9px;}
+    .rank-bar-row{display:flex;align-items:center;gap:6px;}
+    .rank-bar-label{font-size:.64rem;font-weight:700;width:13px;text-align:center;}
+    .rank-bar-track{flex:1;height:7px;background:var(--bg);border-radius:3px;overflow:hidden;}
+    .rank-bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+    .rank-bar-score{font-size:.64rem;color:var(--sub);width:28px;text-align:right;}
+    .mistake-section{border-top:1px solid var(--border);padding-top:9px;margin-top:2px;}
+    .mistake-title{font-size:.68rem;font-weight:700;color:var(--sub);margin-bottom:6px;}
+    .mistake-list{display:flex;flex-direction:column;gap:4px;}
+    .mistake-item{display:flex;align-items:center;gap:7px;background:var(--bg);border-radius:7px;padding:6px 9px;}
+    .mistake-name{font-size:.76rem;font-weight:700;flex:1;}
+    .mistake-cnt{font-size:.7rem;font-weight:800;color:var(--shu);background:#fde8e8;padding:2px 7px;border-radius:20px;white-space:nowrap;}
+    .mistake-bar-wrap{flex:2;height:5px;background:#ffe0c8;border-radius:3px;overflow:hidden;}
+    .mistake-bar-fill{height:100%;background:var(--shu);border-radius:3px;}
+    .ranking-list{display:flex;flex-direction:column;gap:7px;}
+    .ranking-item{background:#fff;border-radius:10px;border:1.5px solid var(--border);padding:11px 13px;display:flex;align-items:center;gap:11px;}
+    .ranking-no{font-size:1rem;font-weight:900;width:24px;text-align:center;flex-shrink:0;}
+    .ranking-no.gold{color:#f59e0b;}
+    .ranking-no.silver{color:#9ca3af;}
+    .ranking-no.bronze{color:#cd7c2f;}
+    .ranking-info{flex:1;}
+    .ranking-name{font-size:.86rem;font-weight:800;}
+    .ranking-sub{font-size:.68rem;color:var(--sub);margin-top:2px;}
+    .ranking-score{font-size:1.05rem;font-weight:900;color:var(--primary);}
+    .admin-table{width:100%;border-collapse:collapse;font-size:.76rem;}
+    .admin-table th{background:var(--pl);color:var(--pd);padding:6px 8px;text-align:left;font-weight:700;border-bottom:2px solid var(--border);}
+    .admin-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top;}
+    .tbl-wrap{overflow-x:auto;}
+    .score-chip{display:inline-block;padding:2px 6px;border-radius:20px;font-size:.66rem;font-weight:700;}
+    .score-high{background:#d1fae5;color:var(--ryo);}
+    .score-mid{background:#fef3c7;color:var(--yu);}
+    .score-low{background:#fde8e8;color:var(--shu);}
+    .admin-mc{background:#fff;border-radius:10px;border:1.5px solid var(--border);padding:13px;margin-bottom:9px;}
+    .admin-mc-name{font-size:.86rem;font-weight:800;}
+    .admin-mc-meta{font-size:.67rem;color:var(--sub);margin-top:2px;}
+    .wrong-pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+    .wrong-pill{background:#fde8e8;color:var(--shu);border-radius:20px;padding:2px 8px;font-size:.68rem;font-weight:700;}
+    .pos-select-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+    .pos-opt{position:relative;}
+    .pos-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
+    .pos-opt label{display:block;text-align:center;padding:9px 3px;border-radius:8px;border:2px solid var(--border);cursor:pointer;font-size:.86rem;font-weight:800;color:var(--sub);margin:0;}
+    .pos-opt input:checked+label{background:var(--pl);border-color:var(--primary);color:var(--pd);}
+    #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:999;}
+    .loading-logo{font-size:1.3rem;font-weight:900;color:var(--primary);}
+    .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a0f08;color:#fff;padding:9px 18px;border-radius:9px;font-size:.8rem;font-weight:600;z-index:9999;transition:transform .28s;white-space:nowrap;}
+    #toast.show{transform:translateX(-50%) translateY(0);}
+    .divider{height:1px;background:var(--border);margin:13px 0;}
+    .tc{text-align:center;}
+    .ts{color:var(--sub);font-size:.78rem;}
+    .mt8{margin-top:8px;}
+    .mt13{margin-top:13px;}
+    .fw8{font-weight:800;}
+
+    .admin-term-item{background:#fff;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
+    .admin-term-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;cursor:pointer;gap:8px;}
+    .admin-term-name{font-size:.88rem;font-weight:800;flex:1;}
+    .admin-term-badges{display:flex;gap:4px;flex-shrink:0;}
+    .admin-term-body{padding:0 13px 13px;border-top:1px solid var(--border);}
+    .admin-term-body.collapsed{display:none;}
+    .admin-edit-group{margin-bottom:9px;}
+    .admin-edit-group label{display:block;font-size:.68rem;font-weight:700;color:var(--sub);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;}
+    .admin-edit-input{width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.83rem;font-family:inherit;background:#fff;color:var(--text);-webkit-appearance:none;}
+    .admin-edit-input:focus{outline:none;border-color:var(--primary);}
+    .admin-edit-textarea{width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.82rem;font-family:inherit;resize:vertical;min-height:62px;background:#fff;color:var(--text);}
+    .admin-edit-textarea:focus{outline:none;border-color:var(--primary);}
+    .admin-rank-row{display:flex;gap:5px;margin-bottom:9px;}
+    .admin-rank-opt{flex:1;position:relative;}
+    .admin-rank-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
+    .admin-rank-opt label{display:block;text-align:center;padding:7px 2px;border-radius:7px;border:2px solid var(--border);cursor:pointer;font-size:.85rem;font-weight:800;color:var(--sub);margin:0;}
+    .admin-rank-opt[data-rank="秀"] input:checked+label{background:#fde8e8;border-color:var(--shu);color:var(--shu);}
+    .admin-rank-opt[data-rank="優"] input:checked+label{background:#fef3c7;border-color:var(--yu);color:var(--yu);}
+    .admin-rank-opt[data-rank="良"] input:checked+label{background:#d1fae5;border-color:var(--ryo);color:var(--ryo);}
+    .admin-rank-opt[data-rank="可"] input:checked+label{background:#dbeafe;border-color:var(--ka);color:var(--ka);}
+    .admin-cat-sel{width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.83rem;font-family:inherit;-webkit-appearance:none;background:#fff;}
+    .admin-cat-sel:focus{outline:none;border-color:var(--primary);}
+    .admin-action-row{display:flex;gap:7px;margin-top:10px;}
+    .btn-save-term{flex:1;padding:9px;border-radius:8px;border:none;background:var(--grad);color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;}
+    .btn-del-term{padding:9px 14px;border-radius:8px;border:none;background:#fde8e8;color:var(--shu);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;}
+    .collapse-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:var(--bg);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;color:var(--sub);}
+  </style>
+</head>
+<body>
+<div id="loading"><div class="loading-logo">au事業部 用語集</div><div class="spinner"></div></div>
+
+<!-- 用語集 -->
+<div class="page active" id="pg-glossary">
+  <header class="hdr">
+    <div class="logo"><div class="logo-mark">au</div><h1>au事業部 用語集</h1></div>
+    <div class="hdr-right">
+      <button class="btn-toggle" id="sb-toggle" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+  <div class="app-body">
+    <div class="main">
+      <div class="search-wrap"><div class="search-box"><span style="color:var(--sub);">🔍</span><input type="search" id="search-input" placeholder="用語を検索..." oninput="onSearch(this.value)" autocomplete="off"/><button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button></div></div>
+      <div class="active-filters" id="active-filters"></div>
+      <div class="terms-count" id="terms-count">0件</div>
+      <div class="terms-grid" id="terms-grid"><div style="text-align:center;padding:40px;color:var(--sub);"><div class="spinner" style="margin:0 auto 10px;"></div>読み込み中...</div></div>
+    </div>
+    <div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+      <div class="sb-sec"><div class="sb-lbl">ランク</div><div class="rank-btns"><button class="rank-btn active" data-rank="all" onclick="setRank('all',this)" style="grid-column:1/-1;">すべて <span class="rcnt" id="rcnt-all">0</span></button><button class="rank-btn" data-rank="秀" onclick="setRank('秀',this)">🏆 秀 <span class="rcnt" id="rcnt-秀">0</span></button><button class="rank-btn" data-rank="優" onclick="setRank('優',this)">⭐ 優 <span class="rcnt" id="rcnt-優">0</span></button><button class="rank-btn" data-rank="良" onclick="setRank('良',this)">✅ 良 <span class="rcnt" id="rcnt-良">0</span></button><button class="rank-btn" data-rank="可" onclick="setRank('可',this)">📌 可 <span class="rcnt" id="rcnt-可">0</span></button></div></div>
+      <div class="sb-sec"><div class="sb-lbl">カテゴリ</div><div class="cat-btns"><button class="cat-btn active" data-cat="all" onclick="setCat('all',this)">すべて <span class="ccnt" id="ccnt-all">0</span></button><button class="cat-btn" data-cat="商材・プラン" onclick="setCat('商材・プラン',this)">商材・プラン <span class="ccnt" id="ccnt-商材プラン">0</span></button><button class="cat-btn" data-cat="契約種別" onclick="setCat('契約種別',this)">契約種別 <span class="ccnt" id="ccnt-契約種別">0</span></button><button class="cat-btn" data-cat="用語" onclick="setCat('用語',this)">用語 <span class="ccnt" id="ccnt-用語">0</span></button><button class="cat-btn" data-cat="ステークホルダー" onclick="setCat('ステークホルダー',this)">ステークホルダー <span class="ccnt" id="ccnt-ステークホルダー">0</span></button></div><button class="btn-reset" onclick="resetFilters()">🔄 リセット</button></div>
+      <div class="sb-sec"><div class="sb-lbl">テスト</div><button class="btn-test" onclick="goTest()">📝 テストを受ける</button></div>
+      <div class="sb-sec"><div class="sb-lbl">管理者</div><button class="btn-test" onclick="openAdminLoginFromSidebar()" style="border-color:#ffb380;color:#cc4f00;">🔐 管理者ログイン</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="add-modal"><div class="modal"><div class="modal-handle"></div><div class="modal-hdr"><h3>用語を追加</h3><button class="btn-close" onclick="closeModal('add-modal')">✕</button></div><div class="modal-body"><div class="form-group"><label>用語名 <span class="req">*</span></label><input id="add-name" placeholder="例：MNP"/></div><div class="form-group"><label>カテゴリ <span class="req">*</span></label><select id="add-category"><option value="商材・プラン">商材・プラン</option><option value="契約種別">契約種別</option><option value="用語">用語</option><option value="ステークホルダー">ステークホルダー</option></select></div><div class="form-group"><label>ランク <span class="req">*</span></label><div class="rank-select-row"><div class="rank-opt" data-rank="秀"><input type="radio" name="add-rank" id="ar-秀" value="秀" checked><label for="ar-秀">秀</label></div><div class="rank-opt" data-rank="優"><input type="radio" name="add-rank" id="ar-優" value="優"><label for="ar-優">優</label></div><div class="rank-opt" data-rank="良"><input type="radio" name="add-rank" id="ar-良" value="良"><label for="ar-良">良</label></div><div class="rank-opt" data-rank="可"><input type="radio" name="add-rank" id="ar-可" value="可"><label for="ar-可">可</label></div></div></div><div class="form-group"><label>説明 <span class="req">*</span></label><textarea id="add-desc" placeholder="用語の説明を入力"></textarea></div><div class="form-group"><label>補足・注意点（任意）</label><textarea id="add-note"></textarea></div></div><div class="modal-footer"><button class="mbtn mbtn-cancel" onclick="closeModal('add-modal')">キャンセル</button><button class="mbtn mbtn-primary" onclick="saveTerm()">保存</button></div></div></div>
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal"><div class="modal"><div class="modal-handle"></div><div class="modal-hdr"><h3>用語を編集</h3><button class="btn-close" onclick="closeModal('edit-modal')">✕</button></div><div class="modal-body"><input type="hidden" id="edit-id"><div class="form-group"><label>用語名 <span class="req">*</span></label><input id="edit-name"/></div><div class="form-group"><label>カテゴリ <span class="req">*</span></label><select id="edit-category"><option value="商材・プラン">商材・プラン</option><option value="契約種別">契約種別</option><option value="用語">用語</option><option value="ステークホルダー">ステークホルダー</option></select></div><div class="form-group"><label>ランク <span class="req">*</span></label><div class="rank-select-row"><div class="rank-opt" data-rank="秀"><input type="radio" name="edit-rank" id="er-秀" value="秀"><label for="er-秀">秀</label></div><div class="rank-opt" data-rank="優"><input type="radio" name="edit-rank" id="er-優" value="優"><label for="er-優">優</label></div><div class="rank-opt" data-rank="良"><input type="radio" name="edit-rank" id="er-良" value="良"><label for="er-良">良</label></div><div class="rank-opt" data-rank="可"><input type="radio" name="edit-rank" id="er-可" value="可"><label for="er-可">可</label></div></div></div><div class="form-group"><label>説明 <span class="req">*</span></label><textarea id="edit-desc"></textarea></div><div class="form-group"><label>補足・注意点（任意）</label><textarea id="edit-note"></textarea></div></div><div class="modal-footer"><button class="mbtn mbtn-danger" onclick="deleteTerm()">削除</button><button class="mbtn mbtn-cancel" onclick="closeModal('edit-modal')">キャンセル</button><button class="mbtn mbtn-primary" onclick="updateTerm()">更新</button></div></div></div>
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal"><div class="modal"><div class="modal-handle"></div><div class="modal-hdr"><h3 id="detail-title"></h3><button class="btn-close" onclick="closeModal('detail-modal')">✕</button></div><div class="modal-body"><div class="detail-rank-bar" id="detail-rank-bar"></div><div class="detail-badges" id="detail-badges"></div><div class="detail-sec"><span class="lbl">説明</span><p id="detail-desc"></p></div><div class="detail-sec" id="detail-note-sec"><span class="lbl">補足・注意点</span><p id="detail-note"></p></div></div><div class="modal-footer"><button class="mbtn mbtn-cancel" onclick="closeModal('detail-modal')">閉じる</button><button class="mbtn mbtn-primary" id="detail-edit-btn" onclick="openEditFromDetail()" style="display:none;">編集</button></div></div></div>
+
+<!-- テストログイン -->
+<div class="page" id="pg-login">
+  <div class="hdr"><div class="logo"><div class="logo-mark">au</div><h1>用語テスト</h1></div><div class="hdr-right"><button class="btn-back" onclick="showPage('pg-glossary')">← 用語集</button></div></div>
+  <div class="t-body">
+    <div style="text-align:center;padding:16px 0 20px;"><div style="font-size:2rem;margin-bottom:6px;">📝</div><div class="fw8" style="font-size:1rem;">はじめまして！</div><div class="ts mt8">名前・役職・クローザーランクを登録してください</div></div>
+    <div class="t-card">
+      <div class="form-group"><label>名前 <span class="req">*</span></label><input id="login-name" placeholder="例：山田 太郎"/></div>
+      <div class="form-group"><label>メールアドレス <span class="req">*</span></label><input id="login-email" type="email" placeholder="例：taro@example.com"/></div>
+      <div class="form-group"><label>役職 <span class="req">*</span></label><div class="pos-select-row"><div class="pos-opt"><input type="radio" name="login-pos" id="lp-NV" value="NV"><label for="lp-NV">NV</label></div><div class="pos-opt"><input type="radio" name="login-pos" id="lp-IN" value="IN"><label for="lp-IN">IN</label></div><div class="pos-opt"><input type="radio" name="login-pos" id="lp-SAM" value="SAM"><label for="lp-SAM">SAM</label></div><div class="pos-opt"><input type="radio" name="login-pos" id="lp-MQ" value="MQ"><label for="lp-MQ">MQ</label></div></div></div>
+      <div class="form-group"><label>クローザーランク <span class="req">*</span></label><div class="rank-select-row"><div class="rank-opt" data-rank="秀"><input type="radio" name="login-rank" id="lr-秀" value="秀"><label for="lr-秀">秀</label></div><div class="rank-opt" data-rank="優"><input type="radio" name="login-rank" id="lr-優" value="優"><label for="lr-優">優</label></div><div class="rank-opt" data-rank="良"><input type="radio" name="login-rank" id="lr-良" value="良"><label for="lr-良">良</label></div><div class="rank-opt" data-rank="可"><input type="radio" name="login-rank" id="lr-可" value="可"><label for="lr-可">可</label></div></div></div>
+      <button class="tbtn tbtn-primary mt13" onclick="doLogin()">登録してはじめる</button>
+    </div>
+  </div>
+</div>
+
+<!-- テストホーム -->
+<div class="page" id="pg-test-home">
+  <div class="hdr"><div class="logo"><div class="logo-mark">au</div><h1>用語テスト</h1></div><div class="hdr-right"><div class="user-chip" id="t-user-name">---</div><button class="btn-back" onclick="showPage('pg-glossary')">← 用語集</button></div></div>
+  <div class="t-body">
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTTab('ttab-test',this)">テスト</button>
+      <button class="tab" onclick="switchTTab('ttab-progress',this)">メンバー進捗</button>
+      <button class="tab" onclick="switchTTab('ttab-ranking',this)">ランキング</button>
+    </div>
+    <div id="ttab-test">
+      <div class="t-card"><div class="t-card-title">モード選択</div><div class="mode-grid"><div class="mode-card practice selected" id="mc-practice" onclick="selectMode('practice')"><div class="mc-icon">🌱</div><div class="mc-title">練習モード</div><div class="mc-desc">結果は保存されません</div></div><div class="mode-card official" id="mc-official" onclick="selectMode('official')"><div class="mc-icon">🏆</div><div class="mc-title">本番モード</div><div class="mc-desc">結果を保存・共有します</div></div></div></div>
+      <div class="t-card"><div class="t-card-title">出題方法</div><div class="mode-grid" style="margin-bottom:0;"><div class="mode-card selected" id="qt-rank" onclick="selectQType('rank')" style="border-color:var(--primary);background:var(--pl);"><div class="mc-icon">🎯</div><div class="mc-title" style="color:var(--primary);">ランク別 5問</div><div class="mc-desc">ランクを選んで出題</div></div><div class="mode-card" id="qt-all" onclick="selectQType('all')"><div class="mc-icon">🎲</div><div class="mc-title">全体 10問</div><div class="mc-desc">全ランクからランダム</div></div></div></div>
+      <div class="t-card" id="rank-select-card"><div class="t-card-title">ランク選択</div><div class="rank-grid"><div class="rank-card sel" data-rank="秀" onclick="selectRank('秀',this)"><div class="rk-label">🏆 秀</div><div class="rk-cnt" id="trc-秀">0問</div></div><div class="rank-card" data-rank="優" onclick="selectRank('優',this)"><div class="rk-label">⭐ 優</div><div class="rk-cnt" id="trc-優">0問</div></div><div class="rank-card" data-rank="良" onclick="selectRank('良',this)"><div class="rk-label">✅ 良</div><div class="rk-cnt" id="trc-良">0問</div></div><div class="rank-card" data-rank="可" onclick="selectRank('可',this)"><div class="rk-label">📌 可</div><div class="rk-cnt" id="trc-可">0問</div></div></div></div>
+      <button class="tbtn tbtn-primary" onclick="startQuiz()">テストを開始する ▶</button>
+    </div>
+    <div id="ttab-progress" style="display:none;"><div id="progress-list"></div></div>
+    <div id="ttab-ranking" style="display:none;"><div class="section-title">🏆 正答率ランキング（本番モード）</div><div class="ranking-list" id="ranking-list"></div></div>
+  </div>
+</div>
+
+<!-- クイズ -->
+<div class="page" id="pg-quiz">
+  <div class="hdr"><div class="logo"><div class="logo-mark">au</div><h1 id="quiz-hdr-title">テスト中</h1></div><div class="hdr-right"><span class="mode-badge" id="quiz-mode-badge"></span><button class="btn-ghost" onclick="confirmQuit()">終了</button></div></div>
+  <div class="t-body">
+    <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="quiz-prog"></div></div>
+    <div class="quiz-meta"><span class="quiz-no" id="quiz-no">問題 1/5</span><span class="quiz-rbadge" id="quiz-rbadge"></span></div>
+    <div class="t-card" style="margin-bottom:12px;"><div class="quiz-q" id="quiz-q"></div><div class="quiz-hint" id="quiz-hint"></div></div>
+    <div class="quiz-choices" id="quiz-choices"></div>
+    <div id="quiz-next-wrap" style="display:none;margin-top:12px;"><button class="tbtn tbtn-primary" id="quiz-next-btn" onclick="nextQuestion()">次の問題へ ▶</button></div>
+  </div>
+</div>
+
+<!-- テスト結果 -->
+<div class="page" id="pg-result">
+  <div class="hdr"><div class="logo"><div class="logo-mark">au</div><h1>テスト結果</h1></div><div class="hdr-right"><span class="mode-badge" id="result-mode-badge"></span></div></div>
+  <div class="t-body">
+    <div style="text-align:center;padding:18px 0;"><div class="score-circle"><div class="score-num" id="res-score">0</div><div class="score-denom" id="res-denom">/5問</div></div><div class="fw8" style="font-size:.92rem;" id="res-label"></div><div class="ts mt8" id="res-save-msg"></div></div>
+    <div class="section-title">振り返り</div>
+    <div class="result-list" id="result-list"></div>
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;"><button class="tbtn tbtn-primary" onclick="showPage('pg-test-home')">ホームに戻る</button><button class="tbtn tbtn-outline" onclick="restartQuiz()">もう一度同じ設定で</button></div>
+  </div>
+</div>
+
+<!-- 管理者ログイン -->
+<div class="page" id="pg-admin-login">
+  <div class="hdr"><div class="logo"><div class="logo-mark">au</div><h1>管理者ログイン</h1></div><div class="hdr-right"><button class="btn-back" id="admin-back-btn" onclick="showPage('pg-login')">← 戻る</button></div></div>
+  <div class="t-body">
+    <div style="text-align:center;padding:20px 0;"><div style="font-size:2rem;margin-bottom:6px;">🔐</div><div class="fw8">管理者専用</div><div class="ts mt8">パスワードを入力してください</div></div>
+    <div class="t-card"><div class="form-group"><label>管理者パスワード</label><input id="admin-pw" type="password" placeholder="パスワードを入力"/></div><button class="tbtn tbtn-primary mt8" onclick="doAdminLogin()">ログイン</button></div>
+  </div>
+</div>
+
+<!-- 管理者ダッシュボード -->
+<div class="page" id="pg-admin">
+  <div class="hdr"><div class="logo"><div class="logo-mark">au</div><h1>管理者画面</h1></div><div class="hdr-right"><button class="btn-ghost" onclick="adminLogout()">ログアウト</button><button class="btn-back" onclick="showPage('pg-glossary')">← 用語集</button></div></div>
+  <div class="t-body">
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchATab('atab-summary',this)">サマリー</button>
+      <button class="tab" onclick="switchATab('atab-log',this)">テストログ</button>
+      <button class="tab" onclick="switchATab('atab-terms',this)">用語管理</button>
+      <button class="tab" onclick="switchATab('atab-profile',this)">プロフィール管理</button>
+    </div>
+    <div id="atab-summary"><div class="section-title">メンバー別成績サマリー</div><div id="admin-summary-list"></div></div>
+    <div id="atab-log" style="display:none;"><div class="section-title">テストログ（練習・本番すべて）</div><div class="tbl-wrap"><table class="admin-table"><thead><tr><th>日時</th><th>名前</th><th>モード</th><th>種別</th><th>スコア</th></tr></thead><tbody id="admin-log-body"></tbody></table></div></div>
+    <div id="atab-terms" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="section-title" style="margin-bottom:0;">用語管理</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="adminExpandAll()" style="background:var(--pl);border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;color:var(--pd);font-family:inherit;">全展開</button>
+          <button onclick="adminCollapseAll()" style="background:#f0ebe6;border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;color:var(--sub);font-family:inherit;">全収束</button>
+        </div>
+      </div>
+      <!-- 一括登録フォーム -->
+      <div id="bulk-add-section" style="margin-bottom:14px;">
+        <div onclick="toggleBulkAdd()" style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">
+          <span style="font-size:.85rem;font-weight:800;">＋ 一括登録 / 新規追加</span>
+          <span id="bulk-add-arrow" style="font-size:1rem;color:var(--sub);">▼</span>
+        </div>
+        <div id="bulk-add-body" style="display:none;background:#fff;border:1.5px solid var(--primary);border-top:none;border-radius:0 0 10px 10px;padding:14px;">
+          <div id="bulk-rows">
+            <div class="bulk-row" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+              <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <input placeholder="用語名 *" style="flex:2;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.82rem;font-family:inherit;" class="bulk-name"/>
+                <select style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:8px 6px;font-size:.75rem;font-family:inherit;-webkit-appearance:none;" class="bulk-cat"><option value="商材・プラン">商材・プラン</option><option value="契約種別">契約種別</option><option value="用語">用語</option><option value="ステークホルダー">ステークホルダー</option></select>
+              </div>
+              <div style="display:flex;gap:5px;margin-bottom:6px;" class="bulk-rank-row">
+                <label style="flex:1;"><input type="radio" name="br-0" value="秀" checked> <span style="font-size:.78rem;font-weight:700;">秀</span></label>
+                <label style="flex:1;"><input type="radio" name="br-0" value="優"> <span style="font-size:.78rem;font-weight:700;">優</span></label>
+                <label style="flex:1;"><input type="radio" name="br-0" value="良"> <span style="font-size:.78rem;font-weight:700;">良</span></label>
+                <label style="flex:1;"><input type="radio" name="br-0" value="可"> <span style="font-size:.78rem;font-weight:700;">可</span></label>
+              </div>
+              <textarea placeholder="説明 *" rows="2" style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.82rem;font-family:inherit;resize:vertical;" class="bulk-desc"></textarea>
+              <textarea placeholder="補足・注意点（任意）" rows="1" style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:.78rem;font-family:inherit;resize:vertical;margin-top:5px;" class="bulk-note"></textarea>
+            </div>
+          </div>
+          <button onclick="addBulkRow()" style="width:100%;padding:9px;border-radius:8px;border:2px dashed var(--border);background:var(--bg);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;color:var(--sub);margin-bottom:10px;">＋ 行を追加</button>
+          <button onclick="saveBulkTerms()" style="width:100%;padding:11px;border-radius:9px;border:none;background:var(--grad);color:#fff;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">一括保存</button>
+        </div>
+      </div>
+      <!-- 用語一覧（全展開編集） -->
+      <div id="admin-terms-list"></div>
+    </div>
+    <div id="atab-profile" style="display:none;"><div class="section-title">プロフィール管理</div><div id="admin-profile-list"></div></div>
+  </div>
+</div>
+
+<!-- プロフィール編集モーダル -->
+<div class="modal-overlay" id="profile-edit-modal"><div class="modal"><div class="modal-handle"></div><div class="modal-hdr"><h3>プロフィール変更</h3><button class="btn-close" onclick="closeModal('profile-edit-modal')">✕</button></div><div class="modal-body"><input type="hidden" id="pe-uid"><div style="font-size:.83rem;font-weight:700;margin-bottom:11px;" id="pe-name-display"></div><div class="form-group"><label>役職</label><div class="pos-select-row"><div class="pos-opt"><input type="radio" name="pe-pos" id="pe-NV" value="NV"><label for="pe-NV">NV</label></div><div class="pos-opt"><input type="radio" name="pe-pos" id="pe-IN" value="IN"><label for="pe-IN">IN</label></div><div class="pos-opt"><input type="radio" name="pe-pos" id="pe-SAM" value="SAM"><label for="pe-SAM">SAM</label></div><div class="pos-opt"><input type="radio" name="pe-pos" id="pe-MQ" value="MQ"><label for="pe-MQ">MQ</label></div></div></div><div class="form-group"><label>クローザーランク</label><div class="rank-select-row"><div class="rank-opt" data-rank="秀"><input type="radio" name="pe-rank" id="pe-r秀" value="秀"><label for="pe-r秀">秀</label></div><div class="rank-opt" data-rank="優"><input type="radio" name="pe-rank" id="pe-r優" value="優"><label for="pe-r優">優</label></div><div class="rank-opt" data-rank="良"><input type="radio" name="pe-rank" id="pe-r良" value="良"><label for="pe-r良">良</label></div><div class="rank-opt" data-rank="可"><input type="radio" name="pe-rank" id="pe-r可" value="可"><label for="pe-r可">可</label></div></div></div></div><div class="modal-footer"><button class="mbtn mbtn-cancel" onclick="closeModal('profile-edit-modal')">キャンセル</button><button class="mbtn mbtn-primary" onclick="saveProfile()">保存</button></div></div></div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, onValue, push, set, remove } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+const app = initializeApp({apiKey:"AIzaSyD1ee7DR0aIkMaHySCyHdsf7c6lukUnIoA",authDomain:"au-data-base.firebaseapp.com",databaseURL:"https://au-data-base-default-rtdb.firebaseio.com",projectId:"au-data-base",storageBucket:"au-data-base.firebasestorage.app",messagingSenderId:"230738811298",appId:"1:230738811298:web:84ad366cdc0d70dba8fafb"});
+const db=getDatabase(app);
+window._db=db;window._fbPush=push;window._fbSet=set;window._fbRemove=remove;window._fbRef=ref;
+onValue(ref(db,'terms'),snap=>{window._termsData={};snap.forEach(c=>{window._termsData[c.key]=c.val();});document.getElementById('loading').style.display='none';renderTerms();updateTestRankCounts();if(document.getElementById('atab-terms')&&document.getElementById('atab-terms').style.display!=='none')renderAdminTerms();const atiDiv=document.getElementById('admin-terms-list');if(atiDiv&&atiDiv.closest('.page.active'))renderAdminTerms();});
+onValue(ref(db,'test_results'),snap=>{window._results={};snap.forEach(c=>{window._results[c.key]=c.val();});renderProgress();renderRanking();renderAdminSummary();renderAdminLog();});
+onValue(ref(db,'user_profiles'),snap=>{window._profiles={};snap.forEach(c=>{window._profiles[c.key]=c.val();});renderAdminProfileList();});
+</script>
+<script>
+window._termsData={};window._results={};window._profiles={};
+let _rank='all',_cat='all',_q='',_curDetail=null,_sbOpen=false,_isAdmin=false;
+function updateAdminUI(){const editBtn=document.getElementById('detail-edit-btn');if(editBtn)editBtn.style.display=_isAdmin?'inline-block':'none';}
+let _tUser=null,_tMode='practice',_qtype='rank',_selRank='秀';
+let _quiz=[],_qIdx=0,_answers=[],_adminFrom='pg-login';
+const ADMIN_PW='au2024admin';
+
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');updateAdminUI();}
+window.showPage=showPage;
+function toggleSidebar(){_sbOpen?closeSidebar():openSidebar();}
+function openSidebar(){_sbOpen=true;document.getElementById('sidebar').classList.add('open');document.getElementById('sb-overlay').classList.add('show');document.getElementById('sb-toggle').classList.add('active');}
+function closeSidebar(){_sbOpen=false;document.getElementById('sidebar').classList.remove('open');document.getElementById('sb-overlay').classList.remove('show');document.getElementById('sb-toggle').classList.remove('active');}
+window.toggleSidebar=toggleSidebar;window.closeSidebar=closeSidebar;
+function setRank(r,el){_rank=r;document.querySelectorAll('.rank-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTerms();updateFilterChips();}
+function setCat(c,el){_cat=c;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTerms();updateFilterChips();closeSidebar();}
+function resetFilters(){_rank='all';_cat='all';document.querySelectorAll('.rank-btn').forEach(b=>b.classList.remove('active'));document.querySelector('.rank-btn[data-rank="all"]').classList.add('active');document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));document.querySelector('.cat-btn[data-cat="all"]').classList.add('active');renderTerms();updateFilterChips();}
+function onSearch(v){_q=v.trim();document.getElementById('search-clear').classList.toggle('show',_q.length>0);renderTerms();}
+function clearSearch(){document.getElementById('search-input').value='';onSearch('');}
+function updateFilterChips(){const w=document.getElementById('active-filters');const c=[];if(_rank!=='all')c.push(`<span class="filter-chip fc-${_rank}" onclick="resetRankF()">ランク:${_rank} ✕</span>`);if(_cat!=='all')c.push(`<span class="filter-chip fc-cat" onclick="resetCatF()">${_cat} ✕</span>`);w.innerHTML=c.join('');}
+function resetRankF(){_rank='all';document.querySelectorAll('.rank-btn').forEach(b=>b.classList.remove('active'));document.querySelector('.rank-btn[data-rank="all"]').classList.add('active');renderTerms();updateFilterChips();}
+function resetCatF(){_cat='all';document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));document.querySelector('.cat-btn[data-cat="all"]').classList.add('active');renderTerms();updateFilterChips();}
+window.setRank=setRank;window.setCat=setCat;window.resetFilters=resetFilters;window.onSearch=onSearch;window.clearSearch=clearSearch;window.resetRankF=resetRankF;window.resetCatF=resetCatF;
+
+function renderTerms(){
+  const grid=document.getElementById('terms-grid'),all=Object.entries(_termsData);
+  const rc={秀:0,優:0,良:0,可:0},cc={'商材・プラン':0,'契約種別':0,'用語':0,'ステークホルダー':0};
+  all.forEach(([,t])=>{if(rc[t.rank]!==undefined)rc[t.rank]++;if(cc[t.category]!==undefined)cc[t.category]++;});
+  document.getElementById('rcnt-all').textContent=all.length;
+  ['秀','優','良','可'].forEach(r=>{document.getElementById('rcnt-'+r).textContent=rc[r];});
+  document.getElementById('ccnt-all').textContent=all.length;
+  document.getElementById('ccnt-商材プラン').textContent=cc['商材・プラン'];
+  document.getElementById('ccnt-契約種別').textContent=cc['契約種別'];
+  document.getElementById('ccnt-用語').textContent=cc['用語'];
+  document.getElementById('ccnt-ステークホルダー').textContent=cc['ステークホルダー'];
+  const filtered=all.filter(([,t])=>(_rank==='all'||t.rank===_rank)&&(_cat==='all'||t.category===_cat)&&(!_q||(t.name||'').includes(_q)||(t.description||'').includes(_q)||(t.note||'').includes(_q)));
+  document.getElementById('terms-count').textContent=filtered.length+'件';
+  if(!filtered.length){grid.innerHTML='<div class="empty-state"><div style="font-size:2.2rem;margin-bottom:8px;">📭</div><p>該当する用語がありません</p></div>';return;}
+  grid.innerHTML=filtered.map(([id,t])=>{
+    const nh=_q?esc(t.name).replace(new RegExp(escRe(_q),'g'),m=>`<span class="hl">${m}</span>`):esc(t.name);
+    const dh=_q?esc(t.description).replace(new RegExp(escRe(_q),'g'),m=>`<span class="hl">${m}</span>`):esc(t.description);
+    return `<div class="term-card" data-rank="${t.rank||''}" onclick="openDetail('${id}')"><div class="term-stripe"></div><div class="term-body"><div class="term-top"><div class="term-name">${nh}</div><div class="term-badges">${t.rank?`<span class="badge badge-rank-${t.rank}">${t.rank}</span>`:''}<span class="badge badge-cat">${esc(t.category)}</span></div></div><p class="term-desc">${dh}</p></div></div>`;
+  }).join('');
+}
+function openDetail(id){const t=_termsData[id];if(!t)return;_curDetail=id;document.getElementById('detail-title').textContent=t.name;document.getElementById('detail-rank-bar').className='detail-rank-bar rank-'+(t.rank||'');document.getElementById('detail-badges').innerHTML=`${t.rank?`<span class="badge badge-rank-${t.rank}">${t.rank}</span>`:''}<span class="badge badge-cat">${esc(t.category)}</span>`;document.getElementById('detail-desc').textContent=t.description||'';const ns=document.getElementById('detail-note-sec');if(t.note){document.getElementById('detail-note').textContent=t.note;ns.style.display='block';}else{ns.style.display='none';}document.getElementById('detail-modal').classList.add('open');}
+function openEditFromDetail(){closeModal('detail-modal');const t=_termsData[_curDetail];if(!t)return;document.getElementById('edit-id').value=_curDetail;document.getElementById('edit-name').value=t.name||'';document.getElementById('edit-category').value=t.category||'商材・プラン';document.getElementById('er-'+(t.rank||'秀')).checked=true;document.getElementById('edit-desc').value=t.description||'';document.getElementById('edit-note').value=t.note||'';document.getElementById('edit-modal').classList.add('open');}
+function openAddModal(){document.getElementById('add-name').value='';document.getElementById('add-category').value='商材・プラン';document.getElementById('ar-秀').checked=true;document.getElementById('add-desc').value='';document.getElementById('add-note').value='';document.getElementById('add-modal').classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+window.openDetail=openDetail;window.openEditFromDetail=openEditFromDetail;window.openAddModal=openAddModal;window.closeModal=closeModal;
+function getRadio(n){for(const r of document.querySelectorAll(`input[name="${n}"]`))if(r.checked)return r.value;return '';}
+async function saveTerm(){const name=document.getElementById('add-name').value.trim(),cat=document.getElementById('add-category').value,rank=getRadio('add-rank'),desc=document.getElementById('add-desc').value.trim(),note=document.getElementById('add-note').value.trim();if(!name||!desc){showToast('用語名と説明は必須です');return;}try{await _fbSet(_fbPush(_fbRef(_db,'terms')),{name,category:cat,rank,description:desc,note,createdAt:Date.now()});closeModal('add-modal');showToast('✅ 用語を追加しました');}catch(e){showToast('エラー:'+e.message);}}
+async function updateTerm(){const id=document.getElementById('edit-id').value,name=document.getElementById('edit-name').value.trim(),cat=document.getElementById('edit-category').value,rank=getRadio('edit-rank'),desc=document.getElementById('edit-desc').value.trim(),note=document.getElementById('edit-note').value.trim();if(!name||!desc){showToast('用語名と説明は必須です');return;}try{await _fbSet(_fbRef(_db,'terms/'+id),{name,category:cat,rank,description:desc,note,updatedAt:Date.now()});closeModal('edit-modal');showToast('✅ 更新しました');}catch(e){showToast('エラー:'+e.message);}}
+async function deleteTerm(){const id=document.getElementById('edit-id').value;if(!confirm('削除しますか？'))return;try{await _fbRemove(_fbRef(_db,'terms/'+id));closeModal('edit-modal');showToast('🗑 削除しました');}catch(e){showToast('エラー:'+e.message);}}
+window.saveTerm=saveTerm;window.updateTerm=updateTerm;window.deleteTerm=deleteTerm;
+
+function goTest(){closeSidebar();const s=localStorage.getItem('autest_user');if(s){_tUser=JSON.parse(s);document.getElementById('t-user-name').textContent=_tUser.name;updateTestRankCounts();showPage('pg-test-home');}else{showPage('pg-login');}}
+window.goTest=goTest;
+
+async function doLogin(){
+  const name=document.getElementById('login-name').value.trim(),email=document.getElementById('login-email').value.trim(),pos=getRadio('login-pos'),cr=getRadio('login-rank');
+  if(!name||!email){showToast('名前とメールは必須です');return;}
+  if(!email.includes('@')){showToast('正しいメールアドレスを入力してください');return;}
+  if(!pos){showToast('役職を選択してください');return;}
+  if(!cr){showToast('クローザーランクを選択してください');return;}
+  const id=btoa(unescape(encodeURIComponent(email))).replace(/=/g,'');
+  _tUser={name,email,id,pos,closerRank:cr};
+  localStorage.setItem('autest_user',JSON.stringify(_tUser));
+  try{await _fbSet(_fbRef(_db,'user_profiles/'+id),{name,email,pos,closerRank:cr,updatedAt:Date.now()});}catch(e){}
+  document.getElementById('t-user-name').textContent=name;
+  updateTestRankCounts();showPage('pg-test-home');
+}
+window.doLogin=doLogin;
+
+function switchTTab(id,el){['ttab-test','ttab-progress','ttab-ranking'].forEach(t=>{document.getElementById(t).style.display=(t===id)?'block':'none';});document.querySelectorAll('#pg-test-home .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');if(id==='ttab-progress')renderProgress();if(id==='ttab-ranking')renderRanking();}
+window.switchTTab=switchTTab;
+function selectMode(m){_tMode=m;document.getElementById('mc-practice').classList.toggle('selected',m==='practice');document.getElementById('mc-official').classList.toggle('selected',m==='official');}
+function selectQType(qt){_qtype=qt;document.getElementById('qt-rank').classList.toggle('selected',qt==='rank');document.getElementById('qt-rank').style.borderColor=qt==='rank'?'var(--primary)':'var(--border)';document.getElementById('qt-rank').style.background=qt==='rank'?'var(--pl)':'#fff';document.getElementById('qt-all').classList.toggle('selected',qt==='all');document.getElementById('rank-select-card').style.display=qt==='rank'?'block':'none';}
+function selectRank(r,el){_selRank=r;document.querySelectorAll('.rank-card').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
+function updateTestRankCounts(){const c={秀:0,優:0,良:0,可:0};Object.values(_termsData).forEach(t=>{if(c[t.rank]!==undefined)c[t.rank]++;});['秀','優','良','可'].forEach(r=>{const el=document.getElementById('trc-'+r);if(el)el.textContent=c[r]+'問';});}
+window.selectMode=selectMode;window.selectQType=selectQType;window.selectRank=selectRank;
+
+function shuffle(a){return [...a].sort(()=>Math.random()-.5);}
+function startQuiz(){
+  const all=Object.values(_termsData),pool=_qtype==='rank'?all.filter(t=>t.rank===_selRank):all,count=_qtype==='rank'?5:10;
+  if(pool.length<4){showToast('問題が少なすぎます（最低4問）');return;}
+  _quiz=shuffle(pool).slice(0,Math.min(count,pool.length)).map(q=>({term:q,choices:shuffle([q,...shuffle(all.filter(t=>t.name!==q.name)).slice(0,3)])}));
+  _qIdx=0;_answers=[];
+  document.getElementById('quiz-hdr-title').textContent=(_tMode==='practice'?'練習':'本番')+'テスト';
+  document.getElementById('quiz-mode-badge').textContent=_tMode==='practice'?'練習モード':'本番モード';
+  document.getElementById('quiz-mode-badge').className='mode-badge '+(_tMode==='practice'?'mode-practice':'mode-official');
+  showPage('pg-quiz');renderQuestion();
+}
+window.startQuiz=startQuiz;
+function renderQuestion(){
+  const total=_quiz.length,q=_quiz[_qIdx],t=q.term;
+  document.getElementById('quiz-prog').style.width=((_qIdx/total)*100)+'%';
+  document.getElementById('quiz-no').textContent=`問題 ${_qIdx+1}/${total}`;
+  const rb=document.getElementById('quiz-rbadge');rb.textContent=t.rank||'';rb.className='quiz-rbadge badge-rank-'+(t.rank||'');
+  document.getElementById('quiz-q').textContent=`「${t.name}」とは何ですか？`;
+  document.getElementById('quiz-hint').textContent=`カテゴリ：${t.category}`;
+  document.getElementById('quiz-choices').innerHTML=q.choices.map((c,i)=>`<button class="choice-btn" onclick="answer(${i})">${esc(c.description)}</button>`).join('');
+  document.getElementById('quiz-next-wrap').style.display='none';
+}
+function answer(idx){const q=_quiz[_qIdx],correct=q.term,isOk=q.choices[idx].name===correct.name;_answers.push({term:correct,isCorrect:isOk});document.querySelectorAll('.choice-btn').forEach((b,i)=>{b.disabled=true;if(q.choices[i].name===correct.name)b.classList.add('correct');else if(i===idx&&!isOk)b.classList.add('wrong');else b.classList.add('reveal');});document.getElementById('quiz-next-wrap').style.display='block';document.getElementById('quiz-next-btn').textContent=_qIdx>=_quiz.length-1?'結果を見る 📊':'次の問題へ ▶';}
+function nextQuestion(){_qIdx++;if(_qIdx>=_quiz.length)showResult();else renderQuestion();}
+function confirmQuit(){if(confirm('テストを終了しますか？'))showPage('pg-test-home');}
+window.answer=answer;window.nextQuestion=nextQuestion;window.confirmQuit=confirmQuit;
+
+async function showResult(){
+  const score=_answers.filter(a=>a.isCorrect).length,total=_answers.length,pct=Math.round((score/total)*100);
+  document.getElementById('res-score').textContent=score;
+  document.getElementById('res-denom').textContent='/'+total+'問';
+  document.getElementById('res-label').textContent=pct>=80?'🎉 素晴らしい！':pct>=60?'👍 まずまず！':'💪 もう一度挑戦！';
+  document.getElementById('result-mode-badge').textContent=_tMode==='practice'?'練習モード':'本番モード';
+  document.getElementById('result-mode-badge').className='mode-badge '+(_tMode==='practice'?'mode-practice':'mode-official');
+  const sm=document.getElementById('res-save-msg');
+  try{
+    await _fbSet(_fbPush(_fbRef(_db,'test_results')),{userId:_tUser.id,userName:_tUser.name,userEmail:_tUser.email,userPos:_tUser.pos||'',userCloserRank:_tUser.closerRank||'',mode:_tMode,qtype:_qtype,rank:_qtype==='rank'?_selRank:'all',score,total,pct,detail:_answers.map(a=>({name:a.term.name,termRank:a.term.rank,correct:a.isCorrect})),createdAt:Date.now()});
+    sm.textContent=_tMode==='official'?'✅ 結果を保存しました':'練習モード（ログのみ記録）';
+    sm.style.color=_tMode==='official'?'var(--ryo)':'var(--sub)';
+  }catch(e){sm.textContent='⚠️ 保存失敗';sm.style.color='var(--shu)';}
+  document.getElementById('result-list').innerHTML=_answers.map(a=>`<div class="result-item ${a.isCorrect?'ok':'ng'}"><div class="ri-top"><div class="ri-name">${esc(a.term.name)}</div><div>${a.isCorrect?'⭕':'❌'}</div></div><div class="ri-desc">${esc(a.term.description)}</div></div>`).join('');
+  showPage('pg-result');
+}
+function restartQuiz(){showPage('pg-test-home');setTimeout(startQuiz,100);}
+window.restartQuiz=restartQuiz;
+
+function renderProgress(){
+  const c=document.getElementById('progress-list');if(!c)return;
+  const results=Object.values(_results||{}).filter(r=>r.mode==='official');
+  const users={};
+  results.forEach(r=>{
+    if(!users[r.userId])users[r.userId]={name:r.userName,pos:r.userPos||'',cr:r.userCloserRank||'',tests:0,ts:0,tq:0,byRank:{秀:{s:0,t:0},優:{s:0,t:0},良:{s:0,t:0},可:{s:0,t:0}},mistakes:{}};
+    const u=users[r.userId];u.tests++;u.ts+=r.score;u.tq+=r.total;
+    const rk=r.rank||'all';if(u.byRank[rk]){u.byRank[rk].s+=r.score;u.byRank[rk].t+=r.total;}
+    (r.detail||[]).forEach(d=>{if(!d.correct)u.mistakes[d.name]=(u.mistakes[d.name]||0)+1;});
+  });
+  const entries=Object.values(users);
+  if(!entries.length){c.innerHTML='<div class="tc ts" style="padding:40px;">まだ本番モードの結果がありません</div>';return;}
+  const rankColors={秀:'var(--shu)',優:'var(--yu)',良:'var(--ryo)',可:'var(--ka)'};
+  c.innerHTML=entries.map(u=>{
+    const ov=u.tq>0?Math.round((u.ts/u.tq)*100):0;
+    const bars=['秀','優','良','可'].map(r=>{const d=u.byRank[r];if(!d||d.t===0)return '';const p=Math.round((d.s/d.t)*100);return `<div class="rank-bar-row"><div class="rank-bar-label" style="color:${rankColors[r]}">${r}</div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${p}%;background:${rankColors[r]};"></div></div><div class="rank-bar-score">${p}%</div></div>`;}).join('');
+    const topM=Object.entries(u.mistakes).sort((a,b)=>b[1]-a[1]).slice(0,5),maxM=topM.length?topM[0][1]:1;
+    const mHtml=topM.length?`<div class="mistake-section"><div class="mistake-title">❌ よく間違える問題</div><div class="mistake-list">${topM.map(([n,cnt])=>`<div class="mistake-item"><div class="mistake-name">${esc(n)}</div><div class="mistake-bar-wrap"><div class="mistake-bar-fill" style="width:${Math.round((cnt/maxM)*100)}%;"></div></div><div class="mistake-cnt">${cnt}回</div></div>`).join('')}</div></div>`:'';
+    return `<div class="member-card"><div class="member-top"><div><div class="member-name">${esc(u.name)}</div><div class="member-meta">${u.pos}${u.cr?' / '+u.cr:''} ・ 本番${u.tests}回</div></div><div class="overall-acc">${ov}%</div></div>${bars?`<div class="rank-bars">${bars}</div>`:''} ${mHtml}</div>`;
+  }).join('');
+}
+
+function renderRanking(){
+  const c=document.getElementById('ranking-list');if(!c)return;
+  const results=Object.values(_results||{}).filter(r=>r.mode==='official');
+  const users={};
+  results.forEach(r=>{if(!users[r.userId])users[r.userId]={name:r.userName,pos:r.userPos||'',cr:r.userCloserRank||'',ts:0,tq:0,tests:0};users[r.userId].ts+=r.score;users[r.userId].tq+=r.total;users[r.userId].tests++;});
+  const sorted=Object.values(users).filter(u=>u.tq>0).sort((a,b)=>{const pa=Math.round((a.ts/a.tq)*100),pb=Math.round((b.ts/b.tq)*100);return pb-pa||b.tq-a.tq;});
+  if(!sorted.length){c.innerHTML='<div class="tc ts" style="padding:40px;">まだデータがありません</div>';return;}
+  const medals=['🥇','🥈','🥉'],rClass=['gold','silver','bronze'];
+  c.innerHTML=sorted.map((u,i)=>{const pct=Math.round((u.ts/u.tq)*100);return `<div class="ranking-item"><div class="ranking-no ${rClass[i]||''}">${medals[i]||i+1}</div><div class="ranking-info"><div class="ranking-name">${esc(u.name)}</div><div class="ranking-sub">${u.pos}${u.cr?' / '+u.cr:''} ・ ${u.tq}問回答</div></div><div class="ranking-score">${pct}%</div></div>`;}).join('');
+}
+
+function openAdminLogin(from){_adminFrom=from;document.getElementById('admin-back-btn').onclick=()=>showPage(from);document.getElementById('admin-pw').value='';showPage('pg-admin-login');}
+function openAdminLoginFromSidebar(){closeSidebar();openAdminLogin('pg-glossary');}
+window.openAdminLoginFromSidebar=openAdminLoginFromSidebar;
+function doAdminLogin(){
+  if(document.getElementById('admin-pw').value===ADMIN_PW){
+    _isAdmin=true;
+    sessionStorage.setItem('isAdmin','1');
+    showPage('pg-admin');
+    renderAdminSummary();renderAdminLog();renderAdminProfileList();renderAdminTerms();
+  }else{showToast('パスワードが違います');}
+}
+function checkAdminSession(){
+  _isAdmin = sessionStorage.getItem('isAdmin')==='1';
+  updateAdminUI();
+}
+function adminLogout(){
+  _isAdmin=false;
+  sessionStorage.removeItem('isAdmin');
+  updateAdminUI();
+  showToast('管理者ログアウトしました');
+  showPage('pg-glossary');
+}
+window.adminLogout=adminLogout;
+window.openAdminLogin=openAdminLogin;window.doAdminLogin=doAdminLogin;
+function switchATab(id,el){['atab-summary','atab-log','atab-terms','atab-profile'].forEach(t=>{document.getElementById(t).style.display=(t===id)?'block':'none';});document.querySelectorAll('#pg-admin .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');if(id==='atab-summary')renderAdminSummary();if(id==='atab-log')renderAdminLog();if(id==='atab-terms')renderAdminTerms();if(id==='atab-profile')renderAdminProfileList();}
+window.switchATab=switchATab;
+
+function renderAdminSummary(){
+  const c=document.getElementById('admin-summary-list');if(!c)return;
+  const results=Object.values(_results||{});
+  const users={};
+  results.forEach(r=>{
+    if(!users[r.userId])users[r.userId]={name:r.userName,email:r.userEmail||'',pos:r.userPos||'',cr:r.userCloserRank||'',off:{ts:0,tq:0,tc:0},pra:{ts:0,tq:0,tc:0},mistakes:{}};
+    const u=users[r.userId],m=r.mode==='official'?u.off:u.pra;
+    m.tc++;m.ts+=r.score;m.tq+=r.total;
+    (r.detail||[]).forEach(d=>{if(!d.correct)u.mistakes[d.name]=(u.mistakes[d.name]||0)+1;});
+  });
+  const entries=Object.values(users);
+  if(!entries.length){c.innerHTML='<div class="tc ts" style="padding:40px;">データなし</div>';return;}
+  c.innerHTML=entries.map(u=>{
+    const opct=u.off.tq>0?Math.round((u.off.ts/u.off.tq)*100):null;
+    const ppct=u.pra.tq>0?Math.round((u.pra.ts/u.pra.tq)*100):null;
+    const cls=opct!==null?(opct>=80?'score-high':opct>=60?'score-mid':'score-low'):'';
+    const topM=Object.entries(u.mistakes).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const pills=topM.map(([n,cnt])=>`<span class="wrong-pill">${esc(n)} ${cnt}回</span>`).join('');
+    return `<div class="admin-mc"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;"><div><div class="admin-mc-name">${esc(u.name)}</div><div class="admin-mc-meta">${esc(u.email)} / ${u.pos||'−'} / クローザー:${u.cr||'−'}</div></div>${opct!==null?`<span class="score-chip ${cls}">${opct}%</span>`:''}</div><div style="font-size:.7rem;color:var(--sub);margin-bottom:5px;">本番:${u.off.tc}回${ppct!==null?` (${ppct}%)`:''} / 練習:${u.pra.tc}回</div>${pills?`<div style="font-size:.68rem;font-weight:700;color:var(--sub);margin-bottom:4px;">苦手な問題</div><div class="wrong-pills">${pills}</div>`:''}</div>`;
+  }).join('');
+}
+
+function renderAdminLog(){
+  const tbody=document.getElementById('admin-log-body');if(!tbody)return;
+  const results=Object.values(_results||{}).sort((a,b)=>b.createdAt-a.createdAt).slice(0,100);
+  if(!results.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--sub);padding:14px;">データなし</td></tr>';return;}
+  tbody.innerHTML=results.map(r=>{
+    const dt=new Date(r.createdAt),ds=`${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    const tp=r.qtype==='rank'?`ランク${r.rank}`:'全体',pct=Math.round((r.score/r.total)*100),cls=pct>=80?'score-high':pct>=60?'score-mid':'score-low';
+    const mb=r.mode==='practice'?'<span style="background:#d1fae5;color:#059669;padding:1px 5px;border-radius:9px;font-size:.62rem;font-weight:700;">練習</span>':'<span style="background:#fff2ea;color:#cc4f00;padding:1px 5px;border-radius:9px;font-size:.62rem;font-weight:700;">本番</span>';
+    return `<tr><td>${ds}</td><td>${esc(r.userName)}</td><td>${mb}</td><td>${tp}</td><td><span class="score-chip ${cls}">${r.score}/${r.total}</span></td></tr>`;
+  }).join('');
+}
+
+function renderAdminProfileList(){
+  const c=document.getElementById('admin-profile-list');if(!c)return;
+  const profiles=Object.entries(_profiles||{});
+  if(!profiles.length){c.innerHTML='<div class="tc ts" style="padding:40px;">プロフィールデータなし</div>';return;}
+  c.innerHTML=profiles.map(([uid,p])=>`<div class="admin-mc" style="display:flex;align-items:center;justify-content:space-between;"><div><div class="admin-mc-name">${esc(p.name)}</div><div class="admin-mc-meta">${esc(p.email||'')} / ${p.pos||'−'} / クローザー:${p.closerRank||'−'}</div></div><button onclick="openProfileEdit('${uid}')" style="background:var(--pl);border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;color:var(--pd);font-family:inherit;">変更</button></div>`).join('');
+}
+function openProfileEdit(uid){const p=_profiles[uid];if(!p)return;document.getElementById('pe-uid').value=uid;document.getElementById('pe-name-display').textContent=p.name;if(p.pos){const el=document.getElementById('pe-'+p.pos);if(el)el.checked=true;}if(p.closerRank){const el=document.getElementById('pe-r'+p.closerRank);if(el)el.checked=true;}document.getElementById('profile-edit-modal').classList.add('open');}
+async function saveProfile(){const uid=document.getElementById('pe-uid').value,pos=getRadio('pe-pos'),cr=getRadio('pe-rank');if(!pos||!cr){showToast('役職とランクを選択してください');return;}const p=_profiles[uid];try{await _fbSet(_fbRef(_db,'user_profiles/'+uid),{...p,pos,closerRank:cr,updatedAt:Date.now()});closeModal('profile-edit-modal');showToast('✅ プロフィールを更新しました');}catch(e){showToast('エラー:'+e.message);}}
+window.openProfileEdit=openProfileEdit;window.saveProfile=saveProfile;
+
+
+// ── ADMIN TERMS ──
+let _bulkRowCount = 1;
+
+function toggleBulkAdd(){
+  const body = document.getElementById('bulk-add-body');
+  const arrow = document.getElementById('bulk-add-arrow');
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  arrow.textContent = open ? '▼' : '▲';
+}
+window.toggleBulkAdd = toggleBulkAdd;
+
+function addBulkRow(){
+  const n = _bulkRowCount++;
+  const div = document.createElement('div');
+  div.className = 'bulk-row';
+  div.style.cssText = 'margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:.75rem;color:var(--sub);font-weight:700;">用語 ${n+1}</span>
+      <button onclick="this.closest('.bulk-row').remove()" style="background:#fde8e8;border:none;border-radius:6px;padding:3px 8px;font-size:.72rem;font-weight:700;cursor:pointer;color:var(--shu);font-family:inherit;">削除</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:6px;">
+      <input placeholder="用語名 *" style="flex:2;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.82rem;font-family:inherit;" class="bulk-name"/>
+      <select style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:8px 6px;font-size:.75rem;font-family:inherit;-webkit-appearance:none;" class="bulk-cat"><option value="商材・プラン">商材・プラン</option><option value="契約種別">契約種別</option><option value="用語">用語</option><option value="ステークホルダー">ステークホルダー</option></select>
+    </div>
+    <div style="display:flex;gap:5px;margin-bottom:6px;" class="bulk-rank-row">
+      <label style="flex:1;"><input type="radio" name="br-${n}" value="秀" checked> <span style="font-size:.78rem;font-weight:700;">秀</span></label>
+      <label style="flex:1;"><input type="radio" name="br-${n}" value="優"> <span style="font-size:.78rem;font-weight:700;">優</span></label>
+      <label style="flex:1;"><input type="radio" name="br-${n}" value="良"> <span style="font-size:.78rem;font-weight:700;">良</span></label>
+      <label style="flex:1;"><input type="radio" name="br-${n}" value="可"> <span style="font-size:.78rem;font-weight:700;">可</span></label>
+    </div>
+    <textarea placeholder="説明 *" rows="2" style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.82rem;font-family:inherit;resize:vertical;" class="bulk-desc"></textarea>
+    <textarea placeholder="補足・注意点（任意）" rows="1" style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:.78rem;font-family:inherit;resize:vertical;margin-top:5px;" class="bulk-note"></textarea>
+  `;
+  document.getElementById('bulk-rows').appendChild(div);
+}
+window.addBulkRow = addBulkRow;
+
+async function saveBulkTerms(){
+  const rows = document.querySelectorAll('#bulk-rows .bulk-row');
+  const items = [];
+  rows.forEach((row, i) => {
+    const name = row.querySelector('.bulk-name').value.trim();
+    const cat = row.querySelector('.bulk-cat').value;
+    const desc = row.querySelector('.bulk-desc').value.trim();
+    const note = row.querySelector('.bulk-note').value.trim();
+    const rankInputs = row.querySelectorAll('.bulk-rank-row input[type="radio"]');
+    let rank = '秀';
+    rankInputs.forEach(r => { if(r.checked) rank = r.value; });
+    if(name && desc) items.push({name, category:cat, rank, description:desc, note});
+  });
+  if(!items.length){ showToast('保存できる用語がありません'); return; }
+  let ok = 0;
+  for(const item of items){
+    try{ await _fbSet(_fbPush(_fbRef(_db,'terms')),{...item, createdAt:Date.now()}); ok++; }catch(e){}
+  }
+  showToast(`✅ ${ok}件を登録しました`);
+  // フォームリセット
+  document.getElementById('bulk-rows').innerHTML = `<div class="bulk-row" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);"><div style="display:flex;gap:6px;margin-bottom:6px;"><input placeholder="用語名 *" style="flex:2;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.82rem;font-family:inherit;" class="bulk-name"/><select style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:8px 6px;font-size:.75rem;font-family:inherit;-webkit-appearance:none;" class="bulk-cat"><option value="商材・プラン">商材・プラン</option><option value="契約種別">契約種別</option><option value="用語">用語</option><option value="ステークホルダー">ステークホルダー</option></select></div><div style="display:flex;gap:5px;margin-bottom:6px;" class="bulk-rank-row"><label style="flex:1;"><input type="radio" name="br-0" value="秀" checked> <span style="font-size:.78rem;font-weight:700;">秀</span></label><label style="flex:1;"><input type="radio" name="br-0" value="優"> <span style="font-size:.78rem;font-weight:700;">優</span></label><label style="flex:1;"><input type="radio" name="br-0" value="良"> <span style="font-size:.78rem;font-weight:700;">良</span></label><label style="flex:1;"><input type="radio" name="br-0" value="可"> <span style="font-size:.78rem;font-weight:700;">可</span></label></div><textarea placeholder="説明 *" rows="2" style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.82rem;font-family:inherit;resize:vertical;" class="bulk-desc"></textarea><textarea placeholder="補足・注意点（任意）" rows="1" style="width:100%;border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:.78rem;font-family:inherit;resize:vertical;margin-top:5px;" class="bulk-note"></textarea></div>`;
+  _bulkRowCount = 1;
+  document.getElementById('bulk-add-body').style.display = 'none';
+  document.getElementById('bulk-add-arrow').textContent = '▼';
+}
+window.saveBulkTerms = saveBulkTerms;
+
+function renderAdminTerms(){
+  const c = document.getElementById('admin-terms-list');
+  if(!c) return;
+  const all = Object.entries(_termsData);
+  if(!all.length){ c.innerHTML = '<div class="tc ts" style="padding:30px;">用語データなし</div>'; return; }
+  const rankColors = {秀:'var(--shu)',優:'var(--yu)',良:'var(--ryo)',可:'var(--ka)'};
+  const sorted = all.sort((a,b)=>{
+    const ro = {秀:0,優:1,良:2,可:3};
+    return (ro[a[1].rank]??4) - (ro[b[1].rank]??4) || (a[1].name||'').localeCompare(b[1].name||'','ja');
+  });
+  c.innerHTML = sorted.map(([id,t]) => {
+    const rc = {秀:'badge-rank-秀',優:'badge-rank-優',良:'badge-rank-良',可:'badge-rank-可'};
+    return `<div class="admin-term-item" id="ati-${id}">
+      <div class="admin-term-hdr" onclick="toggleAdminTerm('${id}')">
+        <div class="admin-term-name">${esc(t.name)}</div>
+        <div class="admin-term-badges">
+          ${t.rank?`<span class="badge ${rc[t.rank]||''}">${t.rank}</span>`:''}
+          <span class="badge badge-cat">${esc(t.category)}</span>
+        </div>
+        <button class="collapse-btn" id="cb-${id}" onclick="event.stopPropagation();toggleAdminTerm('${id}')">－</button>
+      </div>
+      <div class="admin-term-body" id="atb-${id}">
+        <div style="padding-top:11px;">
+          <div class="admin-edit-group">
+            <label>用語名</label>
+            <input class="admin-edit-input" id="aen-${id}" value="${esc(t.name)}"/>
+          </div>
+          <div class="admin-edit-group">
+            <label>カテゴリ</label>
+            <select class="admin-cat-sel" id="aec-${id}">
+              <option value="商材・プラン" ${t.category==='商材・プラン'?'selected':''}>商材・プラン</option>
+              <option value="契約種別" ${t.category==='契約種別'?'selected':''}>契約種別</option>
+              <option value="用語" ${t.category==='用語'?'selected':''}>用語</option>
+              <option value="ステークホルダー" ${t.category==='ステークホルダー'?'selected':''}>ステークホルダー</option>
+            </select>
+          </div>
+          <div class="admin-edit-group"><label>ランク</label></div>
+          <div class="admin-rank-row">
+            <div class="admin-rank-opt" data-rank="秀"><input type="radio" name="aer-${id}" id="aerr-${id}-秀" value="秀" ${t.rank==='秀'?'checked':''}><label for="aerr-${id}-秀">秀</label></div>
+            <div class="admin-rank-opt" data-rank="優"><input type="radio" name="aer-${id}" id="aerr-${id}-優" value="優" ${t.rank==='優'?'checked':''}><label for="aerr-${id}-優">優</label></div>
+            <div class="admin-rank-opt" data-rank="良"><input type="radio" name="aer-${id}" id="aerr-${id}-良" value="良" ${t.rank==='良'?'checked':''}><label for="aerr-${id}-良">良</label></div>
+            <div class="admin-rank-opt" data-rank="可"><input type="radio" name="aer-${id}" id="aerr-${id}-可" value="可" ${t.rank==='可'?'checked':''}><label for="aerr-${id}-可">可</label></div>
+          </div>
+          <div class="admin-edit-group">
+            <label>説明</label>
+            <textarea class="admin-edit-textarea" id="aed-${id}">${esc(t.description||'')}</textarea>
+          </div>
+          <div class="admin-edit-group">
+            <label>補足・注意点</label>
+            <textarea class="admin-edit-textarea" id="aeno-${id}" rows="2">${esc(t.note||'')}</textarea>
+          </div>
+          <div class="admin-action-row">
+            <button class="btn-del-term" onclick="adminDeleteTerm('${id}')">🗑 削除</button>
+            <button class="btn-save-term" onclick="adminSaveTerm('${id}')">✅ 保存</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAdminTerm(id){
+  const body = document.getElementById('atb-'+id);
+  const btn = document.getElementById('cb-'+id);
+  if(!body) return;
+  const collapsed = body.classList.toggle('collapsed');
+  btn.textContent = collapsed ? '＋' : '－';
+}
+window.toggleAdminTerm = toggleAdminTerm;
+
+function adminExpandAll(){
+  document.querySelectorAll('.admin-term-body').forEach(b=>b.classList.remove('collapsed'));
+  document.querySelectorAll('.collapse-btn').forEach(b=>b.textContent='－');
+}
+function adminCollapseAll(){
+  document.querySelectorAll('.admin-term-body').forEach(b=>b.classList.add('collapsed'));
+  document.querySelectorAll('.collapse-btn').forEach(b=>b.textContent='＋');
+}
+window.adminExpandAll = adminExpandAll;
+window.adminCollapseAll = adminCollapseAll;
+
+async function adminSaveTerm(id){
+  const name = document.getElementById('aen-'+id).value.trim();
+  const cat = document.getElementById('aec-'+id).value;
+  const desc = document.getElementById('aed-'+id).value.trim();
+  const note = document.getElementById('aeno-'+id).value.trim();
+  let rank = '';
+  document.querySelectorAll(`input[name="aer-${id}"]`).forEach(r=>{ if(r.checked) rank=r.value; });
+  if(!name||!desc){ showToast('用語名と説明は必須です'); return; }
+  try{
+    await _fbSet(_fbRef(_db,'terms/'+id),{name,category:cat,rank,description:desc,note,updatedAt:Date.now()});
+    showToast('✅ 更新しました');
+  }catch(e){ showToast('エラー:'+e.message); }
+}
+window.adminSaveTerm = adminSaveTerm;
+
+async function adminDeleteTerm(id){
+  if(!confirm('この用語を削除しますか？')) return;
+  try{
+    await _fbRemove(_fbRef(_db,'terms/'+id));
+    const el = document.getElementById('ati-'+id);
+    if(el) el.remove();
+    showToast('🗑 削除しました');
+  }catch(e){ showToast('エラー:'+e.message); }
+}
+window.adminDeleteTerm = adminDeleteTerm;
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+window.showToast=showToast;
+document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
+checkAdminSession();
+</script>
+</body>
+</html>
