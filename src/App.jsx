@@ -16,6 +16,7 @@ export default function App() {
 
   const [page, setPage] = useState('home');
   const [glossaryCat, setGlossaryCat] = useState('all');
+  const [glossarySection, setGlossarySection] = useState('all');
   const [isAdmin, setIsAdmin] = useState(sessionStorage.getItem('isAdmin') === '1');
 
   const [testUser, setTestUser] = useState(() => {
@@ -57,8 +58,9 @@ export default function App() {
       content = (
         <Home
           terms={terms}
-          onOpenCategory={(c) => { setGlossaryCat(c); setPage('glossary'); }}
-          onViewAll={() => { setGlossaryCat('all'); setPage('glossary'); }}
+          onOpenCategory={(c) => { setGlossaryCat(c); setGlossarySection('all'); setPage('glossary'); }}
+          onOpenSection={(s) => { setGlossaryCat('all'); setGlossarySection(s); setPage('glossary'); }}
+          onViewAll={() => { setGlossaryCat('all'); setGlossarySection('all'); setPage('glossary'); }}
           onGoTest={goTest}
           onAdminLogin={() => setPage('admin-login')}
         />
@@ -70,6 +72,7 @@ export default function App() {
           terms={terms}
           isAdmin={isAdmin}
           initialCat={glossaryCat}
+          initialSection={glossarySection}
           onBackHome={() => setPage('home')}
           onGoTest={goTest}
           onAdminLogin={() => setPage('admin-login')}
@@ -138,8 +141,9 @@ export default function App() {
       content = (
         <Home
           terms={terms}
-          onOpenCategory={(c) => { setGlossaryCat(c); setPage('glossary'); }}
-          onViewAll={() => { setGlossaryCat('all'); setPage('glossary'); }}
+          onOpenCategory={(c) => { setGlossaryCat(c); setGlossarySection('all'); setPage('glossary'); }}
+          onOpenSection={(s) => { setGlossaryCat('all'); setGlossarySection(s); setPage('glossary'); }}
+          onViewAll={() => { setGlossaryCat('all'); setGlossarySection('all'); setPage('glossary'); }}
           onGoTest={goTest}
           onAdminLogin={() => setPage('admin-login')}
         />

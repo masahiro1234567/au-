@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CATEGORIES, RANKS, showToast } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS, RANKS, showToast } from '../utils.js';
 
 function RankSelect({ name, value, onChange }) {
   return (
@@ -21,7 +21,7 @@ function RankSelect({ name, value, onChange }) {
   );
 }
 
-const EMPTY = { name: '', category: CATEGORIES[0], rank: '秀', description: '', note: '' };
+const EMPTY = { name: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' };
 
 // 追加・編集 共通フォームモーダル
 export function TermFormModal({ open, mode, initial, onClose, onSubmit, onDelete }) {
@@ -59,7 +59,14 @@ export function TermFormModal({ open, mode, initial, onClose, onSubmit, onDelete
           <div className="form-group">
             <label>カテゴリ <span className="req">*</span></label>
             <select value={form.category} onChange={(e) => set('category')(e.target.value)}>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {CATEGORIES_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>部分知識（任意）</label>
+            <select value={form.section || ''} onChange={(e) => set('section')(e.target.value)}>
+              <option value="">選択なし</option>
+              {CATEGORIES_SECTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="form-group">
@@ -101,6 +108,7 @@ export function TermDetailModal({ open, term, isAdmin, onClose, onEdit }) {
           <div className="detail-badges">
             {term.rank && <span className={`badge badge-rank-${term.rank}`}>{term.rank}</span>}
             <span className="badge badge-cat">{term.category}</span>
+            {term.section && <span className="badge badge-section">{term.section}</span>}
           </div>
           <div className="detail-sec">
             <span className="lbl">説明</span>

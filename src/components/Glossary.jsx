@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import Sidebar from './Sidebar.jsx';
 import { TermFormModal, TermDetailModal } from './TermModals.jsx';
-import { esc, escRe, showToast, RANKS, CATEGORIES } from '../utils.js';
+import { esc, escRe, showToast, RANKS, CATEGORIES_BASE, CATEGORIES_SECTIONS } from '../utils.js';
 import { dbPush, dbSet, dbRemove } from '../useFirebase.js';
 
 function highlight(text, q) {
@@ -14,9 +14,10 @@ function highlight(text, q) {
   }
 }
 
-export default function Glossary({ terms, isAdmin, initialCat, onBackHome, onGoTest, onAdminLogin }) {
+export default function Glossary({ terms, isAdmin, initialCat, initialSection, onBackHome, onGoTest, onAdminLogin }) {
   const [rank, setRank] = useState('all');
   const [cat, setCat] = useState(initialCat || 'all');
+  const [section, setSection] = useState(initialSection || 'all');
   const [q, setQ] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
@@ -36,15 +37,22 @@ export default function Glossary({ terms, isAdmin, initialCat, onBackHome, onGoT
     return c;
   }, [entries]);
 
+  const sectionCounts = useMemo(() => {
+    const c = {};
+    entries.forEach(([, t]) => { if (t.section) c[t.section] = (c[t.section] || 0) + 1; });
+    return c;
+  }, [entries]);
+
   const filtered = useMemo(() => {
     return entries.filter(([, t]) =>
       (rank === 'all' || t.rank === rank) &&
       (cat === 'all' || t.category === cat) &&
+      (section === 'all' || t.section === section) &&
       (!q || (t.name || '').includes(q) || (t.description || '').includes(q) || (t.note || '').includes(q))
     );
-  }, [entries, rank, cat, q]);
+  }, [entries, rank, cat, section, q]);
 
-  const resetFilters = () => { setRank('all'); setCat('all'); };
+  const resetFilters = () => { setRank('all'); setCat('all'); setSection('all'); };
 
   const detailTerm = detailId ? terms[detailId] : null;
 
@@ -113,6 +121,9 @@ export default function Glossary({ terms, isAdmin, initialCat, onBackHome, onGoT
             {cat !== 'all' && (
               <span className="filter-chip fc-cat" onClick={() => setCat('all')}>{cat} ✕</span>
             )}
+            {section !== 'all' && (
+              <span className="filter-chip fc-section" onClick={() => setSection('all')}>{section} ✕</span>
+            )}
           </div>
           <div className="terms-count">{filtered.length}件</div>
           {!filtered.length ? (
@@ -131,6 +142,7 @@ export default function Glossary({ terms, isAdmin, initialCat, onBackHome, onGoT
                       <div className="term-badges">
                         {t.rank && <span className={`badge badge-rank-${t.rank}`}>{t.rank}</span>}
                         <span className="badge badge-cat">{t.category}</span>
+                        {t.section && <span className="badge badge-section">{t.section}</span>}
                       </div>
                     </div>
                     <p className="term-desc" dangerouslySetInnerHTML={{ __html: highlight(t.description, q) }} />
@@ -144,8 +156,9 @@ export default function Glossary({ terms, isAdmin, initialCat, onBackHome, onGoT
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           rank={rank} setRank={(r) => { setRank(r); }}
-          cat={cat} setCat={(c) => { setCat(c); setSidebarOpen(false); }}
-          rankCounts={rankCounts} catCounts={catCounts} totalCount={entries.length}
+          cat={cat} setCat={(c) => { setCat(c); }}
+          section={section} setSection={(s) => { setSection(s); }}
+          rankCounts={rankCounts} catCounts={catCounts} sectionCounts={sectionCounts} totalCount={entries.length}
           onReset={resetFilters}
           onGoTest={() => { setSidebarOpen(false); onGoTest(); }}
           onAdminLogin={() => { setSidebarOpen(false); onAdminLogin(); }}

@@ -1,26 +1,32 @@
 import React, { useMemo } from 'react';
 import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_ICONS } from '../utils.js';
 
-function TileGrid({ list, catCounts, onOpenCategory }) {
+function TileGrid({ list, counts, onOpen }) {
   return (
     <div className="home-grid">
       {list.map((c) => (
-        <div className="home-tile" key={c} onClick={() => onOpenCategory(c)}>
+        <div className="home-tile" key={c} onClick={() => onOpen(c)}>
           <div className="home-tile-icon">{CATEGORY_ICONS[c] || '📚'}</div>
           <div className="home-tile-name">{c}</div>
-          <div className="home-tile-count">{catCounts[c] || 0}件</div>
+          <div className="home-tile-count">{counts[c] || 0}件</div>
         </div>
       ))}
     </div>
   );
 }
 
-export default function Home({ terms, onOpenCategory, onViewAll, onGoTest, onAdminLogin }) {
+export default function Home({ terms, onOpenCategory, onOpenSection, onViewAll, onGoTest, onAdminLogin }) {
   const entries = useMemo(() => Object.values(terms), [terms]);
 
   const catCounts = useMemo(() => {
     const c = {};
     entries.forEach((t) => { c[t.category] = (c[t.category] || 0) + 1; });
+    return c;
+  }, [entries]);
+
+  const sectionCounts = useMemo(() => {
+    const c = {};
+    entries.forEach((t) => { if (t.section) c[t.section] = (c[t.section] || 0) + 1; });
     return c;
   }, [entries]);
 
@@ -39,10 +45,10 @@ export default function Home({ terms, onOpenCategory, onViewAll, onGoTest, onAdm
         </div>
 
         <div className="section-title" style={{ marginTop: 4 }}>カテゴリで見る</div>
-        <TileGrid list={CATEGORIES_BASE} catCounts={catCounts} onOpenCategory={onOpenCategory} />
+        <TileGrid list={CATEGORIES_BASE} counts={catCounts} onOpen={onOpenCategory} />
 
         <div className="section-title">部分知識</div>
-        <TileGrid list={CATEGORIES_SECTIONS} catCounts={catCounts} onOpenCategory={onOpenCategory} />
+        <TileGrid list={CATEGORIES_SECTIONS} counts={sectionCounts} onOpen={onOpenSection} />
 
         <button className="home-viewall" onClick={onViewAll}>📚 すべての用語を見る</button>
 

@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { CATEGORIES, RANKS, showToast } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS, RANKS, showToast } from '../utils.js';
 import { dbPush, dbSet, dbRemove } from '../useFirebase.js';
 
-const emptyRow = () => ({ name: '', category: CATEGORIES[0], rank: '秀', description: '', note: '' });
+const emptyRow = () => ({ name: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' });
 
 function BulkAddSection({ onSaved }) {
   const [open, setOpen] = useState(false);
@@ -47,7 +47,11 @@ function BulkAddSection({ onSaved }) {
               <div className="bulk-row-fields">
                 <input className="bulk-name" placeholder="用語名 *" value={row.name} onChange={(e) => updateRow(i, 'name', e.target.value)} />
                 <select className="bulk-cat" value={row.category} onChange={(e) => updateRow(i, 'category', e.target.value)}>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {CATEGORIES_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select className="bulk-cat" value={row.section || ''} onChange={(e) => updateRow(i, 'section', e.target.value)}>
+                  <option value="">部分知識：選択なし</option>
+                  {CATEGORIES_SECTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="bulk-rank-row">
@@ -81,7 +85,8 @@ function BulkAddSection({ onSaved }) {
 
 function TermItem({ id, term, expanded, onToggle, onSaved, onDeleted }) {
   const [name, setName] = useState(term.name || '');
-  const [category, setCategory] = useState(term.category || CATEGORIES[0]);
+  const [category, setCategory] = useState(term.category || CATEGORIES_BASE[0]);
+  const [section, setSection] = useState(term.section || '');
   const [rank, setRank] = useState(term.rank || '秀');
   const [description, setDescription] = useState(term.description || '');
   const [note, setNote] = useState(term.note || '');
@@ -91,7 +96,7 @@ function TermItem({ id, term, expanded, onToggle, onSaved, onDeleted }) {
   const save = async () => {
     if (!name.trim() || !description.trim()) return showToast('用語名と説明は必須です');
     try {
-      await dbSet('terms/' + id, { name, category, rank, description, note, updatedAt: Date.now() });
+      await dbSet('terms/' + id, { name, category, section, rank, description, note, updatedAt: Date.now() });
       showToast('✅ 更新しました');
       onSaved?.();
     } catch (e) { showToast('エラー:' + e.message); }
@@ -113,6 +118,7 @@ function TermItem({ id, term, expanded, onToggle, onSaved, onDeleted }) {
         <div className="admin-term-badges">
           {term.rank && <span className={`badge ${rc[term.rank] || ''}`}>{term.rank}</span>}
           <span className="badge badge-cat">{term.category}</span>
+          {term.section && <span className="badge badge-section">{term.section}</span>}
         </div>
         <button className="collapse-btn" onClick={(e) => { e.stopPropagation(); onToggle(); }}>{expanded ? '－' : '＋'}</button>
       </div>
@@ -125,7 +131,14 @@ function TermItem({ id, term, expanded, onToggle, onSaved, onDeleted }) {
           <div className="admin-edit-group">
             <label>カテゴリ</label>
             <select className="admin-cat-sel" value={category} onChange={(e) => setCategory(e.target.value)}>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {CATEGORIES_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="admin-edit-group">
+            <label>部分知識（任意）</label>
+            <select className="admin-cat-sel" value={section} onChange={(e) => setSection(e.target.value)}>
+              <option value="">選択なし</option>
+              {CATEGORIES_SECTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="admin-edit-group"><label>ランク</label></div>
