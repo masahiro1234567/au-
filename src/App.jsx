@@ -14,22 +14,22 @@ export default function App() {
   const [results] = useDbCollection('test_results');
   const [profiles] = useDbCollection('user_profiles');
 
-  const [page, setPage] = useState('home');
-  const [glossaryCat, setGlossaryCat] = useState('all');
-  const [glossarySection, setGlossarySection] = useState('all');
-  const [isAdmin, setIsAdmin] = useState(sessionStorage.getItem('isAdmin') === '1');
-
   const [testUser, setTestUser] = useState(() => {
     const s = localStorage.getItem('autest_user');
     return s ? JSON.parse(s) : null;
   });
 
+  const [page, setPage] = useState(testUser ? 'home' : 'login');
+  const [glossaryCat, setGlossaryCat] = useState('all');
+  const [glossarySection, setGlossarySection] = useState('all');
+  const [isAdmin, setIsAdmin] = useState(sessionStorage.getItem('isAdmin') === '1');
+
   const [quizConfig, setQuizConfig] = useState(null); // {mode, qtype, selRank}
   const [quizAnswers, setQuizAnswers] = useState(null);
 
-  const goTest = () => setPage(testUser ? 'test-home' : 'login');
+  const goTest = () => setPage('test-home');
 
-  const handleLogin = (user) => { setTestUser(user); setPage('test-home'); };
+  const handleLogin = (user) => { setTestUser(user); setPage('home'); };
 
   const startQuiz = (config) => { setQuizConfig(config); setPage('quiz'); };
 
@@ -80,7 +80,7 @@ export default function App() {
       );
       break;
     case 'login':
-      content = <Login onBack={() => setPage('home')} onLogin={handleLogin} profiles={profiles} />;
+      content = <Login onLogin={handleLogin} profiles={profiles} />;
       break;
     case 'test-home':
       content = (

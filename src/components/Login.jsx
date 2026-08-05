@@ -48,7 +48,7 @@ export default function Login({ onBack, onLogin, profiles }) {
     <div className="page">
       <div className="hdr">
         <div className="logo"><div className="logo-mark">au</div><h1>用語テスト</h1></div>
-        <div className="hdr-right"><button className="btn-back" onClick={onBack}>← 戻る</button></div>
+        <div className="hdr-right">{onBack && <button className="btn-back" onClick={onBack}>← 戻る</button>}</div>
       </div>
       <div className="t-body">
         <div style={{ textAlign: 'center', padding: '16px 0 20px' }}>
