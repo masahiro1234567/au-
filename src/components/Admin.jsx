@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import AdminTermsTab from './AdminTermsTab.jsx';
 import { showToast } from '../utils.js';
-import { dbSet } from '../useFirebase.js';
+import { dbSet, dbRemove } from '../useFirebase.js';
 
 function SummaryTab({ results }) {
   const entries = useMemo(() => {
@@ -164,6 +164,14 @@ function ProfileTab({ profiles }) {
   const [editUid, setEditUid] = useState(null);
   const list = Object.entries(profiles || {});
 
+  const del = async (uid, name) => {
+    if (!confirm(`「${name}」のプロフィールを削除しますか？\n※テスト結果のログは残ります`)) return;
+    try {
+      await dbRemove('user_profiles/' + uid);
+      showToast('🗑 削除しました');
+    } catch (e) { showToast('エラー:' + e.message); }
+  };
+
   return (
     <div>
       <div className="section-title">プロフィール管理</div>
@@ -171,17 +179,25 @@ function ProfileTab({ profiles }) {
         <div className="tc ts" style={{ padding: 40 }}>プロフィールデータなし</div>
       ) : (
         list.map(([uid, p]) => (
-          <div className="admin-mc" key={uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="admin-mc" key={uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <div>
               <div className="admin-mc-name">{p.name}</div>
               <div className="admin-mc-meta">{p.email ? `${p.email} / ` : ''}{p.pos || '−'} / クローザー:{p.closerRank || '−'}</div>
             </div>
-            <button
-              onClick={() => setEditUid(uid)}
-              style={{ background: 'var(--pl)', border: '1.5px solid var(--border)', borderRadius: 7, padding: '5px 10px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', color: 'var(--pd)', fontFamily: 'inherit' }}
-            >
-              変更
-            </button>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button
+                onClick={() => setEditUid(uid)}
+                style={{ background: 'var(--pl)', border: '1.5px solid var(--border)', borderRadius: 7, padding: '5px 10px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', color: 'var(--pd)', fontFamily: 'inherit' }}
+              >
+                変更
+              </button>
+              <button
+                onClick={() => del(uid, p.name)}
+                style={{ background: '#fee2e2', border: '1.5px solid #fecaca', borderRadius: 7, padding: '5px 10px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}
+              >
+                削除
+              </button>
+            </div>
           </div>
         ))
       )}

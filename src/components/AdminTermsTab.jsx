@@ -13,7 +13,10 @@ function BulkAddSection({ onSaved }) {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, [key]: val } : r)));
   };
   const addRow = () => setRows((rs) => [...rs, emptyRow()]);
-  const removeRow = (i) => setRows((rs) => rs.filter((_, idx) => idx !== i));
+  const removeRow = (i) => setRows((rs) => {
+    const next = rs.filter((_, idx) => idx !== i);
+    return next.length ? next : [emptyRow()];
+  });
 
   // 用語名を改行区切りで貼り付けて、行を一括作成する（カテゴリ・ランク・説明は空のまま／手入力）
   const parseNames = () => {
@@ -76,7 +79,7 @@ function BulkAddSection({ onSaved }) {
             <div className="bulk-row" key={i}>
               <div className="bulk-row-top">
                 <span style={{ fontSize: '.75rem', color: 'var(--sub)', fontWeight: 700 }}>用語 {i + 1}</span>
-                {rows.length > 1 && <button className="btn-row-del" onClick={() => removeRow(i)}>削除</button>}
+                <button className="btn-row-del" onClick={() => removeRow(i)}>削除</button>
               </div>
               <div className="bulk-row-fields">
                 <input className="bulk-name" placeholder="用語名 *" value={row.name} onChange={(e) => updateRow(i, 'name', e.target.value)} />
@@ -99,12 +102,20 @@ function BulkAddSection({ onSaved }) {
               <textarea className="bulk-note" rows={1} placeholder="補足・注意点（任意）" value={row.note} onChange={(e) => updateRow(i, 'note', e.target.value)} />
             </div>
           ))}
-          <button
-            onClick={addRow}
-            style={{ width: '100%', padding: 9, borderRadius: 8, border: '2px dashed var(--border)', background: 'var(--bg)', fontSize: '.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--sub)', marginBottom: 10 }}
-          >
-            ＋ 行を追加
-          </button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <button
+              onClick={addRow}
+              style={{ flex: 1, padding: 9, borderRadius: 8, border: '2px dashed var(--border)', background: 'var(--bg)', fontSize: '.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--sub)' }}
+            >
+              ＋ 行を追加
+            </button>
+            <button
+              onClick={() => setRows([emptyRow()])}
+              style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid #fecaca', background: '#fee2e2', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#dc2626' }}
+            >
+              全行クリア
+            </button>
+          </div>
           <button
             onClick={save}
             style={{ width: '100%', padding: 11, borderRadius: 9, border: 'none', background: 'var(--grad)', color: '#fff', fontSize: '.88rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
