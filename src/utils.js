@@ -23,7 +23,12 @@ export function showToast(msg) {
 }
 
 export const RANKS = ['秀', '優', '良', '可'];
-export const CATEGORIES = ['商材・プラン', '契約種別', '用語', 'ステークホルダー', 'キャッチ編', 'クローズ編', 'アライアンス編', '販路編', 'ディレクション編'];
+// 既存の絞り込みカテゴリ
+export const CATEGORIES_BASE = ['商材・プラン', '契約種別', '用語', 'ステークホルダー'];
+// 「編」区分（部分知識）。役割・工程ごとの学習単位で、既存カテゴリとは別グループとして扱う
+export const CATEGORIES_SECTIONS = ['キャッチ編', 'クローズ編', 'アライアンス編', '販路編', 'ディレクション編'];
+// 用語登録・サイドバー絞り込みでは両方をまとめて1つのリストとして使う
+export const CATEGORIES = [...CATEGORIES_BASE, ...CATEGORIES_SECTIONS];
 export const CATEGORY_ICONS = {
   '商材・プラン': '📦',
   '契約種別': '📋',

@@ -1,5 +1,19 @@
 import React, { useMemo } from 'react';
-import { CATEGORIES, CATEGORY_ICONS } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_ICONS } from '../utils.js';
+
+function TileGrid({ list, catCounts, onOpenCategory }) {
+  return (
+    <div className="home-grid">
+      {list.map((c) => (
+        <div className="home-tile" key={c} onClick={() => onOpenCategory(c)}>
+          <div className="home-tile-icon">{CATEGORY_ICONS[c] || '📚'}</div>
+          <div className="home-tile-name">{c}</div>
+          <div className="home-tile-count">{catCounts[c] || 0}件</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Home({ terms, onOpenCategory, onViewAll, onGoTest, onAdminLogin }) {
   const entries = useMemo(() => Object.values(terms), [terms]);
@@ -24,16 +38,11 @@ export default function Home({ terms, onOpenCategory, onViewAll, onGoTest, onAdm
           <div className="home-hero-sub">全{entries.length}件の用語を収録</div>
         </div>
 
-        <div className="section-title" style={{ marginTop: 4 }}>編ごとに見る</div>
-        <div className="home-grid">
-          {CATEGORIES.map((c) => (
-            <div className="home-tile" key={c} onClick={() => onOpenCategory(c)}>
-              <div className="home-tile-icon">{CATEGORY_ICONS[c] || '📚'}</div>
-              <div className="home-tile-name">{c}</div>
-              <div className="home-tile-count">{catCounts[c] || 0}件</div>
-            </div>
-          ))}
-        </div>
+        <div className="section-title" style={{ marginTop: 4 }}>カテゴリで見る</div>
+        <TileGrid list={CATEGORIES_BASE} catCounts={catCounts} onOpenCategory={onOpenCategory} />
+
+        <div className="section-title">部分知識</div>
+        <TileGrid list={CATEGORIES_SECTIONS} catCounts={catCounts} onOpenCategory={onOpenCategory} />
 
         <button className="home-viewall" onClick={onViewAll}>📚 すべての用語を見る</button>
 
