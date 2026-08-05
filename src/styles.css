@@ -59,7 +59,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .badge-rank-優{background:#fef3c7;color:var(--yu);}
 .badge-rank-良{background:#d1fae5;color:var(--ryo);}
 .badge-rank-可{background:#dbeafe;color:var(--ka);}
-.term-desc{font-size:.79rem;color:var(--sub);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.term-desc{font-size:.79rem;color:var(--sub);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;word-break:break-word;}
 .empty-state{text-align:center;padding:50px 20px;color:var(--sub);}
 .hl{background:#fff3c0;border-radius:2px;}
 .sb-overlay{display:none;position:fixed;inset:0;background:rgba(26,15,8,.35);z-index:90;}
@@ -119,7 +119,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .detail-badges{display:flex;gap:5px;margin-bottom:11px;}
 .detail-sec{margin-bottom:11px;}
 .detail-sec .lbl{font-size:.66rem;color:var(--sub);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px;display:block;}
-.detail-sec p{font-size:.88rem;line-height:1.75;}
+.detail-sec p{font-size:.88rem;line-height:1.75;white-space:pre-wrap;word-break:break-word;}
 .t-card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);border:1.5px solid var(--border);padding:16px;margin-bottom:12px;}
 .t-card-title{font-size:.66rem;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
 .tbtn{width:100%;padding:12px;border-radius:10px;border:none;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s,transform .1s;}
