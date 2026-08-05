@@ -42,3 +42,5 @@ export const CATEGORY_ICONS = {
 };
 export const RANK_COLORS = { 秀: 'var(--shu)', 優: 'var(--yu)', 良: 'var(--ryo)', 可: 'var(--ka)' };
 export const ADMIN_PW = 'au2024admin';
+// テスト画面ログイン用の共通パスワード（全員共通・個人ごとの設定は無し）
+export const TEST_LOGIN_PW = 'orinavi.au';
