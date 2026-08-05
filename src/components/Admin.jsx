@@ -36,7 +36,7 @@ function SummaryTab({ results }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
               <div>
                 <div className="admin-mc-name">{u.name}</div>
-                <div className="admin-mc-meta">{u.email} / {u.pos || '−'} / クローザー:{u.cr || '−'}</div>
+                <div className="admin-mc-meta">{u.email ? `${u.email} / ` : ''}{u.pos || '−'} / クローザー:{u.cr || '−'}</div>
               </div>
               {opct !== null && <span className={`score-chip ${cls}`}>{opct}%</span>}
             </div>
@@ -174,7 +174,7 @@ function ProfileTab({ profiles }) {
           <div className="admin-mc" key={uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <div className="admin-mc-name">{p.name}</div>
-              <div className="admin-mc-meta">{p.email || ''} / {p.pos || '−'} / クローザー:{p.closerRank || '−'}</div>
+              <div className="admin-mc-meta">{p.email ? `${p.email} / ` : ''}{p.pos || '−'} / クローザー:{p.closerRank || '−'}</div>
             </div>
             <button
               onClick={() => setEditUid(uid)}

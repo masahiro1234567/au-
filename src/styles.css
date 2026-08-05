@@ -62,6 +62,22 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .term-desc{font-size:.79rem;color:var(--sub);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;word-break:break-word;}
 .empty-state{text-align:center;padding:50px 20px;color:var(--sub);}
 .hl{background:#fff3c0;border-radius:2px;}
+
+/* ホーム画面 */
+.home-hero{background:var(--grad);border-radius:var(--r);padding:20px 18px;margin-bottom:18px;box-shadow:var(--sh);color:#fff;}
+.home-hero-title{font-size:1.05rem;font-weight:800;margin-bottom:4px;}
+.home-hero-sub{font-size:.78rem;opacity:.92;font-weight:600;}
+.home-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+@media (min-width:700px){.home-grid{grid-template-columns:repeat(3,1fr);}}
+@media (min-width:1100px){.home-grid{grid-template-columns:repeat(4,1fr);}}
+.home-tile{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:16px 10px;text-align:center;cursor:pointer;box-shadow:var(--sh-sm);transition:transform .13s,box-shadow .13s;}
+.home-tile:active{transform:scale(.97);}
+.home-tile-icon{font-size:1.7rem;margin-bottom:6px;}
+.home-tile-name{font-size:.82rem;font-weight:800;color:var(--text);line-height:1.35;margin-bottom:4px;}
+.home-tile-count{font-size:.68rem;font-weight:700;color:var(--pd);background:var(--pl);display:inline-block;padding:1px 8px;border-radius:20px;}
+.home-viewall{width:100%;padding:13px;border-radius:10px;border:2px solid var(--primary);background:var(--pl);color:var(--pd);font-size:.86rem;font-weight:800;font-family:inherit;cursor:pointer;margin-bottom:12px;}
+.home-actions{display:flex;gap:8px;}
+.home-actions .tbtn{margin-top:0;}
 .sb-overlay{display:none;position:fixed;inset:0;background:rgba(26,15,8,.35);z-index:90;}
 .sb-overlay.show{display:block;}
 .sidebar{position:fixed;top:56px;right:0;bottom:0;width:245px;background:#fff;border-left:2px solid var(--border);z-index:100;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto;}

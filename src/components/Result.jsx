@@ -12,7 +12,7 @@ export default function Result({ user, mode, qtype, selRank, answers, onHome, on
     (async () => {
       try {
         await dbPush('test_results', {
-          userId: user.id, userName: user.name, userEmail: user.email,
+          userId: user.id, userName: user.name,
           userPos: user.pos || '', userCloserRank: user.closerRank || '',
           mode, qtype, rank: qtype === 'rank' ? selRank : 'all',
           score, total, pct,

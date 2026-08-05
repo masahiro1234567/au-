@@ -14,9 +14,9 @@ function highlight(text, q) {
   }
 }
 
-export default function Glossary({ terms, isAdmin, onGoTest, onAdminLogin }) {
+export default function Glossary({ terms, isAdmin, initialCat, onBackHome, onGoTest, onAdminLogin }) {
   const [rank, setRank] = useState('all');
-  const [cat, setCat] = useState('all');
+  const [cat, setCat] = useState(initialCat || 'all');
   const [q, setQ] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
@@ -82,6 +82,7 @@ export default function Glossary({ terms, isAdmin, onGoTest, onAdminLogin }) {
           <h1>au事業部 用語集</h1>
         </div>
         <div className="hdr-right">
+          {onBackHome && <button className="btn-back" onClick={onBackHome}>← ホーム</button>}
           <button
             className={`btn-toggle ${sidebarOpen ? 'active' : ''}`}
             onClick={() => setSidebarOpen((o) => !o)}

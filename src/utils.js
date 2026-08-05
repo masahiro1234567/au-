@@ -23,6 +23,17 @@ export function showToast(msg) {
 }
 
 export const RANKS = ['秀', '優', '良', '可'];
-export const CATEGORIES = ['商材・プラン', '契約種別', '用語', 'ステークホルダー'];
+export const CATEGORIES = ['商材・プラン', '契約種別', '用語', 'ステークホルダー', 'キャッチ編', 'クローズ編', 'アライアンス編', '販路編', 'ディレクション編'];
+export const CATEGORY_ICONS = {
+  '商材・プラン': '📦',
+  '契約種別': '📋',
+  '用語': '📖',
+  'ステークホルダー': '👥',
+  'キャッチ編': '🎣',
+  'クローズ編': '🤝',
+  'アライアンス編': '🔗',
+  '販路編': '🏬',
+  'ディレクション編': '🎯',
+};
 export const RANK_COLORS = { 秀: 'var(--shu)', 優: 'var(--yu)', 良: 'var(--ryo)', 可: 'var(--ka)' };
 export const ADMIN_PW = 'au2024admin';

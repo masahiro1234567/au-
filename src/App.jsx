@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDbCollection } from './useFirebase.js';
+import Home from './components/Home.jsx';
 import Glossary from './components/Glossary.jsx';
 import Login from './components/Login.jsx';
 import TestHome from './components/TestHome.jsx';
@@ -13,7 +14,8 @@ export default function App() {
   const [results] = useDbCollection('test_results');
   const [profiles] = useDbCollection('user_profiles');
 
-  const [page, setPage] = useState('glossary');
+  const [page, setPage] = useState('home');
+  const [glossaryCat, setGlossaryCat] = useState('all');
   const [isAdmin, setIsAdmin] = useState(sessionStorage.getItem('isAdmin') === '1');
 
   const [testUser, setTestUser] = useState(() => {
@@ -37,7 +39,7 @@ export default function App() {
   const handleAdminLogout = () => {
     sessionStorage.removeItem('isAdmin');
     setIsAdmin(false);
-    setPage('glossary');
+    setPage('home');
   };
 
   if (!termsLoaded) {
@@ -51,8 +53,31 @@ export default function App() {
 
   let content;
   switch (page) {
+    case 'home':
+      content = (
+        <Home
+          terms={terms}
+          onOpenCategory={(c) => { setGlossaryCat(c); setPage('glossary'); }}
+          onViewAll={() => { setGlossaryCat('all'); setPage('glossary'); }}
+          onGoTest={goTest}
+          onAdminLogin={() => setPage('admin-login')}
+        />
+      );
+      break;
+    case 'glossary':
+      content = (
+        <Glossary
+          terms={terms}
+          isAdmin={isAdmin}
+          initialCat={glossaryCat}
+          onBackHome={() => setPage('home')}
+          onGoTest={goTest}
+          onAdminLogin={() => setPage('admin-login')}
+        />
+      );
+      break;
     case 'login':
-      content = <Login onBack={() => setPage('glossary')} onLogin={handleLogin} />;
+      content = <Login onBack={() => setPage('home')} onLogin={handleLogin} profiles={profiles} />;
       break;
     case 'test-home':
       content = (
@@ -60,7 +85,7 @@ export default function App() {
           user={testUser}
           terms={terms}
           results={results}
-          onBack={() => setPage('glossary')}
+          onBack={() => setPage('home')}
           onStartQuiz={startQuiz}
         />
       );
@@ -93,7 +118,7 @@ export default function App() {
     case 'admin-login':
       content = (
         <AdminLogin
-          onBack={() => setPage('glossary')}
+          onBack={() => setPage('home')}
           onSuccess={() => { setIsAdmin(true); setPage('admin'); }}
         />
       );
@@ -104,16 +129,17 @@ export default function App() {
           terms={terms}
           results={results}
           profiles={profiles}
-          onBack={() => setPage('glossary')}
+          onBack={() => setPage('home')}
           onLogout={handleAdminLogout}
         />
       );
       break;
     default:
       content = (
-        <Glossary
+        <Home
           terms={terms}
-          isAdmin={isAdmin}
+          onOpenCategory={(c) => { setGlossaryCat(c); setPage('glossary'); }}
+          onViewAll={() => { setGlossaryCat('all'); setPage('glossary'); }}
           onGoTest={goTest}
           onAdminLogin={() => setPage('admin-login')}
         />
