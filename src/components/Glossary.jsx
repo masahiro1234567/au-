@@ -21,6 +21,7 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
   const [q, setQ] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
+  const [detailHistory, setDetailHistory] = useState([]);
   const [editing, setEditing] = useState(null); // { id, term } or null
 
   const entries = useMemo(() => Object.entries(terms), [terms]);
@@ -140,7 +141,7 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
           ) : (
             <div className="terms-grid">
               {filtered.map(([id, t]) => (
-                <div className="term-card" data-rank={t.rank || ''} key={id} onClick={() => setDetailId(id)}>
+                <div className="term-card" data-rank={t.rank || ''} key={id} onClick={() => { setDetailHistory([]); setDetailId(id); }}>
                   <div className="term-stripe" />
                   <div className="term-body">
                     <div className="term-top">
@@ -174,11 +175,17 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
       <TermDetailModal
         open={!!detailId}
         term={detailTerm}
+        currentId={detailId}
         allTerms={terms}
         isAdmin={isAdmin}
-        onClose={() => setDetailId(null)}
+        onClose={() => { setDetailId(null); setDetailHistory([]); }}
+        onBack={detailHistory.length > 0 ? () => {
+          const prev = detailHistory[detailHistory.length - 1];
+          setDetailHistory(detailHistory.slice(0, -1));
+          setDetailId(prev);
+        } : null}
         onEdit={() => { setEditing({ id: detailId, term: detailTerm }); setDetailId(null); }}
-        onSelectRelated={(id) => setDetailId(id)}
+        onSelectRelated={(id) => { setDetailHistory([...detailHistory, detailId]); setDetailId(id); }}
       />
       <TermFormModal
         open={!!editing}

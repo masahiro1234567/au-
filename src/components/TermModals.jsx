@@ -194,14 +194,15 @@ function RelatedRow({ term, isChild, onClick }) {
 }
 
 // 関連用語をコメントスレッド風（最大2階層）に表示する
-function RelatedThread({ relatedIds, allTerms, onSelectRelated }) {
+// currentTermId: 今開いている用語自身のID。孫要素に自分自身が出てくる（循環参照）のを防ぐために除外する
+function RelatedThread({ relatedIds, allTerms, currentTermId, onSelectRelated }) {
   const [openIds, setOpenIds] = useState({});
   return (
     <div>
       {relatedIds.map((id, i) => {
         const t = allTerms?.[id];
         if (!t) return null;
-        const childIds = Object.keys(t.related || {}).filter((cid) => cid !== id && allTerms?.[cid]);
+        const childIds = Object.keys(t.related || {}).filter((cid) => cid !== id && cid !== currentTermId && allTerms?.[cid]);
         const isOpen = !!openIds[id];
         return (
           <div key={id} className="related-thread-block" style={{ borderBottom: i < relatedIds.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
@@ -232,7 +233,7 @@ function RelatedThread({ relatedIds, allTerms, onSelectRelated }) {
 }
 
 // 詳細表示モーダル
-export function TermDetailModal({ open, term, allTerms, isAdmin, onClose, onEdit, onSelectRelated }) {
+export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onClose, onBack, onEdit, onSelectRelated }) {
   if (!open || !term) return null;
   const relatedIds = Object.keys(term.related || {});
   return (
@@ -240,6 +241,7 @@ export function TermDetailModal({ open, term, allTerms, isAdmin, onClose, onEdit
       <div className="modal">
         <div className="modal-handle" />
         <div className="modal-hdr">
+          {onBack && <button className="btn-back-detail" onClick={onBack}>← 戻る</button>}
           <h3>{term.name}</h3>
           <button className="btn-close" onClick={onClose}>✕</button>
         </div>
@@ -263,7 +265,7 @@ export function TermDetailModal({ open, term, allTerms, isAdmin, onClose, onEdit
           {relatedIds.length > 0 && (
             <div className="detail-sec">
               <span className="lbl">関連用語</span>
-              <RelatedThread relatedIds={relatedIds} allTerms={allTerms} onSelectRelated={onSelectRelated} />
+              <RelatedThread relatedIds={relatedIds} allTerms={allTerms} currentTermId={currentId} onSelectRelated={onSelectRelated} />
             </div>
           )}
         </div>
