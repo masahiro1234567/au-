@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS, RANKS, showToast } from '../utils.js';
+import React, { useMemo, useState, useEffect } from 'react';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
 
 function RankSelect({ name, value, onChange }) {
   return (
@@ -21,14 +21,88 @@ function RankSelect({ name, value, onChange }) {
   );
 }
 
-const EMPTY = { name: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' };
+// 関連用語のタグ付け入力。手入力での追加（用語名検索＋Enter）と、
+// 説明文・カテゴリから即時に計算する候補（APIは使わず文字の重なりだけで判定）の両方に対応する
+export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, name, category, section, description }) {
+  const [text, setText] = useState('');
+
+  const matches = useMemo(() => {
+    if (!text.trim()) return [];
+    return Object.entries(allTerms || {})
+      .filter(([id]) => id !== excludeId && !selected.includes(id))
+      .filter(([, t]) => (t.name || '').includes(text.trim()))
+      .slice(0, 6);
+  }, [allTerms, excludeId, selected, text]);
+
+  const suggestions = useMemo(() => {
+    return suggestRelatedTerms({ allTerms, excludeId, name, category, section, description, alreadySelected: selected, limit: 6 });
+  }, [allTerms, excludeId, name, category, section, description, selected]);
+
+  const add = (id) => {
+    onChange([...selected, id]);
+    setText('');
+  };
+  const remove = (id) => onChange(selected.filter((x) => x !== id));
+
+  const handleKeyDown = (e) => {
+    if (e.key !== 'Enter' || !text.trim()) return;
+    const exact = Object.entries(allTerms || {}).find(([id, t]) => id !== excludeId && t.name === text.trim() && !selected.includes(id));
+    if (exact) add(exact[0]);
+  };
+
+  return (
+    <div className="related-tag-input">
+      <div className="related-tag-box">
+        {selected.map((id) => (
+          <span className="related-tag-chip" key={id}>
+            {allTerms?.[id]?.name || '?'}
+            <button type="button" onClick={() => remove(id)} aria-label="削除">×</button>
+          </span>
+        ))}
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={selected.length ? '' : '用語名を入力してタグ追加'}
+        />
+      </div>
+      {text.trim() && (
+        <div className="related-tag-matches">
+          {matches.length === 0 && <div className="related-picker-empty">該当する用語がありません</div>}
+          {matches.map(([id, t]) => (
+            <button type="button" key={id} className="related-tag-match-row" onClick={() => add(id)}>
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="related-tag-suggest-lbl">説明文・カテゴリから即時に抽出した候補</div>
+      <div className="related-tag-suggest-list">
+        {suggestions.length === 0 && <span className="related-picker-empty">該当する候補がありません</span>}
+        {suggestions.map(({ id, term }) => (
+          <button type="button" key={id} className="related-tag-suggest-chip" onClick={() => add(id)}>
+            + {term.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const EMPTY = { name: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '', related: [] };
 
 // 追加・編集 共通フォームモーダル
-export function TermFormModal({ open, mode, initial, onClose, onSubmit, onDelete }) {
+export function TermFormModal({ open, mode, initial, allTerms, currentId, onClose, onSubmit, onDelete }) {
   const [form, setForm] = useState(EMPTY);
 
   useEffect(() => {
-    if (open) setForm(initial ? { ...EMPTY, ...initial } : EMPTY);
+    if (!open) return;
+    if (initial) {
+      const relatedIds = Object.keys(initial.related || {});
+      setForm({ ...EMPTY, ...initial, related: relatedIds });
+    } else {
+      setForm(EMPTY);
+    }
   }, [open, initial]);
 
   if (!open) return null;
@@ -81,6 +155,19 @@ export function TermFormModal({ open, mode, initial, onClose, onSubmit, onDelete
             <label>補足・注意点（任意）</label>
             <textarea value={form.note} onChange={(e) => set('note')(e.target.value)} />
           </div>
+          <div className="form-group">
+            <label>関連用語（任意）</label>
+            <RelatedTermsTagInput
+              allTerms={allTerms}
+              excludeId={currentId}
+              selected={form.related}
+              onChange={set('related')}
+              name={form.name}
+              category={form.category}
+              section={form.section}
+              description={form.description}
+            />
+          </div>
         </div>
         <div className="modal-footer">
           {mode === 'edit' && <button className="mbtn mbtn-danger" onClick={onDelete}>削除</button>}
@@ -92,9 +179,62 @@ export function TermFormModal({ open, mode, initial, onClose, onSubmit, onDelete
   );
 }
 
+// 関連用語1行（カテゴリで色分けした左バー、アイコンなし）
+function RelatedRow({ term, isChild, onClick }) {
+  const color = CATEGORY_COLORS[term.category] || CATEGORY_COLORS[term.section] || '#888780';
+  return (
+    <div className={`related-thread-row ${isChild ? 'child' : ''}`} onClick={onClick}>
+      <div className="related-thread-bar" style={{ background: color }} />
+      <div className="related-thread-body">
+        <div className="related-thread-name">{term.name}</div>
+        <div className="related-thread-desc">{term.description}</div>
+      </div>
+    </div>
+  );
+}
+
+// 関連用語をコメントスレッド風（最大2階層）に表示する
+function RelatedThread({ relatedIds, allTerms, onSelectRelated }) {
+  const [openIds, setOpenIds] = useState({});
+  return (
+    <div>
+      {relatedIds.map((id, i) => {
+        const t = allTerms?.[id];
+        if (!t) return null;
+        const childIds = Object.keys(t.related || {}).filter((cid) => cid !== id && allTerms?.[cid]);
+        const isOpen = !!openIds[id];
+        return (
+          <div key={id} className="related-thread-block" style={{ borderBottom: i < relatedIds.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
+            <RelatedRow term={t} onClick={() => onSelectRelated(id)} />
+            {childIds.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="related-thread-toggle"
+                  onClick={() => setOpenIds((prev) => ({ ...prev, [id]: !prev[id] }))}
+                >
+                  {isOpen ? '閉じる' : `関連用語を見る（${childIds.length}件）`}
+                </button>
+                {isOpen && (
+                  <div className="related-thread-children">
+                    {childIds.map((cid) => (
+                      <RelatedRow key={cid} term={allTerms[cid]} isChild onClick={() => onSelectRelated(cid)} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // 詳細表示モーダル
-export function TermDetailModal({ open, term, isAdmin, onClose, onEdit }) {
+export function TermDetailModal({ open, term, allTerms, isAdmin, onClose, onEdit, onSelectRelated }) {
   if (!open || !term) return null;
+  const relatedIds = Object.keys(term.related || {});
   return (
     <div className="modal-overlay open" onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}>
       <div className="modal">
@@ -118,6 +258,12 @@ export function TermDetailModal({ open, term, isAdmin, onClose, onEdit }) {
             <div className="detail-sec">
               <span className="lbl">補足・注意点</span>
               <p>{term.note}</p>
+            </div>
+          )}
+          {relatedIds.length > 0 && (
+            <div className="detail-sec">
+              <span className="lbl">関連用語</span>
+              <RelatedThread relatedIds={relatedIds} allTerms={allTerms} onSelectRelated={onSelectRelated} />
             </div>
           )}
         </div>

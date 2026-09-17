@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import Sidebar from './Sidebar.jsx';
 import { TermFormModal, TermDetailModal } from './TermModals.jsx';
 import { esc, escRe, showToast, RANKS, CATEGORIES_BASE, CATEGORIES_SECTIONS } from '../utils.js';
-import { dbPush, dbSet, dbRemove } from '../useFirebase.js';
+import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
 
 function highlight(text, q) {
   if (!q) return esc(text);
@@ -58,7 +58,9 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
 
   const handleAdd = async (form) => {
     try {
-      await dbPush('terms', { ...form, createdAt: Date.now() });
+      const { related, ...rest } = form;
+      const newId = await dbPush('terms', { ...rest, createdAt: Date.now() });
+      await saveTermRelations(newId.key, [], related || []);
       setEditing(null);
       showToast('✅ 用語を追加しました');
     } catch (e) { showToast('エラー:' + e.message); }
@@ -66,7 +68,10 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
 
   const handleUpdate = async (form) => {
     try {
-      await dbSet('terms/' + editing.id, { ...form, updatedAt: Date.now() });
+      const { related, ...rest } = form;
+      await dbSet('terms/' + editing.id, { ...rest, updatedAt: Date.now() });
+      const oldIds = Object.keys(editing.term.related || {});
+      await saveTermRelations(editing.id, oldIds, related || []);
       setEditing(null);
       showToast('✅ 更新しました');
     } catch (e) { showToast('エラー:' + e.message); }
@@ -75,7 +80,8 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
   const handleDelete = async () => {
     if (!editing || !confirm('削除しますか？')) return;
     try {
-      await dbRemove('terms/' + editing.id);
+      const relatedIds = Object.keys(editing.term.related || {});
+      await removeTermWithRelations(editing.id, relatedIds);
       setEditing(null);
       setDetailId(null);
       showToast('🗑 削除しました');
@@ -168,14 +174,18 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
       <TermDetailModal
         open={!!detailId}
         term={detailTerm}
+        allTerms={terms}
         isAdmin={isAdmin}
         onClose={() => setDetailId(null)}
         onEdit={() => { setEditing({ id: detailId, term: detailTerm }); setDetailId(null); }}
+        onSelectRelated={(id) => setDetailId(id)}
       />
       <TermFormModal
         open={!!editing}
         mode={editing?.id ? 'edit' : 'add'}
         initial={editing?.term}
+        allTerms={terms}
+        currentId={editing?.id}
         onClose={() => setEditing(null)}
         onSubmit={editing?.id ? handleUpdate : handleAdd}
         onDelete={handleDelete}

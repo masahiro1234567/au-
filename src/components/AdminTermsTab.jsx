@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { CATEGORIES_BASE, CATEGORIES_SECTIONS, RANKS, showToast } from '../utils.js';
-import { dbPush, dbSet, dbRemove } from '../useFirebase.js';
+import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
+import { RelatedTermsTagInput } from './TermModals.jsx';
 
 const emptyRow = () => ({ name: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' });
 
@@ -128,13 +129,14 @@ function BulkAddSection({ onSaved }) {
   );
 }
 
-function TermItem({ id, term, expanded, onToggle, onSaved, onDeleted }) {
+function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }) {
   const [name, setName] = useState(term.name || '');
   const [category, setCategory] = useState(term.category || CATEGORIES_BASE[0]);
   const [section, setSection] = useState(term.section || '');
   const [rank, setRank] = useState(term.rank || '秀');
   const [description, setDescription] = useState(term.description || '');
   const [note, setNote] = useState(term.note || '');
+  const [related, setRelated] = useState(Object.keys(term.related || {}));
 
   const rc = { 秀: 'badge-rank-秀', 優: 'badge-rank-優', 良: 'badge-rank-良', 可: 'badge-rank-可' };
 
@@ -142,6 +144,8 @@ function TermItem({ id, term, expanded, onToggle, onSaved, onDeleted }) {
     if (!name.trim() || !description.trim()) return showToast('用語名と説明は必須です');
     try {
       await dbSet('terms/' + id, { name, category, section, rank, description, note, updatedAt: Date.now() });
+      const oldIds = Object.keys(term.related || {});
+      await saveTermRelations(id, oldIds, related);
       showToast('✅ 更新しました');
       onSaved?.();
     } catch (e) { showToast('エラー:' + e.message); }
@@ -150,7 +154,8 @@ function TermItem({ id, term, expanded, onToggle, onSaved, onDeleted }) {
   const del = async () => {
     if (!confirm('この用語を削除しますか？')) return;
     try {
-      await dbRemove('terms/' + id);
+      const relatedIds = Object.keys(term.related || {});
+      await removeTermWithRelations(id, relatedIds);
       showToast('🗑 削除しました');
       onDeleted?.();
     } catch (e) { showToast('エラー:' + e.message); }
@@ -203,6 +208,13 @@ function TermItem({ id, term, expanded, onToggle, onSaved, onDeleted }) {
             <label>補足・注意点</label>
             <textarea className="admin-edit-textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
+          <div className="admin-edit-group">
+            <label>関連用語（任意）</label>
+            <RelatedTermsTagInput
+              allTerms={allTerms} excludeId={id} selected={related} onChange={setRelated}
+              name={name} category={category} section={section} description={description}
+            />
+          </div>
           <div className="admin-action-row">
             <button className="btn-del-term" onClick={del}>🗑 削除</button>
             <button className="btn-save-term" onClick={save}>✅ 保存</button>
@@ -252,7 +264,7 @@ export default function AdminTermsTab({ terms }) {
         <div className="admin-terms-list">
           {sorted.map(([id, t]) => (
             <TermItem
-              key={id} id={id} term={t}
+              key={id} id={id} term={t} allTerms={terms}
               expanded={expandedIds.has(id)}
               onToggle={() => toggle(id)}
             />
