@@ -221,6 +221,18 @@ export default function Admin({ terms, results, profiles, onBack, onLogout }) {
         </div>
       </div>
       <div className="t-body">
+        <button
+          className="btn-force-refresh"
+          onClick={() => {
+            // キャッシュされた古いJSを使い続けないよう、キャッシュを無視して強制的に再読み込みする
+            if (window.caches?.keys) {
+              caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+            }
+            window.location.href = window.location.pathname + '?_=' + Date.now();
+          }}
+        >
+          🔄 最新版に更新（変更が反映されない時はこちら）
+        </button>
         <div className="tab-bar">
           <button className={`tab ${tab === 'summary' ? 'active' : ''}`} onClick={() => setTab('summary')}>サマリー</button>
           <button className={`tab ${tab === 'log' ? 'active' : ''}`} onClick={() => setTab('log')}>テストログ</button>
