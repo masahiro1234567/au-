@@ -150,6 +150,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .related-thread-row.child .related-thread-desc{font-size:.74rem;}
 .related-thread-toggle{margin-left:11px;background:none;border:none;color:var(--pd);font-size:.78rem;cursor:pointer;padding:0 0 8px;font-family:inherit;}
 .related-thread-children{margin-left:11px;padding-left:10px;border-left:1px solid var(--border);}
+.related-section-toggle{display:block;background:var(--pl);border:1.5px solid var(--border);color:var(--pd);font-size:.8rem;font-weight:700;cursor:pointer;padding:8px 12px;border-radius:8px;margin-top:8px;font-family:inherit;width:100%;text-align:center;}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--primary);}
 .form-group textarea{resize:vertical;min-height:72px;}
 .rank-select-row{display:flex;gap:6px;}

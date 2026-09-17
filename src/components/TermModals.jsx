@@ -232,6 +232,26 @@ function RelatedThread({ relatedIds, allTerms, currentTermId, onSelectRelated })
   );
 }
 
+// 関連用語セクション：デフォルト収束。「関連用語を見る」ボタンで展開する
+function RelatedSection({ relatedIds, allTerms, currentTermId, onSelectRelated }) {
+  const [sectionOpen, setSectionOpen] = useState(false);
+  return (
+    <div className="detail-sec">
+      <span className="lbl">関連用語（{relatedIds.length}件）</span>
+      {!sectionOpen ? (
+        <button type="button" className="related-section-toggle" onClick={() => setSectionOpen(true)}>
+          関連用語を見る（{relatedIds.length}件）
+        </button>
+      ) : (
+        <>
+          <button type="button" className="related-section-toggle" onClick={() => setSectionOpen(false)}>閉じる</button>
+          <RelatedThread relatedIds={relatedIds} allTerms={allTerms} currentTermId={currentTermId} onSelectRelated={onSelectRelated} />
+        </>
+      )}
+    </div>
+  );
+}
+
 // 詳細表示モーダル
 export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onClose, onBack, onEdit, onSelectRelated }) {
   if (!open || !term) return null;
@@ -263,10 +283,13 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
             </div>
           )}
           {relatedIds.length > 0 && (
-            <div className="detail-sec">
-              <span className="lbl">関連用語</span>
-              <RelatedThread relatedIds={relatedIds} allTerms={allTerms} currentTermId={currentId} onSelectRelated={onSelectRelated} />
-            </div>
+            <RelatedSection
+              key={currentId}
+              relatedIds={relatedIds}
+              allTerms={allTerms}
+              currentTermId={currentId}
+              onSelectRelated={onSelectRelated}
+            />
           )}
         </div>
         <div className="modal-footer">
