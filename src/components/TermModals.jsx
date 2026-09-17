@@ -193,38 +193,16 @@ function RelatedRow({ term, isChild, onClick }) {
   );
 }
 
-// 関連用語をコメントスレッド風（最大2階層）に表示する
-// currentTermId: 今開いている用語自身のID。孫要素に自分自身が出てくる（循環参照）のを防ぐために除外する
-function RelatedThread({ relatedIds, allTerms, currentTermId, onSelectRelated }) {
-  const [openIds, setOpenIds] = useState({});
+// 関連用語をコメントスレッド風に表示する（1段のみ・アイコンなし・カテゴリで色分け）
+function RelatedThread({ relatedIds, allTerms, onSelectRelated }) {
   return (
     <div>
       {relatedIds.map((id, i) => {
         const t = allTerms?.[id];
         if (!t) return null;
-        const childIds = Object.keys(t.related || {}).filter((cid) => cid !== id && cid !== currentTermId && allTerms?.[cid]);
-        const isOpen = !!openIds[id];
         return (
           <div key={id} className="related-thread-block" style={{ borderBottom: i < relatedIds.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
             <RelatedRow term={t} onClick={() => onSelectRelated(id)} />
-            {childIds.length > 0 && (
-              <>
-                <button
-                  type="button"
-                  className="related-thread-toggle"
-                  onClick={() => setOpenIds((prev) => ({ ...prev, [id]: !prev[id] }))}
-                >
-                  {isOpen ? '閉じる' : `関連用語を見る（${childIds.length}件）`}
-                </button>
-                {isOpen && (
-                  <div className="related-thread-children">
-                    {childIds.map((cid) => (
-                      <RelatedRow key={cid} term={allTerms[cid]} isChild onClick={() => onSelectRelated(cid)} />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
           </div>
         );
       })}
@@ -233,7 +211,7 @@ function RelatedThread({ relatedIds, allTerms, currentTermId, onSelectRelated })
 }
 
 // 関連用語セクション：デフォルト収束。「関連用語を見る」ボタンで展開する
-function RelatedSection({ relatedIds, allTerms, currentTermId, onSelectRelated }) {
+function RelatedSection({ relatedIds, allTerms, onSelectRelated }) {
   const [sectionOpen, setSectionOpen] = useState(false);
   return (
     <div className="detail-sec">
@@ -245,7 +223,7 @@ function RelatedSection({ relatedIds, allTerms, currentTermId, onSelectRelated }
       ) : (
         <>
           <button type="button" className="related-section-toggle" onClick={() => setSectionOpen(false)}>閉じる</button>
-          <RelatedThread relatedIds={relatedIds} allTerms={allTerms} currentTermId={currentTermId} onSelectRelated={onSelectRelated} />
+          <RelatedThread relatedIds={relatedIds} allTerms={allTerms} onSelectRelated={onSelectRelated} />
         </>
       )}
     </div>
@@ -287,7 +265,6 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
               key={currentId}
               relatedIds={relatedIds}
               allTerms={allTerms}
-              currentTermId={currentId}
               onSelectRelated={onSelectRelated}
             />
           )}

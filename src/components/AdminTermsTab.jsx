@@ -228,13 +228,16 @@ function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }
 export default function AdminTermsTab({ terms }) {
   // デフォルトは全収束。展開したIDだけをセットで管理。
   const [expandedIds, setExpandedIds] = useState(new Set());
+  const [search, setSearch] = useState('');
 
   const sorted = useMemo(() => {
     const ro = { 秀: 0, 優: 1, 良: 2, 可: 3 };
-    return Object.entries(terms).sort((a, b) =>
-      (ro[a[1].rank] ?? 4) - (ro[b[1].rank] ?? 4) || (a[1].name || '').localeCompare(b[1].name || '', 'ja')
-    );
-  }, [terms]);
+    return Object.entries(terms)
+      .filter(([, t]) => !search || (t.name || '').includes(search) || (t.description || '').includes(search))
+      .sort((a, b) =>
+        (ro[a[1].rank] ?? 4) - (ro[b[1].rank] ?? 4) || (a[1].name || '').localeCompare(b[1].name || '', 'ja')
+      );
+  }, [terms, search]);
 
   const toggle = (id) => {
     setExpandedIds((prev) => {
@@ -256,10 +259,17 @@ export default function AdminTermsTab({ terms }) {
         </div>
       </div>
 
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="🔍 用語名・説明文で検索"
+        style={{ width: '100%', border: '1.5px solid var(--border)', borderRadius: 9, padding: '9px 12px', fontSize: '.85rem', fontFamily: 'inherit', marginBottom: 12, background: '#fff' }}
+      />
+
       <BulkAddSection />
 
       {!sorted.length ? (
-        <div className="tc ts" style={{ padding: 30 }}>用語データなし</div>
+        <div className="tc ts" style={{ padding: 30 }}>{search ? '該当する用語がありません' : '用語データなし'}</div>
       ) : (
         <div className="admin-terms-list">
           {sorted.map(([id, t]) => (
