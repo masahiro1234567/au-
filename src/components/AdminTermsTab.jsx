@@ -177,8 +177,8 @@ function TermMindMap({ terms, mapFilter, onSelect }) {
   const COL_W = 110;
 
   return (
-    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 8, marginBottom: 12 }}>
-      <svg width="100%" viewBox="0 0 380 172" style={{ overflow: 'visible' }}>
+    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 8, marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
+      <svg width="380" height="172" viewBox="0 0 380 172" style={{ maxWidth: '100%', display: 'block' }}>
         {/* すべて（頂点） */}
         <g style={{ cursor: 'pointer' }} onClick={() => onSelect(null)}>
           <rect x={140} y={4} width={100} height={28} rx={8} fill={mapFilter === null ? '#f97316' : '#F1EFE8'} stroke="#888780" strokeWidth={0.5} />
