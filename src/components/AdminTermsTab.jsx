@@ -142,8 +142,7 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
   );
 }
 
-// 用語管理画面の上部に出すマインドマップ（横型・四角ノード・分岐は最初から全展開）
-// タップすると下の一覧が絞り込まれる
+// 用語管理画面の上部に出す縦型のグルーピング表示（タップしやすいHTML/CSSレイアウト）
 function TermMindMap({ terms, mapFilter, onSelect }) {
   const counts = useMemo(() => {
     const c = { self: { モバイル: 0, ネット: 0 }, other: { モバイル: 0, ネット: 0 }, device: { iPhone: 0, Android: 0 } };
@@ -161,61 +160,75 @@ function TermMindMap({ terms, mapFilter, onSelect }) {
     return c;
   }, [terms]);
 
-  const isActive = (type, sub) => mapFilter && mapFilter.type === type && mapFilter.sub === (sub || null);
-  const nodeStyle = (active) => ({ cursor: 'pointer', opacity: mapFilter && !active ? 0.45 : 1 });
+  const isActive = (type, sub) => !!mapFilter && mapFilter.type === type && mapFilter.sub === (sub || null);
 
-  const branch = (type, label, colorVar, x, y, children) => (
-    <g key={type}>
-      <g
-        style={nodeStyle(isActive(type, null))}
-        onClick={() => onSelect(isActive(type, null) ? null : { type, sub: null })}
-      >
-        <rect x={x} y={y} width={90} height={40} rx={10} fill={colorVar.bg} stroke={colorVar.border} strokeWidth={isActive(type, null) ? 2 : 0.5} />
-        <text x={x + 45} y={y + 20} textAnchor="middle" dominantBaseline="central" fontSize={14} fontWeight={700} fill={colorVar.text}>{label}</text>
-      </g>
-      {children.map((ch, i) => {
-        const cy = y - 13 + i * 37;
-        const active = isActive(type, ch.sub);
-        return (
-          <g key={ch.sub}>
-            <path d={`M${x + 90} ${y + 20} C${x + 98} ${cy + 15}, ${x + 102} ${cy + 15}, ${x + 110} ${cy + 15}`} fill="none" stroke={colorVar.border} strokeWidth={0.75} />
-            <g style={nodeStyle(active)} onClick={() => onSelect(active ? null : { type, sub: ch.sub })}>
-              <rect x={x + 110} y={cy} width={90} height={30} rx={8} fill={colorVar.bg} stroke={colorVar.border} strokeWidth={active ? 2 : 0.5} />
-              <text x={x + 155} y={cy + 15} textAnchor="middle" dominantBaseline="central" fontSize={12} fill={colorVar.text}>{ch.sub} ({ch.count}件)</text>
-            </g>
-          </g>
-        );
-      })}
-    </g>
-  );
+  const COLORS = {
+    自社知識: { bg: '#E1F5EE', border: '#1D9E75', text: '#04342C' },
+    端末知識: { bg: '#EEEDFE', border: '#7F77DD', text: '#26215C' },
+    他社知識: { bg: '#FAECE7', border: '#D85A30', text: '#4A1B0C' },
+  };
 
-  const teal = { bg: '#E1F5EE', border: '#1D9E75', text: '#04342C' };
-  const coral = { bg: '#FAECE7', border: '#D85A30', text: '#4A1B0C' };
-  const purple = { bg: '#EEEDFE', border: '#7F77DD', text: '#26215C' };
+  const Branch = ({ type, children }) => {
+    const col = COLORS[type];
+    const active = isActive(type, null);
+    return (
+      <div style={{ marginBottom: 6 }}>
+        <button
+          onClick={() => onSelect(active ? null : { type, sub: null })}
+          style={{
+            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: col.bg, border: `${active ? 2 : 1}px solid ${col.border}`, borderRadius: 8,
+            padding: '9px 12px', fontSize: '.82rem', fontWeight: 700, color: col.text, cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          <span>{type}</span>
+          <span style={{ fontSize: '.72rem', opacity: .8 }}>{active ? '選択中 ✕' : ''}</span>
+        </button>
+        <div style={{ display: 'flex', gap: 6, marginTop: 4, marginLeft: 14, borderLeft: `2px solid ${col.border}`, paddingLeft: 8 }}>
+          {children.map((ch) => {
+            const chActive = isActive(type, ch.sub);
+            return (
+              <button
+                key={ch.sub}
+                onClick={() => onSelect(chActive ? null : { type, sub: ch.sub })}
+                style={{
+                  flex: 1, background: chActive ? col.border : '#fff', color: chActive ? '#fff' : col.text,
+                  border: `1px solid ${col.border}`, borderRadius: 7, padding: '7px 6px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {ch.sub}（{ch.count}）
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 6px', marginBottom: 12 }}>
-      <svg width="100%" viewBox="0 0 380 260" style={{ overflow: 'visible' }}>
-        <path d="M74 130 C95 100, 105 65, 120 45" fill="none" stroke="#1D9E75" strokeWidth={1} />
-        <path d="M74 130 C95 130, 105 130, 120 130" fill="none" stroke="#7F77DD" strokeWidth={1} />
-        <path d="M74 130 C95 160, 105 195, 120 215" fill="none" stroke="#D85A30" strokeWidth={1} />
-        <g style={nodeStyle(mapFilter === null)} onClick={() => onSelect(null)}>
-          <rect x={10} y={110} width={64} height={40} rx={10} fill="#F1EFE8" stroke="#888780" strokeWidth={mapFilter === null ? 2 : 0.5} />
-          <text x={42} y={130} textAnchor="middle" dominantBaseline="central" fontSize={14} fontWeight={700} fill="#2C2C2A">すべて</text>
-        </g>
-        {branch('自社知識', '自社知識', teal, 120, 25, [
-          { sub: 'モバイル', count: counts.self.モバイル },
-          { sub: 'ネット', count: counts.self.ネット },
-        ])}
-        {branch('端末知識', '端末知識', purple, 120, 110, [
-          { sub: 'iPhone', count: counts.device.iPhone },
-          { sub: 'Android', count: counts.device.Android },
-        ])}
-        {branch('他社知識', '他社知識', coral, 120, 195, [
-          { sub: 'モバイル', count: counts.other.モバイル },
-          { sub: 'ネット', count: counts.other.ネット },
-        ])}
-      </svg>
+    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+      <button
+        onClick={() => onSelect(null)}
+        style={{
+          width: '100%', background: mapFilter === null ? 'var(--primary)' : '#f0ebe6',
+          color: mapFilter === null ? '#fff' : 'var(--sub)', border: 'none', borderRadius: 8,
+          padding: '8px 12px', fontSize: '.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8,
+        }}
+      >
+        すべて
+      </button>
+      <Branch type="自社知識" children={[
+        { sub: 'モバイル', count: counts.self.モバイル },
+        { sub: 'ネット', count: counts.self.ネット },
+      ]} />
+      <Branch type="端末知識" children={[
+        { sub: 'iPhone', count: counts.device.iPhone },
+        { sub: 'Android', count: counts.device.Android },
+      ]} />
+      <Branch type="他社知識" children={[
+        { sub: 'モバイル', count: counts.other.モバイル },
+        { sub: 'ネット', count: counts.other.ネット },
+      ]} />
     </div>
   );
 }
@@ -413,6 +426,19 @@ export default function AdminTermsTab({ terms }) {
       );
   }, [terms, search, mapFilter]);
 
+  // マインドマップで絞り込み中の時だけ、「それ以外（この条件のタグが付いてない用語）」も見られるようにする
+  const [othersOpen, setOthersOpen] = useState(false);
+  const others = useMemo(() => {
+    if (!mapFilter) return [];
+    const ro = { 秀: 0, 優: 1, 良: 2, 可: 3 };
+    return Object.entries(terms)
+      .filter(([, t]) => !matchesMapFilter(t))
+      .filter(([, t]) => !search || (t.name || '').includes(search) || (t.description || '').includes(search))
+      .sort((a, b) =>
+        (ro[a[1].rank] ?? 4) - (ro[b[1].rank] ?? 4) || (a[1].name || '').localeCompare(b[1].name || '', 'ja')
+      );
+  }, [terms, search, mapFilter]);
+
   const toggle = (id) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -483,6 +509,11 @@ export default function AdminTermsTab({ terms }) {
         duplicateIndices={duplicateIndices}
       />
 
+      {mapFilter && (
+        <div style={{ fontSize: '.75rem', fontWeight: 800, color: 'var(--pd)', margin: '4px 0 6px' }}>
+          ✅ 該当する用語（{sorted.length}件）
+        </div>
+      )}
       {!sorted.length ? (
         <div className="tc ts" style={{ padding: 30 }}>{search ? '該当する用語がありません' : '用語データなし'}</div>
       ) : (
@@ -494,6 +525,33 @@ export default function AdminTermsTab({ terms }) {
               onToggle={() => toggle(id)}
             />
           ))}
+        </div>
+      )}
+
+      {mapFilter && (
+        <div style={{ marginTop: 16 }}>
+          <button
+            onClick={() => setOthersOpen((o) => !o)}
+            style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f0ebe6', border: '1.5px solid var(--border)', borderRadius: 9, padding: '9px 12px', fontSize: '.78rem', fontWeight: 800, color: 'var(--sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            <span>△ それ以外（この区分のタグが付いてない用語・{others.length}件）</span>
+            <span>{othersOpen ? '▲' : '▼'}</span>
+          </button>
+          {othersOpen && (
+            <div className="admin-terms-list" style={{ marginTop: 8 }}>
+              {others.length === 0 ? (
+                <div className="tc ts" style={{ padding: 20 }}>該当する用語はありません</div>
+              ) : (
+                others.map(([id, t]) => (
+                  <TermItem
+                    key={id + '_' + refreshKey} id={id} term={t} allTerms={terms}
+                    expanded={expandedIds.has(id)}
+                    onToggle={() => toggle(id)}
+                  />
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
