@@ -23,31 +23,33 @@ export function showToast(msg) {
 }
 
 export const RANKS = ['秀', '優', '良', '可'];
-// 知識区分のデフォルト（Firebaseの knowledge_types / knowledge_subtypes が未登録の場合のフォールバック）
+// 知識区分のデフォルト（②の項目それぞれが、自分専用の③（children）リストを持つ）
+// Firebaseの knowledge_types が未登録の場合のフォールバックとしても使う
 export const DEFAULT_KNOWLEDGE_TYPES = [
-  { name: '自社知識', hasSub: true, group: '' },
-  { name: '他社知識', hasSub: true, group: '' },
-  { name: '端末知識(iPhone)', hasSub: false, group: '端末知識' },
-  { name: '端末知識(Android)', hasSub: false, group: '端末知識' },
+  { name: '自社知識', children: ['モバイル', 'ネット'] },
+  { name: '他社知識', children: ['モバイル', 'ネット'] },
+  { name: '端末知識', children: ['iPhone', 'Android'] },
 ];
-export const DEFAULT_KNOWLEDGE_SUBTYPES = ['モバイル', 'ネット'];
 
-// Firebaseの knowledge_types コレクション（id -> {name, hasSub, group}）を配列に変換する。
-// 未登録ならデフォルトを使う。
+// Firebaseの knowledge_types コレクション（id -> {name, children: {childId:{name}}}）を
+// [{id, name, children:[{id,name}]}] の配列に変換する。
+// デフォルト値は常に含めた上で、Firebaseに追加された分をあとに連結する（追加＝上書きにならないようにする）。
 export function resolveKnowledgeTypes(knowledgeTypesDb) {
-  const entries = Object.entries(knowledgeTypesDb || {});
-  if (!entries.length) return DEFAULT_KNOWLEDGE_TYPES.map((t) => ({ id: null, ...t }));
-  return entries.map(([id, t]) => ({ id, name: t.name, hasSub: !!t.hasSub, group: t.group || '' }));
+  const custom = Object.entries(knowledgeTypesDb || {}).map(([id, t]) => ({
+    id,
+    name: t.name,
+    children: Object.entries(t.children || {}).map(([cid, c]) => ({ id: cid, name: c.name })),
+  }));
+  const defaults = DEFAULT_KNOWLEDGE_TYPES.map((t) => ({
+    id: null,
+    name: t.name,
+    children: t.children.map((name) => ({ id: null, name })),
+  }));
+  return [...defaults, ...custom];
 }
-// Firebaseの knowledge_subtypes コレクション（id -> {name}）を配列に変換する。未登録ならデフォルト。
-export function resolveKnowledgeSubtypes(knowledgeSubtypesDb) {
-  const entries = Object.entries(knowledgeSubtypesDb || {});
-  if (!entries.length) return DEFAULT_KNOWLEDGE_SUBTYPES.map((name) => ({ id: null, name }));
-  return entries.map(([id, s]) => ({ id, name: s.name }));
-}
-// KNOWLEDGE_TYPES/KNOWLEDGE_SUBTYPES：まだ動的化していない箇所からの参照用に、デフォルト名だけの配列も残す
+// 後方互換用（旧: グローバル共有の区分リスト）。今は使わないが、まだ参照している箇所があれば安全のため残す。
 export const KNOWLEDGE_TYPES = DEFAULT_KNOWLEDGE_TYPES.map((t) => t.name);
-export const KNOWLEDGE_SUBTYPES = DEFAULT_KNOWLEDGE_SUBTYPES;
+export const KNOWLEDGE_SUBTYPES = ['モバイル', 'ネット'];
 // 既存の絞り込みカテゴリ
 export const CATEGORIES_BASE = ['商材・プラン', '契約種別', '用語', 'ステークホルダー'];
 // 「編」区分（部分知識）。役割・工程ごとの学習単位で、既存カテゴリとは別グループとして扱う

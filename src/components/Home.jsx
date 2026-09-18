@@ -28,17 +28,18 @@ function PillRow({ label, options, value, onSelect, counts }) {
   );
 }
 
-export default function Home({ terms, knowledgeTypes, knowledgeSubtypes, onOpenFiltered, onViewAll, onGoTest, onAdminLogin }) {
+export default function Home({ terms, knowledgeTypes, onOpenFiltered, onViewAll, onGoTest, onAdminLogin }) {
   const entries = useMemo(() => Object.values(terms), [terms]);
   const typeNames = useMemo(() => (knowledgeTypes || []).map((t) => t.name), [knowledgeTypes]);
-  const subtypeNames = useMemo(() => (knowledgeSubtypes || []).map((s) => s.name), [knowledgeSubtypes]);
 
   const [knowledgeType, setKnowledgeType] = useState('');
   const [knowledgeSubType, setKnowledgeSubType] = useState('');
   const [category, setCategory] = useState('');
   const [section, setSection] = useState('');
 
-  const needsSub = (knowledgeTypes || []).find((t) => t.name === knowledgeType)?.hasSub;
+  const currentTypeChildren = (knowledgeTypes || []).find((t) => t.name === knowledgeType)?.children || [];
+  const subtypeNames = currentTypeChildren.map((c) => c.name);
+  const needsSub = subtypeNames.length > 0;
   const readyForCategory = knowledgeType && (!needsSub || knowledgeSubType);
   const readyForResult = readyForCategory && category;
 

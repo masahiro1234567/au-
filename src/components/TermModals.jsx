@@ -92,11 +92,11 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
 const EMPTY = { name: '', knowledgeType: '', knowledgeSubType: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '', related: [] };
 
 // 追加・編集 共通フォームモーダル
-export function TermFormModal({ open, mode, initial, allTerms, currentId, knowledgeTypes, knowledgeSubtypes, onClose, onSubmit, onDelete }) {
+export function TermFormModal({ open, mode, initial, allTerms, currentId, knowledgeTypes, onClose, onSubmit, onDelete }) {
   const [form, setForm] = useState(EMPTY);
   const kTypes = knowledgeTypes || [];
-  const kSubtypes = (knowledgeSubtypes || []).map((s) => s.name);
   const currentType = kTypes.find((t) => t.name === form.knowledgeType);
+  const kSubtypes = (currentType?.children || []).map((c) => c.name);
 
   useEffect(() => {
     if (!open) return;
@@ -143,7 +143,7 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
               {kTypes.map((k) => <option key={k.name} value={k.name}>{k.name}</option>)}
             </select>
           </div>
-          {currentType?.hasSub && (
+          {kSubtypes.length > 0 && (
             <div className="form-group">
               <label>区分（任意）</label>
               <select value={form.knowledgeSubType || ''} onChange={(e) => set('knowledgeSubType')(e.target.value)}>

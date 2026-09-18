@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDbCollection } from './useFirebase.js';
-import { resolveKnowledgeTypes, resolveKnowledgeSubtypes } from './utils.js';
+import { resolveKnowledgeTypes } from './utils.js';
 import Home from './components/Home.jsx';
 import Glossary from './components/Glossary.jsx';
 import Login from './components/Login.jsx';
@@ -15,9 +15,7 @@ export default function App() {
   const [results] = useDbCollection('test_results');
   const [profiles] = useDbCollection('user_profiles');
   const [knowledgeTypesDb] = useDbCollection('knowledge_types');
-  const [knowledgeSubtypesDb] = useDbCollection('knowledge_subtypes');
   const knowledgeTypes = resolveKnowledgeTypes(knowledgeTypesDb);
-  const knowledgeSubtypes = resolveKnowledgeSubtypes(knowledgeSubtypesDb);
 
   const [testUser, setTestUser] = useState(() => {
     const s = localStorage.getItem('autest_user');
@@ -66,7 +64,6 @@ export default function App() {
         <Home
           terms={terms}
           knowledgeTypes={knowledgeTypes}
-          knowledgeSubtypes={knowledgeSubtypes}
           onOpenFiltered={({ knowledgeType, knowledgeSubType, category, section }) => {
             setGlossaryKnowledgeType(knowledgeType || 'all');
             setGlossaryKnowledgeSubType(knowledgeSubType || 'all');
@@ -89,7 +86,6 @@ export default function App() {
         <Glossary
           terms={terms}
           knowledgeTypes={knowledgeTypes}
-          knowledgeSubtypes={knowledgeSubtypes}
           isAdmin={isAdmin}
           initialCat={glossaryCat}
           initialSection={glossarySection}
@@ -153,7 +149,6 @@ export default function App() {
         <Admin
           terms={terms}
           knowledgeTypes={knowledgeTypes}
-          knowledgeSubtypes={knowledgeSubtypes}
           results={results}
           profiles={profiles}
           onBack={() => setPage('home')}
@@ -166,7 +161,6 @@ export default function App() {
         <Home
           terms={terms}
           knowledgeTypes={knowledgeTypes}
-          knowledgeSubtypes={knowledgeSubtypes}
           onOpenFiltered={({ knowledgeType, knowledgeSubType, category, section }) => {
             setGlossaryKnowledgeType(knowledgeType || 'all');
             setGlossaryKnowledgeSubType(knowledgeSubType || 'all');
