@@ -1,11 +1,120 @@
 import React, { useMemo, useState } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS, KNOWLEDGE_TYPES, KNOWLEDGE_SUBTYPES, RANKS, showToast } from '../utils.js';
-import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS, DEFAULT_KNOWLEDGE_TYPES, RANKS, showToast } from '../utils.js';
+import { dbPush, dbSet, dbRemove, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
 import { RelatedTermsTagInput } from './TermModals.jsx';
 
 const emptyRow = () => ({ name: '', knowledgeType: '', knowledgeSubType: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' });
 
-function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen, duplicateIndices, onSaved }) {
+// 知識区分（自社知識/他社知識/端末知識など）と区分（モバイル/ネットなど）を、アプリ内で追加・編集・削除できる設定パネル。
+// knowledgeTypesはApp.jsx側でFirebase(knowledge_types)から解決済みの配列 [{id, name, hasSub, group}] を受け取る。
+// idがnull＝まだFirebaseに保存されてないデフォルト値。編集・削除するにはFirebaseに登録される（追加時に自動でid付きになる）。
+function KnowledgeConfigManager({ knowledgeTypes, knowledgeSubtypes }) {
+  const [open, setOpen] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeHasSub, setNewTypeHasSub] = useState(false);
+  const [newTypeGroup, setNewTypeGroup] = useState('');
+  const [newSubName, setNewSubName] = useState('');
+
+  const addType = async () => {
+    const name = newTypeName.trim();
+    if (!name) return showToast('名前を入力してください');
+    try {
+      await dbPush('knowledge_types', { name, hasSub: newTypeHasSub, group: newTypeGroup.trim() });
+      setNewTypeName(''); setNewTypeHasSub(false); setNewTypeGroup('');
+      showToast('✅ 追加しました');
+    } catch (e) { showToast('エラー:' + e.message); }
+  };
+
+  const renameType = async (id, name) => {
+    try { await dbSet(`knowledge_types/${id}/name`, name); } catch (e) { showToast('エラー:' + e.message); }
+  };
+
+  const removeType = async (id) => {
+    if (!confirm('この知識区分を削除しますか？（すでに用語に付けたタグはそのまま残ります）')) return;
+    try { await dbRemove(`knowledge_types/${id}`); showToast('🗑 削除しました'); } catch (e) { showToast('エラー:' + e.message); }
+  };
+
+  const addSub = async () => {
+    const name = newSubName.trim();
+    if (!name) return showToast('名前を入力してください');
+    try {
+      await dbPush('knowledge_subtypes', { name });
+      setNewSubName('');
+      showToast('✅ 追加しました');
+    } catch (e) { showToast('エラー:' + e.message); }
+  };
+
+  const removeSub = async (id) => {
+    if (!confirm('この区分を削除しますか？')) return;
+    try { await dbRemove(`knowledge_subtypes/${id}`); showToast('🗑 削除しました'); } catch (e) { showToast('エラー:' + e.message); }
+  };
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div
+        onClick={() => setOpen((o) => !o)}
+        style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      >
+        <span style={{ fontSize: '.82rem', fontWeight: 800 }}>⚙️ 知識区分の管理（自社/他社/端末など）</span>
+        <span style={{ fontSize: '1rem', color: 'var(--sub)' }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: 14 }}>
+          <div style={{ fontSize: '.75rem', fontWeight: 800, color: 'var(--sub)', marginBottom: 8 }}>知識区分（トップの分岐）</div>
+          {knowledgeTypes.map((t) => (
+            <div key={t.id || t.name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <input
+                defaultValue={t.name}
+                disabled={!t.id}
+                onBlur={(e) => t.id && e.target.value.trim() && e.target.value !== t.name && renameType(t.id, e.target.value.trim())}
+                style={{ flex: 1, border: '1.5px solid var(--border)', borderRadius: 7, padding: '6px 8px', fontSize: '.8rem', fontFamily: 'inherit', background: t.id ? '#fff' : 'var(--bg)' }}
+              />
+              <span style={{ fontSize: '.68rem', color: 'var(--sub)', width: 70 }}>{t.hasSub ? '区分あり' : t.group ? `グループ:${t.group}` : '単独'}</span>
+              {t.id ? (
+                <button onClick={() => removeType(t.id)} style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '5px 8px', color: '#dc2626', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>削除</button>
+              ) : (
+                <span style={{ fontSize: '.66rem', color: 'var(--sub)' }}>初期値</span>
+              )}
+            </div>
+          ))}
+          <div style={{ background: 'var(--bg)', border: '1.5px dashed var(--border)', borderRadius: 8, padding: 10, marginTop: 8, marginBottom: 16 }}>
+            <div style={{ fontSize: '.72rem', color: 'var(--sub)', marginBottom: 6 }}>＋ 新しい知識区分を追加</div>
+            <input value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} placeholder="例：他社知識(法人) または 端末知識(タブレット)"
+              style={{ width: '100%', border: '1.5px solid var(--border)', borderRadius: 7, padding: '7px 9px', fontSize: '.8rem', fontFamily: 'inherit', marginBottom: 6 }} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: '.72rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input type="checkbox" checked={newTypeHasSub} onChange={(e) => setNewTypeHasSub(e.target.checked)} />
+                モバイル/ネットの区分を持つ
+              </label>
+            </div>
+            <input value={newTypeGroup} onChange={(e) => setNewTypeGroup(e.target.value)} placeholder="グループ名（任意・例：端末知識　※同じグループ名同士が1つの枝にまとまる）"
+              style={{ width: '100%', border: '1.5px solid var(--border)', borderRadius: 7, padding: '7px 9px', fontSize: '.8rem', fontFamily: 'inherit', marginBottom: 8 }} />
+            <button onClick={addType} style={{ width: '100%', padding: 8, borderRadius: 7, border: 'none', background: 'var(--pl)', color: 'var(--pd)', fontSize: '.78rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>追加</button>
+          </div>
+
+          <div style={{ fontSize: '.75rem', fontWeight: 800, color: 'var(--sub)', marginBottom: 8 }}>区分（モバイル/ネットなど）</div>
+          {knowledgeSubtypes.map((s) => (
+            <div key={s.id || s.name} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <span style={{ flex: 1, fontSize: '.8rem', padding: '6px 8px' }}>{s.name}</span>
+              {s.id ? (
+                <button onClick={() => removeSub(s.id)} style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '5px 8px', color: '#dc2626', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>削除</button>
+              ) : (
+                <span style={{ fontSize: '.66rem', color: 'var(--sub)' }}>初期値</span>
+              )}
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <input value={newSubName} onChange={(e) => setNewSubName(e.target.value)} placeholder="例：オンライン"
+              style={{ flex: 1, border: '1.5px solid var(--border)', borderRadius: 7, padding: '7px 9px', fontSize: '.8rem', fontFamily: 'inherit' }} />
+            <button onClick={addSub} style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: 'var(--pl)', color: 'var(--pd)', fontSize: '.78rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>追加</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen, duplicateIndices, knowledgeTypeNames, subtypeNames, onSaved }) {
   const updateRow = (i, key, val) => {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, [key]: val } : r)));
   };
@@ -88,14 +197,12 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
                   <input className="bulk-name" placeholder="用語名 *" value={row.name} onChange={(e) => updateRow(i, 'name', e.target.value)} />
                   <select className="bulk-cat" value={row.knowledgeType || ''} onChange={(e) => { updateRow(i, 'knowledgeType', e.target.value); updateRow(i, 'knowledgeSubType', ''); }}>
                     <option value="">知識区分：選択なし</option>
-                    {KNOWLEDGE_TYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+                    {knowledgeTypeNames.map((k) => <option key={k} value={k}>{k}</option>)}
                   </select>
-                  {(row.knowledgeType === '自社知識' || row.knowledgeType === '他社知識') && (
-                    <select className="bulk-cat" value={row.knowledgeSubType || ''} onChange={(e) => updateRow(i, 'knowledgeSubType', e.target.value)}>
-                      <option value="">区分：選択なし</option>
-                      {KNOWLEDGE_SUBTYPES.map((k) => <option key={k} value={k}>{k}</option>)}
-                    </select>
-                  )}
+                  <select className="bulk-cat" value={row.knowledgeSubType || ''} onChange={(e) => updateRow(i, 'knowledgeSubType', e.target.value)}>
+                    <option value="">区分：選択なし</option>
+                    {subtypeNames.map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
                   <select className="bulk-cat" value={row.category} onChange={(e) => updateRow(i, 'category', e.target.value)}>
                     {CATEGORIES_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -142,71 +249,95 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
   );
 }
 
-// 用語管理画面の上部に出すマインドマップ（線でつながった構成図・縦方向・コンパクト）
-function TermMindMap({ terms, mapFilter, onSelect }) {
-  const counts = useMemo(() => {
-    const c = { self: { モバイル: 0, ネット: 0 }, other: { モバイル: 0, ネット: 0 }, device: { iPhone: 0, Android: 0 } };
-    Object.values(terms).forEach((t) => {
-      if (t.knowledgeType === '自社知識' && (t.knowledgeSubType === 'モバイル' || t.knowledgeSubType === 'ネット')) {
-        c.self[t.knowledgeSubType]++;
-      } else if (t.knowledgeType === '他社知識' && (t.knowledgeSubType === 'モバイル' || t.knowledgeSubType === 'ネット')) {
-        c.other[t.knowledgeSubType]++;
-      } else if (t.knowledgeType === '端末知識(iPhone)') {
-        c.device.iPhone++;
-      } else if (t.knowledgeType === '端末知識(Android)') {
-        c.device.Android++;
-      }
-    });
-    return c;
-  }, [terms]);
+const BRANCH_COLORS = [
+  { bg: '#E1F5EE', border: '#1D9E75', text: '#04342C' },
+  { bg: '#EEEDFE', border: '#7F77DD', text: '#26215C' },
+  { bg: '#FAECE7', border: '#D85A30', text: '#4A1B0C' },
+  { bg: '#FBEAF0', border: '#D4537E', text: '#4B1528' },
+  { bg: '#FAEEDA', border: '#BA7517', text: '#412402' },
+];
 
-  const isActive = (type, sub) => !!mapFilter && mapFilter.type === type && mapFilter.sub === (sub || null);
+// knowledgeTypesの配列から「枝（グループ単位）」を組み立てる。同じgroup名を持つ型は1つの枝の子としてまとまる。
+function buildBranches(knowledgeTypes) {
+  const groups = {};
+  const order = [];
+  (knowledgeTypes || []).forEach((t) => {
+    const key = t.group || t.name;
+    if (!groups[key]) { groups[key] = { label: key, items: [] }; order.push(key); }
+    groups[key].items.push(t);
+  });
+  return order.map((key) => groups[key]);
+}
+
+// 用語管理画面の上部に出すマインドマップ（線でつながった構成図・縦方向・コンパクト・可変数の枝に対応）
+function TermMindMap({ terms, knowledgeTypes, subtypeNames, mapFilter, onSelect }) {
+  const branches = useMemo(() => buildBranches(knowledgeTypes), [knowledgeTypes]);
+
+  const countFor = (typeName, subName) => {
+    return Object.values(terms).filter((t) => {
+      if (t.knowledgeType !== typeName) return false;
+      if (subName != null) return t.knowledgeSubType === subName;
+      return true;
+    }).length;
+  };
+
+  const isActive = (branchLabel, childKey) => !!mapFilter && mapFilter.branchLabel === branchLabel && mapFilter.childKey === (childKey ?? null);
   const dim = (active) => (mapFilter && !active ? 0.4 : 1);
 
-  const COLORS = {
-    自社知識: { bg: '#E1F5EE', border: '#1D9E75', text: '#04342C' },
-    端末知識: { bg: '#EEEDFE', border: '#7F77DD', text: '#26215C' },
-    他社知識: { bg: '#FAECE7', border: '#D85A30', text: '#4A1B0C' },
-  };
-  // 3列（自社/端末/他社）× 各列2つの子ノード。縦方向：上から すべて → 3列 → 各列の子2つ
-  const cols = [
-    { type: '自社知識', x: 10, children: [{ sub: 'モバイル', count: counts.self.モバイル }, { sub: 'ネット', count: counts.self.ネット }] },
-    { type: '端末知識', x: 135, children: [{ sub: 'iPhone', count: counts.device.iPhone }, { sub: 'Android', count: counts.device.Android }] },
-    { type: '他社知識', x: 260, children: [{ sub: 'モバイル', count: counts.other.モバイル }, { sub: 'ネット', count: counts.other.ネット }] },
-  ];
-  const COL_W = 110;
+  const N = Math.max(branches.length, 1);
+  const GAP = 8;
+  const COL_W = Math.min(110, (360 - GAP * (N - 1)) / N);
+  const totalW = COL_W * N + GAP * (N - 1);
+  const startX = (380 - totalW) / 2;
 
   return (
     <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 8, marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
       <svg width="100%" viewBox="0 0 380 172" style={{ maxWidth: 700, display: 'block' }}>
-        {/* すべて（頂点） */}
         <g style={{ cursor: 'pointer' }} onClick={() => onSelect(null)}>
           <rect x={140} y={4} width={100} height={28} rx={8} fill={mapFilter === null ? '#f97316' : '#F1EFE8'} stroke="#888780" strokeWidth={0.5} />
           <text x={190} y={18} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700} fill={mapFilter === null ? '#fff' : '#2C2C2A'}>すべて</text>
         </g>
 
-        {cols.map((col) => {
-          const c = COLORS[col.type];
-          const cx = col.x + COL_W / 2;
-          const active = isActive(col.type, null);
+        {branches.map((branch, bi) => {
+          const c = BRANCH_COLORS[bi % BRANCH_COLORS.length];
+          const x = startX + bi * (COL_W + GAP);
+          const cx = x + COL_W / 2;
+          const single = branch.items.length === 1 ? branch.items[0] : null;
+          const singleLeaf = single && !single.hasSub && branch.items.length === 1 && branch.label === single.name;
+          const active = isActive(branch.label, null);
+
+          let children = [];
+          if (single && single.hasSub) {
+            children = subtypeNames.map((s) => ({ key: s, label: s, count: countFor(single.name, s) }));
+          } else if (branch.items.length > 1) {
+            children = branch.items.map((it) => ({
+              key: it.name,
+              label: it.name.startsWith(branch.label) ? it.name.slice(branch.label.length).replace(/[()]/g, '') || it.name : it.name,
+              count: countFor(it.name, null),
+            }));
+          }
+
           return (
-            <g key={col.type}>
+            <g key={branch.label}>
               <path d={`M190 32 C190 42, ${cx} 46, ${cx} 56`} fill="none" stroke={c.border} strokeWidth={0.75} />
-              <g style={{ cursor: 'pointer', opacity: dim(active) }} onClick={() => onSelect(active ? null : { type: col.type, sub: null })}>
-                <rect x={col.x} y={56} width={COL_W} height={30} rx={8} fill={c.bg} stroke={c.border} strokeWidth={active ? 2 : 0.5} />
-                <text x={cx} y={71} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700} fill={c.text}>{col.type}</text>
+              <g
+                style={{ cursor: 'pointer', opacity: dim(active) }}
+                onClick={() => onSelect(active ? null : { branchLabel: branch.label, childKey: null })}
+              >
+                <rect x={x} y={56} width={COL_W} height={30} rx={8} fill={c.bg} stroke={c.border} strokeWidth={active ? 2 : 0.5} />
+                <text x={cx} y={71} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(12, COL_W / 7)} fontWeight={700} fill={c.text}>{branch.label}</text>
               </g>
-              {col.children.map((ch, i) => {
-                const chX = col.x + i * (COL_W / 2 + 3);
+              {children.map((ch, i) => {
                 const chW = COL_W / 2 - 3;
+                const chX = x + i * (COL_W / 2 + 3);
                 const chCx = chX + chW / 2;
-                const chActive = isActive(col.type, ch.sub);
+                const chActive = isActive(branch.label, ch.key);
                 return (
-                  <g key={ch.sub}>
+                  <g key={ch.key}>
                     <path d={`M${cx} 86 C${cx} 96, ${chCx} 98, ${chCx} 108`} fill="none" stroke={c.border} strokeWidth={0.5} />
-                    <g style={{ cursor: 'pointer', opacity: dim(chActive) }} onClick={() => onSelect(chActive ? null : { type: col.type, sub: ch.sub })}>
+                    <g style={{ cursor: 'pointer', opacity: dim(chActive) }} onClick={() => onSelect(chActive ? null : { branchLabel: branch.label, childKey: ch.key })}>
                       <rect x={chX} y={108} width={chW} height={28} rx={6} fill={chActive ? c.border : '#fff'} stroke={c.border} strokeWidth={chActive ? 2 : 0.5} />
-                      <text x={chCx} y={122} textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={700} fill={chActive ? '#fff' : c.text}>{ch.sub}({ch.count})</text>
+                      <text x={chCx} y={122} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight={700} fill={chActive ? '#fff' : c.text}>{ch.label}({ch.count})</text>
                     </g>
                   </g>
                 );
@@ -219,7 +350,7 @@ function TermMindMap({ terms, mapFilter, onSelect }) {
   );
 }
 
-function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }) {
+function TermItem({ id, term, allTerms, knowledgeTypeNames, subtypeNames, expanded, onToggle, onSaved, onDeleted }) {
   const [name, setName] = useState(term.name || '');
   const [knowledgeType, setKnowledgeType] = useState(term.knowledgeType || '');
   const [knowledgeSubType, setKnowledgeSubType] = useState(term.knowledgeSubType || '');
@@ -278,18 +409,16 @@ function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }
               onChange={(e) => { setKnowledgeType(e.target.value); setKnowledgeSubType(''); }}
             >
               <option value="">選択なし</option>
-              {KNOWLEDGE_TYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+              {knowledgeTypeNames.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           </div>
-          {(knowledgeType === '自社知識' || knowledgeType === '他社知識') && (
-            <div className="admin-edit-group">
-              <label>区分（モバイル/ネット）</label>
-              <select className="admin-cat-sel" value={knowledgeSubType} onChange={(e) => setKnowledgeSubType(e.target.value)}>
-                <option value="">選択なし</option>
-                {KNOWLEDGE_SUBTYPES.map((k) => <option key={k} value={k}>{k}</option>)}
-              </select>
-            </div>
-          )}
+          <div className="admin-edit-group">
+            <label>区分（任意）</label>
+            <select className="admin-cat-sel" value={knowledgeSubType} onChange={(e) => setKnowledgeSubType(e.target.value)}>
+              <option value="">選択なし</option>
+              {subtypeNames.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </div>
           <div className="admin-edit-group">
             <label>カテゴリ</label>
             <select className="admin-cat-sel" value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -337,12 +466,18 @@ function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }
   );
 }
 
-export default function AdminTermsTab({ terms }) {
+export default function AdminTermsTab({ terms, knowledgeTypes, knowledgeSubtypes }) {
+  const kTypes = knowledgeTypes || DEFAULT_KNOWLEDGE_TYPES.map((t) => ({ id: null, ...t }));
+  const kSubtypes = knowledgeSubtypes || [];
+  const knowledgeTypeNames = useMemo(() => kTypes.map((t) => t.name), [kTypes]);
+  const subtypeNames = useMemo(() => kSubtypes.map((s) => s.name), [kSubtypes]);
+  const branches = useMemo(() => buildBranches(kTypes), [kTypes]);
+
   // デフォルトは全収束。展開したIDだけをセットで管理。
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [search, setSearch] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [mapFilter, setMapFilter] = useState(null); // { type: '自社知識'|'他社知識'|'端末知識', sub: string|null } | null
+  const [mapFilter, setMapFilter] = useState(null); // { branchLabel, childKey } | null
 
   // 一括登録の行データ（検索欄の下に重複まとめを出すため、ここで持つ）
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -391,15 +526,19 @@ export default function AdminTermsTab({ terms }) {
     showToast('✅ 最新の状態に更新しました');
   };
 
+  // マインドマップの選択条件（branchLabel/childKey）に、用語1件が当たるかどうかを判定する
   const matchesMapFilter = (t) => {
     if (!mapFilter) return true;
-    if (mapFilter.type === '端末知識') {
-      if (mapFilter.sub === 'iPhone') return t.knowledgeType === '端末知識(iPhone)';
-      if (mapFilter.sub === 'Android') return t.knowledgeType === '端末知識(Android)';
-      return t.knowledgeType === '端末知識(iPhone)' || t.knowledgeType === '端末知識(Android)';
+    const branch = branches.find((b) => b.label === mapFilter.branchLabel);
+    if (!branch) return false;
+    if (mapFilter.childKey == null) {
+      return branch.items.some((it) => it.name === t.knowledgeType);
     }
-    if (mapFilter.sub) return t.knowledgeType === mapFilter.type && t.knowledgeSubType === mapFilter.sub;
-    return t.knowledgeType === mapFilter.type;
+    const single = branch.items.length === 1 ? branch.items[0] : null;
+    if (single && single.hasSub) {
+      return t.knowledgeType === single.name && t.knowledgeSubType === mapFilter.childKey;
+    }
+    return t.knowledgeType === mapFilter.childKey;
   };
 
   const sorted = useMemo(() => {
@@ -410,7 +549,7 @@ export default function AdminTermsTab({ terms }) {
       .sort((a, b) =>
         (ro[a[1].rank] ?? 4) - (ro[b[1].rank] ?? 4) || (a[1].name || '').localeCompare(b[1].name || '', 'ja')
       );
-  }, [terms, search, mapFilter]);
+  }, [terms, search, mapFilter, branches]);
 
   // マインドマップで絞り込み中の時だけ、「それ以外（この条件のタグが付いてない用語）」も見られるようにする
   const [othersOpen, setOthersOpen] = useState(false);
@@ -423,7 +562,7 @@ export default function AdminTermsTab({ terms }) {
       .sort((a, b) =>
         (ro[a[1].rank] ?? 4) - (ro[b[1].rank] ?? 4) || (a[1].name || '').localeCompare(b[1].name || '', 'ja')
       );
-  }, [terms, search, mapFilter]);
+  }, [terms, search, mapFilter, branches]);
 
   const toggle = (id) => {
     setExpandedIds((prev) => {
@@ -448,12 +587,14 @@ export default function AdminTermsTab({ terms }) {
         </div>
       </div>
 
-      <TermMindMap terms={terms} mapFilter={mapFilter} onSelect={setMapFilter} />
+      <KnowledgeConfigManager knowledgeTypes={kTypes} knowledgeSubtypes={kSubtypes} />
+
+      <TermMindMap terms={terms} knowledgeTypes={kTypes} subtypeNames={subtypeNames} mapFilter={mapFilter} onSelect={setMapFilter} />
 
       {mapFilter && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ fontSize: '.78rem', color: 'var(--pd)', background: 'var(--pl)', padding: '5px 10px', borderRadius: 20, fontWeight: 700 }}>
-            {mapFilter.type}{mapFilter.sub ? ` / ${mapFilter.sub}` : ''} で絞り込み中
+            {mapFilter.branchLabel}{mapFilter.childKey ? ` / ${mapFilter.childKey}` : ''} で絞り込み中
           </span>
           <button onClick={() => setMapFilter(null)} style={{ background: 'none', border: 'none', color: 'var(--sub)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit' }}>✕ 解除</button>
         </div>
@@ -493,6 +634,8 @@ export default function AdminTermsTab({ terms }) {
         parseText={parseText} setParseText={setParseText}
         open={bulkOpen} setOpen={setBulkOpen}
         duplicateIndices={duplicateIndices}
+        knowledgeTypeNames={knowledgeTypeNames}
+        subtypeNames={subtypeNames}
       />
 
       {mapFilter && (
@@ -507,6 +650,7 @@ export default function AdminTermsTab({ terms }) {
           {sorted.map(([id, t]) => (
             <TermItem
               key={id + '_' + refreshKey} id={id} term={t} allTerms={terms}
+              knowledgeTypeNames={knowledgeTypeNames} subtypeNames={subtypeNames}
               expanded={expandedIds.has(id)}
               onToggle={() => toggle(id)}
             />
@@ -531,6 +675,7 @@ export default function AdminTermsTab({ terms }) {
                 others.map(([id, t]) => (
                   <TermItem
                     key={id + '_' + refreshKey} id={id} term={t} allTerms={terms}
+                    knowledgeTypeNames={knowledgeTypeNames} subtypeNames={subtypeNames}
                     expanded={expandedIds.has(id)}
                     onToggle={() => toggle(id)}
                   />

@@ -208,7 +208,7 @@ function ProfileTab({ profiles }) {
   );
 }
 
-export default function Admin({ terms, results, profiles, onBack, onLogout }) {
+export default function Admin({ terms, results, profiles, knowledgeTypes, knowledgeSubtypes, onBack, onLogout }) {
   const [tab, setTab] = useState('summary');
 
   return (
@@ -229,7 +229,7 @@ export default function Admin({ terms, results, profiles, onBack, onLogout }) {
         </div>
         {tab === 'summary' && <SummaryTab results={results} />}
         {tab === 'log' && <LogTab results={results} />}
-        {tab === 'terms' && <AdminTermsTab terms={terms} />}
+        {tab === 'terms' && <AdminTermsTab terms={terms} knowledgeTypes={knowledgeTypes} knowledgeSubtypes={knowledgeSubtypes} />}
         {tab === 'profile' && <ProfileTab profiles={profiles} />}
       </div>
     </div>

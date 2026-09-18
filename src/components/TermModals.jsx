@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_COLORS, KNOWLEDGE_TYPES, KNOWLEDGE_SUBTYPES, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
 
 function RankSelect({ name, value, onChange }) {
   return (
@@ -92,8 +92,11 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
 const EMPTY = { name: '', knowledgeType: '', knowledgeSubType: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '', related: [] };
 
 // 追加・編集 共通フォームモーダル
-export function TermFormModal({ open, mode, initial, allTerms, currentId, onClose, onSubmit, onDelete }) {
+export function TermFormModal({ open, mode, initial, allTerms, currentId, knowledgeTypes, knowledgeSubtypes, onClose, onSubmit, onDelete }) {
   const [form, setForm] = useState(EMPTY);
+  const kTypes = knowledgeTypes || [];
+  const kSubtypes = (knowledgeSubtypes || []).map((s) => s.name);
+  const currentType = kTypes.find((t) => t.name === form.knowledgeType);
 
   useEffect(() => {
     if (!open) return;
@@ -137,15 +140,15 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, onClos
               onChange={(e) => setForm((f) => ({ ...f, knowledgeType: e.target.value, knowledgeSubType: '' }))}
             >
               <option value="">選択なし</option>
-              {KNOWLEDGE_TYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+              {kTypes.map((k) => <option key={k.name} value={k.name}>{k.name}</option>)}
             </select>
           </div>
-          {(form.knowledgeType === '自社知識' || form.knowledgeType === '他社知識') && (
+          {currentType?.hasSub && (
             <div className="form-group">
-              <label>区分（モバイル/ネット）</label>
+              <label>区分（任意）</label>
               <select value={form.knowledgeSubType || ''} onChange={(e) => set('knowledgeSubType')(e.target.value)}>
                 <option value="">選択なし</option>
-                {KNOWLEDGE_SUBTYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+                {kSubtypes.map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
           )}

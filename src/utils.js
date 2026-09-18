@@ -23,9 +23,31 @@ export function showToast(msg) {
 }
 
 export const RANKS = ['秀', '優', '良', '可'];
-// 知識区分（新しい絞り込みの入り口）。自社知識・他社知識はモバイル/ネットでさらに分かれる
-export const KNOWLEDGE_TYPES = ['自社知識', '他社知識', '端末知識(iPhone)', '端末知識(Android)'];
-export const KNOWLEDGE_SUBTYPES = ['モバイル', 'ネット'];
+// 知識区分のデフォルト（Firebaseの knowledge_types / knowledge_subtypes が未登録の場合のフォールバック）
+export const DEFAULT_KNOWLEDGE_TYPES = [
+  { name: '自社知識', hasSub: true, group: '' },
+  { name: '他社知識', hasSub: true, group: '' },
+  { name: '端末知識(iPhone)', hasSub: false, group: '端末知識' },
+  { name: '端末知識(Android)', hasSub: false, group: '端末知識' },
+];
+export const DEFAULT_KNOWLEDGE_SUBTYPES = ['モバイル', 'ネット'];
+
+// Firebaseの knowledge_types コレクション（id -> {name, hasSub, group}）を配列に変換する。
+// 未登録ならデフォルトを使う。
+export function resolveKnowledgeTypes(knowledgeTypesDb) {
+  const entries = Object.entries(knowledgeTypesDb || {});
+  if (!entries.length) return DEFAULT_KNOWLEDGE_TYPES.map((t) => ({ id: null, ...t }));
+  return entries.map(([id, t]) => ({ id, name: t.name, hasSub: !!t.hasSub, group: t.group || '' }));
+}
+// Firebaseの knowledge_subtypes コレクション（id -> {name}）を配列に変換する。未登録ならデフォルト。
+export function resolveKnowledgeSubtypes(knowledgeSubtypesDb) {
+  const entries = Object.entries(knowledgeSubtypesDb || {});
+  if (!entries.length) return DEFAULT_KNOWLEDGE_SUBTYPES.map((name) => ({ id: null, name }));
+  return entries.map(([id, s]) => ({ id, name: s.name }));
+}
+// KNOWLEDGE_TYPES/KNOWLEDGE_SUBTYPES：まだ動的化していない箇所からの参照用に、デフォルト名だけの配列も残す
+export const KNOWLEDGE_TYPES = DEFAULT_KNOWLEDGE_TYPES.map((t) => t.name);
+export const KNOWLEDGE_SUBTYPES = DEFAULT_KNOWLEDGE_SUBTYPES;
 // 既存の絞り込みカテゴリ
 export const CATEGORIES_BASE = ['商材・プラン', '契約種別', '用語', 'ステークホルダー'];
 // 「編」区分（部分知識）。役割・工程ごとの学習単位で、既存カテゴリとは別グループとして扱う

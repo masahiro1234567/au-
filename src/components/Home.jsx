@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { KNOWLEDGE_TYPES, KNOWLEDGE_SUBTYPES, CATEGORIES_BASE, CATEGORIES_SECTIONS } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS } from '../utils.js';
 
 function PillRow({ label, options, value, onSelect, counts }) {
   return (
@@ -28,15 +28,17 @@ function PillRow({ label, options, value, onSelect, counts }) {
   );
 }
 
-export default function Home({ terms, onOpenFiltered, onViewAll, onGoTest, onAdminLogin }) {
+export default function Home({ terms, knowledgeTypes, knowledgeSubtypes, onOpenFiltered, onViewAll, onGoTest, onAdminLogin }) {
   const entries = useMemo(() => Object.values(terms), [terms]);
+  const typeNames = useMemo(() => (knowledgeTypes || []).map((t) => t.name), [knowledgeTypes]);
+  const subtypeNames = useMemo(() => (knowledgeSubtypes || []).map((s) => s.name), [knowledgeSubtypes]);
 
   const [knowledgeType, setKnowledgeType] = useState('');
   const [knowledgeSubType, setKnowledgeSubType] = useState('');
   const [category, setCategory] = useState('');
   const [section, setSection] = useState('');
 
-  const needsSub = knowledgeType === '自社知識' || knowledgeType === '他社知識';
+  const needsSub = (knowledgeTypes || []).find((t) => t.name === knowledgeType)?.hasSub;
   const readyForCategory = knowledgeType && (!needsSub || knowledgeSubType);
   const readyForResult = readyForCategory && category;
 
@@ -60,10 +62,10 @@ export default function Home({ terms, onOpenFiltered, onViewAll, onGoTest, onAdm
           <div className="home-hero-sub">全{entries.length}件の用語を収録</div>
         </div>
 
-        <PillRow label="知識の種類" options={KNOWLEDGE_TYPES} value={knowledgeType} onSelect={selectType} />
+        <PillRow label="知識の種類" options={typeNames} value={knowledgeType} onSelect={selectType} />
 
         {needsSub && (
-          <PillRow label="区分" options={KNOWLEDGE_SUBTYPES} value={knowledgeSubType} onSelect={selectSub} />
+          <PillRow label="区分" options={subtypeNames} value={knowledgeSubType} onSelect={selectSub} />
         )}
 
         {readyForCategory && (

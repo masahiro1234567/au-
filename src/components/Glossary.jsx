@@ -14,7 +14,7 @@ function highlight(text, q) {
   }
 }
 
-export default function Glossary({ terms, isAdmin, initialCat, initialSection, initialKnowledgeType, initialKnowledgeSubType, onBackHome, onGoTest, onAdminLogin }) {
+export default function Glossary({ terms, isAdmin, initialCat, initialSection, initialKnowledgeType, initialKnowledgeSubType, knowledgeTypes, knowledgeSubtypes, onBackHome, onGoTest, onAdminLogin }) {
   const [rank, setRank] = useState('all');
   const [cat, setCat] = useState(initialCat || 'all');
   const [section, setSection] = useState(initialSection || 'all');
@@ -203,6 +203,8 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, i
         initial={editing?.term}
         allTerms={terms}
         currentId={editing?.id}
+        knowledgeTypes={knowledgeTypes}
+        knowledgeSubtypes={knowledgeSubtypes}
         onClose={() => setEditing(null)}
         onSubmit={editing?.id ? handleUpdate : handleAdd}
         onDelete={handleDelete}
