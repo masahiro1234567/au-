@@ -142,6 +142,84 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
   );
 }
 
+// 用語管理画面の上部に出すマインドマップ（横型・四角ノード・分岐は最初から全展開）
+// タップすると下の一覧が絞り込まれる
+function TermMindMap({ terms, mapFilter, onSelect }) {
+  const counts = useMemo(() => {
+    const c = { self: { モバイル: 0, ネット: 0 }, other: { モバイル: 0, ネット: 0 }, device: { iPhone: 0, Android: 0 } };
+    Object.values(terms).forEach((t) => {
+      if (t.knowledgeType === '自社知識' && (t.knowledgeSubType === 'モバイル' || t.knowledgeSubType === 'ネット')) {
+        c.self[t.knowledgeSubType]++;
+      } else if (t.knowledgeType === '他社知識' && (t.knowledgeSubType === 'モバイル' || t.knowledgeSubType === 'ネット')) {
+        c.other[t.knowledgeSubType]++;
+      } else if (t.knowledgeType === '端末知識(iPhone)') {
+        c.device.iPhone++;
+      } else if (t.knowledgeType === '端末知識(Android)') {
+        c.device.Android++;
+      }
+    });
+    return c;
+  }, [terms]);
+
+  const isActive = (type, sub) => mapFilter && mapFilter.type === type && mapFilter.sub === (sub || null);
+  const nodeStyle = (active) => ({ cursor: 'pointer', opacity: mapFilter && !active ? 0.45 : 1 });
+
+  const branch = (type, label, colorVar, x, y, children) => (
+    <g key={type}>
+      <g
+        style={nodeStyle(isActive(type, null))}
+        onClick={() => onSelect(isActive(type, null) ? null : { type, sub: null })}
+      >
+        <rect x={x} y={y} width={90} height={40} rx={10} fill={colorVar.bg} stroke={colorVar.border} strokeWidth={isActive(type, null) ? 2 : 0.5} />
+        <text x={x + 45} y={y + 20} textAnchor="middle" dominantBaseline="central" fontSize={14} fontWeight={700} fill={colorVar.text}>{label}</text>
+      </g>
+      {children.map((ch, i) => {
+        const cy = y - 13 + i * 37;
+        const active = isActive(type, ch.sub);
+        return (
+          <g key={ch.sub}>
+            <path d={`M${x + 90} ${y + 20} C${x + 98} ${cy + 15}, ${x + 102} ${cy + 15}, ${x + 110} ${cy + 15}`} fill="none" stroke={colorVar.border} strokeWidth={0.75} />
+            <g style={nodeStyle(active)} onClick={() => onSelect(active ? null : { type, sub: ch.sub })}>
+              <rect x={x + 110} y={cy} width={90} height={30} rx={8} fill={colorVar.bg} stroke={colorVar.border} strokeWidth={active ? 2 : 0.5} />
+              <text x={x + 155} y={cy + 15} textAnchor="middle" dominantBaseline="central" fontSize={12} fill={colorVar.text}>{ch.sub} ({ch.count}件)</text>
+            </g>
+          </g>
+        );
+      })}
+    </g>
+  );
+
+  const teal = { bg: '#E1F5EE', border: '#1D9E75', text: '#04342C' };
+  const coral = { bg: '#FAECE7', border: '#D85A30', text: '#4A1B0C' };
+  const purple = { bg: '#EEEDFE', border: '#7F77DD', text: '#26215C' };
+
+  return (
+    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 6px', marginBottom: 12 }}>
+      <svg width="100%" viewBox="0 0 380 260" style={{ overflow: 'visible' }}>
+        <path d="M74 130 C95 100, 105 65, 120 45" fill="none" stroke="#1D9E75" strokeWidth={1} />
+        <path d="M74 130 C95 130, 105 130, 120 130" fill="none" stroke="#7F77DD" strokeWidth={1} />
+        <path d="M74 130 C95 160, 105 195, 120 215" fill="none" stroke="#D85A30" strokeWidth={1} />
+        <g style={nodeStyle(mapFilter === null)} onClick={() => onSelect(null)}>
+          <rect x={10} y={110} width={64} height={40} rx={10} fill="#F1EFE8" stroke="#888780" strokeWidth={mapFilter === null ? 2 : 0.5} />
+          <text x={42} y={130} textAnchor="middle" dominantBaseline="central" fontSize={14} fontWeight={700} fill="#2C2C2A">すべて</text>
+        </g>
+        {branch('自社知識', '自社知識', teal, 120, 25, [
+          { sub: 'モバイル', count: counts.self.モバイル },
+          { sub: 'ネット', count: counts.self.ネット },
+        ])}
+        {branch('端末知識', '端末知識', purple, 120, 110, [
+          { sub: 'iPhone', count: counts.device.iPhone },
+          { sub: 'Android', count: counts.device.Android },
+        ])}
+        {branch('他社知識', '他社知識', coral, 120, 195, [
+          { sub: 'モバイル', count: counts.other.モバイル },
+          { sub: 'ネット', count: counts.other.ネット },
+        ])}
+      </svg>
+    </div>
+  );
+}
+
 function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }) {
   const [name, setName] = useState(term.name || '');
   const [knowledgeType, setKnowledgeType] = useState(term.knowledgeType || '');
@@ -265,6 +343,7 @@ export default function AdminTermsTab({ terms }) {
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [search, setSearch] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [mapFilter, setMapFilter] = useState(null); // { type: '自社知識'|'他社知識'|'端末知識', sub: string|null } | null
 
   // 一括登録の行データ（検索欄の下に重複まとめを出すため、ここで持つ）
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -313,14 +392,26 @@ export default function AdminTermsTab({ terms }) {
     showToast('✅ 最新の状態に更新しました');
   };
 
+  const matchesMapFilter = (t) => {
+    if (!mapFilter) return true;
+    if (mapFilter.type === '端末知識') {
+      if (mapFilter.sub === 'iPhone') return t.knowledgeType === '端末知識(iPhone)';
+      if (mapFilter.sub === 'Android') return t.knowledgeType === '端末知識(Android)';
+      return t.knowledgeType === '端末知識(iPhone)' || t.knowledgeType === '端末知識(Android)';
+    }
+    if (mapFilter.sub) return t.knowledgeType === mapFilter.type && t.knowledgeSubType === mapFilter.sub;
+    return t.knowledgeType === mapFilter.type;
+  };
+
   const sorted = useMemo(() => {
     const ro = { 秀: 0, 優: 1, 良: 2, 可: 3 };
     return Object.entries(terms)
+      .filter(([, t]) => matchesMapFilter(t))
       .filter(([, t]) => !search || (t.name || '').includes(search) || (t.description || '').includes(search))
       .sort((a, b) =>
         (ro[a[1].rank] ?? 4) - (ro[b[1].rank] ?? 4) || (a[1].name || '').localeCompare(b[1].name || '', 'ja')
       );
-  }, [terms, search]);
+  }, [terms, search, mapFilter]);
 
   const toggle = (id) => {
     setExpandedIds((prev) => {
@@ -344,6 +435,17 @@ export default function AdminTermsTab({ terms }) {
           <button onClick={collapseAll} style={{ background: '#f0ebe6', border: '1.5px solid var(--border)', borderRadius: 7, padding: '5px 10px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', color: 'var(--sub)', fontFamily: 'inherit' }}>全収束</button>
         </div>
       </div>
+
+      <TermMindMap terms={terms} mapFilter={mapFilter} onSelect={setMapFilter} />
+
+      {mapFilter && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: '.78rem', color: 'var(--pd)', background: 'var(--pl)', padding: '5px 10px', borderRadius: 20, fontWeight: 700 }}>
+            {mapFilter.type}{mapFilter.sub ? ` / ${mapFilter.sub}` : ''} で絞り込み中
+          </span>
+          <button onClick={() => setMapFilter(null)} style={{ background: 'none', border: 'none', color: 'var(--sub)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit' }}>✕ 解除</button>
+        </div>
+      )}
 
       <input
         value={search}
