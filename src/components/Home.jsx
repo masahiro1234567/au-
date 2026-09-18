@@ -1,34 +1,50 @@
-import React, { useMemo } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_ICONS } from '../utils.js';
+import React, { useMemo, useState } from 'react';
+import { KNOWLEDGE_TYPES, KNOWLEDGE_SUBTYPES, CATEGORIES_BASE, CATEGORIES_SECTIONS } from '../utils.js';
 
-function TileGrid({ list, counts, onOpen }) {
+function PillRow({ label, options, value, onSelect, counts }) {
   return (
-    <div className="home-grid">
-      {list.map((c) => (
-        <div className="home-tile" key={c} onClick={() => onOpen(c)}>
-          <div className="home-tile-icon">{CATEGORY_ICONS[c] || '📚'}</div>
-          <div className="home-tile-name">{c}</div>
-          <div className="home-tile-count">{counts[c] || 0}件</div>
-        </div>
-      ))}
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 12, color: 'var(--sub)', marginBottom: 6, fontWeight: 700 }}>{label}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {options.map((opt) => {
+          const active = value === opt;
+          return (
+            <button
+              key={opt}
+              onClick={() => onSelect(opt)}
+              style={{
+                padding: '7px 14px', borderRadius: 20, fontSize: '.82rem', fontWeight: 700, cursor: 'pointer',
+                border: active ? 'none' : '1.5px solid var(--border)',
+                background: active ? 'var(--primary)' : '#fff',
+                color: active ? '#fff' : 'var(--text)',
+              }}
+            >
+              {opt}{counts && counts[opt] != null ? `（${counts[opt]}）` : ''}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-export default function Home({ terms, onOpenCategory, onOpenSection, onViewAll, onGoTest, onAdminLogin }) {
+export default function Home({ terms, onOpenFiltered, onViewAll, onGoTest, onAdminLogin }) {
   const entries = useMemo(() => Object.values(terms), [terms]);
 
-  const catCounts = useMemo(() => {
-    const c = {};
-    entries.forEach((t) => { c[t.category] = (c[t.category] || 0) + 1; });
-    return c;
-  }, [entries]);
+  const [knowledgeType, setKnowledgeType] = useState('');
+  const [knowledgeSubType, setKnowledgeSubType] = useState('');
+  const [category, setCategory] = useState('');
+  const [section, setSection] = useState('');
 
-  const sectionCounts = useMemo(() => {
-    const c = {};
-    entries.forEach((t) => { if (t.section) c[t.section] = (c[t.section] || 0) + 1; });
-    return c;
-  }, [entries]);
+  const needsSub = knowledgeType === '自社知識' || knowledgeType === '他社知識';
+  const readyForCategory = knowledgeType && (!needsSub || knowledgeSubType);
+  const readyForResult = readyForCategory && category;
+
+  const selectType = (v) => { setKnowledgeType(v); setKnowledgeSubType(''); setCategory(''); setSection(''); };
+  const selectSub = (v) => { setKnowledgeSubType(v); setCategory(''); setSection(''); };
+  const selectCategory = (v) => { setCategory(v); setSection(''); };
+
+  const pathLabel = [knowledgeType, knowledgeSubType, category, section].filter(Boolean).join(' / ');
 
   return (
     <div className="page">
@@ -44,11 +60,29 @@ export default function Home({ terms, onOpenCategory, onOpenSection, onViewAll, 
           <div className="home-hero-sub">全{entries.length}件の用語を収録</div>
         </div>
 
-        <div className="section-title" style={{ marginTop: 4 }}>カテゴリで見る</div>
-        <TileGrid list={CATEGORIES_BASE} counts={catCounts} onOpen={onOpenCategory} />
+        <PillRow label="知識の種類" options={KNOWLEDGE_TYPES} value={knowledgeType} onSelect={selectType} />
 
-        <div className="section-title">部分知識</div>
-        <TileGrid list={CATEGORIES_SECTIONS} counts={sectionCounts} onOpen={onOpenSection} />
+        {needsSub && (
+          <PillRow label="区分" options={KNOWLEDGE_SUBTYPES} value={knowledgeSubType} onSelect={selectSub} />
+        )}
+
+        {readyForCategory && (
+          <PillRow label="カテゴリ" options={CATEGORIES_BASE} value={category} onSelect={selectCategory} />
+        )}
+
+        {category && (
+          <PillRow label="部分知識（任意）" options={CATEGORIES_SECTIONS} value={section} onSelect={(v) => setSection(v === section ? '' : v)} />
+        )}
+
+        {readyForResult && (
+          <button
+            className="home-viewall"
+            style={{ marginTop: 4 }}
+            onClick={() => onOpenFiltered({ knowledgeType, knowledgeSubType, category, section })}
+          >
+            この条件で見る（{pathLabel}）
+          </button>
+        )}
 
         <button className="home-viewall" onClick={onViewAll}>📚 すべての用語を見る</button>
 

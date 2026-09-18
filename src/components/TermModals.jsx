@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_COLORS, KNOWLEDGE_TYPES, KNOWLEDGE_SUBTYPES, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
 
 function RankSelect({ name, value, onChange }) {
   return (
@@ -89,7 +89,7 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
   );
 }
 
-const EMPTY = { name: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '', related: [] };
+const EMPTY = { name: '', knowledgeType: '', knowledgeSubType: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '', related: [] };
 
 // 追加・編集 共通フォームモーダル
 export function TermFormModal({ open, mode, initial, allTerms, currentId, onClose, onSubmit, onDelete }) {
@@ -130,6 +130,25 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, onClos
             <label>用語名 <span className="req">*</span></label>
             <input value={form.name} onChange={(e) => set('name')(e.target.value)} placeholder="例：MNP" />
           </div>
+          <div className="form-group">
+            <label>知識区分（任意）</label>
+            <select
+              value={form.knowledgeType || ''}
+              onChange={(e) => setForm((f) => ({ ...f, knowledgeType: e.target.value, knowledgeSubType: '' }))}
+            >
+              <option value="">選択なし</option>
+              {KNOWLEDGE_TYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </div>
+          {(form.knowledgeType === '自社知識' || form.knowledgeType === '他社知識') && (
+            <div className="form-group">
+              <label>区分（モバイル/ネット）</label>
+              <select value={form.knowledgeSubType || ''} onChange={(e) => set('knowledgeSubType')(e.target.value)}>
+                <option value="">選択なし</option>
+                {KNOWLEDGE_SUBTYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+          )}
           <div className="form-group">
             <label>カテゴリ <span className="req">*</span></label>
             <select value={form.category} onChange={(e) => set('category')(e.target.value)}>

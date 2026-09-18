@@ -14,10 +14,12 @@ function highlight(text, q) {
   }
 }
 
-export default function Glossary({ terms, isAdmin, initialCat, initialSection, onBackHome, onGoTest, onAdminLogin }) {
+export default function Glossary({ terms, isAdmin, initialCat, initialSection, initialKnowledgeType, initialKnowledgeSubType, onBackHome, onGoTest, onAdminLogin }) {
   const [rank, setRank] = useState('all');
   const [cat, setCat] = useState(initialCat || 'all');
   const [section, setSection] = useState(initialSection || 'all');
+  const [knowledgeType, setKnowledgeType] = useState(initialKnowledgeType || 'all');
+  const [knowledgeSubType, setKnowledgeSubType] = useState(initialKnowledgeSubType || 'all');
   const [q, setQ] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
@@ -49,11 +51,13 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
       (rank === 'all' || t.rank === rank) &&
       (cat === 'all' || t.category === cat) &&
       (section === 'all' || t.section === section) &&
+      (knowledgeType === 'all' || t.knowledgeType === knowledgeType) &&
+      (knowledgeSubType === 'all' || t.knowledgeSubType === knowledgeSubType) &&
       (!q || (t.name || '').includes(q) || (t.description || '').includes(q) || (t.note || '').includes(q))
     );
-  }, [entries, rank, cat, section, q]);
+  }, [entries, rank, cat, section, knowledgeType, knowledgeSubType, q]);
 
-  const resetFilters = () => { setRank('all'); setCat('all'); setSection('all'); };
+  const resetFilters = () => { setRank('all'); setCat('all'); setSection('all'); setKnowledgeType('all'); setKnowledgeSubType('all'); };
 
   const detailTerm = detailId ? terms[detailId] : null;
 
@@ -122,6 +126,12 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, o
             </div>
           </div>
           <div className="active-filters">
+            {knowledgeType !== 'all' && (
+              <span className="filter-chip fc-section" onClick={() => { setKnowledgeType('all'); setKnowledgeSubType('all'); }}>{knowledgeType} ✕</span>
+            )}
+            {knowledgeSubType !== 'all' && (
+              <span className="filter-chip fc-section" onClick={() => setKnowledgeSubType('all')}>{knowledgeSubType} ✕</span>
+            )}
             {rank !== 'all' && (
               <span className={`filter-chip fc-${rank}`} onClick={() => setRank('all')}>ランク:{rank} ✕</span>
             )}

@@ -22,6 +22,8 @@ export default function App() {
   const [page, setPage] = useState(testUser ? 'home' : 'login');
   const [glossaryCat, setGlossaryCat] = useState('all');
   const [glossarySection, setGlossarySection] = useState('all');
+  const [glossaryKnowledgeType, setGlossaryKnowledgeType] = useState('all');
+  const [glossaryKnowledgeSubType, setGlossaryKnowledgeSubType] = useState('all');
   const [isAdmin, setIsAdmin] = useState(sessionStorage.getItem('isAdmin') === '1');
 
   const [quizConfig, setQuizConfig] = useState(null); // {mode, qtype, selRank}
@@ -58,9 +60,18 @@ export default function App() {
       content = (
         <Home
           terms={terms}
-          onOpenCategory={(c) => { setGlossaryCat(c); setGlossarySection('all'); setPage('glossary'); }}
-          onOpenSection={(s) => { setGlossaryCat('all'); setGlossarySection(s); setPage('glossary'); }}
-          onViewAll={() => { setGlossaryCat('all'); setGlossarySection('all'); setPage('glossary'); }}
+          onOpenFiltered={({ knowledgeType, knowledgeSubType, category, section }) => {
+            setGlossaryKnowledgeType(knowledgeType || 'all');
+            setGlossaryKnowledgeSubType(knowledgeSubType || 'all');
+            setGlossaryCat(category || 'all');
+            setGlossarySection(section || 'all');
+            setPage('glossary');
+          }}
+          onViewAll={() => {
+            setGlossaryCat('all'); setGlossarySection('all');
+            setGlossaryKnowledgeType('all'); setGlossaryKnowledgeSubType('all');
+            setPage('glossary');
+          }}
           onGoTest={goTest}
           onAdminLogin={() => setPage('admin-login')}
         />
@@ -73,6 +84,8 @@ export default function App() {
           isAdmin={isAdmin}
           initialCat={glossaryCat}
           initialSection={glossarySection}
+          initialKnowledgeType={glossaryKnowledgeType}
+          initialKnowledgeSubType={glossaryKnowledgeSubType}
           onBackHome={() => setPage('home')}
           onGoTest={goTest}
           onAdminLogin={() => setPage('admin-login')}
@@ -141,9 +154,18 @@ export default function App() {
       content = (
         <Home
           terms={terms}
-          onOpenCategory={(c) => { setGlossaryCat(c); setGlossarySection('all'); setPage('glossary'); }}
-          onOpenSection={(s) => { setGlossaryCat('all'); setGlossarySection(s); setPage('glossary'); }}
-          onViewAll={() => { setGlossaryCat('all'); setGlossarySection('all'); setPage('glossary'); }}
+          onOpenFiltered={({ knowledgeType, knowledgeSubType, category, section }) => {
+            setGlossaryKnowledgeType(knowledgeType || 'all');
+            setGlossaryKnowledgeSubType(knowledgeSubType || 'all');
+            setGlossaryCat(category || 'all');
+            setGlossarySection(section || 'all');
+            setPage('glossary');
+          }}
+          onViewAll={() => {
+            setGlossaryCat('all'); setGlossarySection('all');
+            setGlossaryKnowledgeType('all'); setGlossaryKnowledgeSubType('all');
+            setPage('glossary');
+          }}
           onGoTest={goTest}
           onAdminLogin={() => setPage('admin-login')}
         />

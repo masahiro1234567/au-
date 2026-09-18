@@ -1,15 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS, RANKS, showToast } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORIES_SECTIONS, KNOWLEDGE_TYPES, KNOWLEDGE_SUBTYPES, RANKS, showToast } from '../utils.js';
 import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
 import { RelatedTermsTagInput } from './TermModals.jsx';
 
-const emptyRow = () => ({ name: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' });
+const emptyRow = () => ({ name: '', knowledgeType: '', knowledgeSubType: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' });
 
-function BulkAddSection({ onSaved }) {
-  const [open, setOpen] = useState(false);
-  const [rows, setRows] = useState([emptyRow()]);
-  const [parseText, setParseText] = useState('');
-
+function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen, duplicateIndices, onSaved }) {
   const updateRow = (i, key, val) => {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, [key]: val } : r)));
   };
@@ -76,33 +72,50 @@ function BulkAddSection({ onSaved }) {
               読み取って行を作成
             </button>
           </div>
-          {rows.map((row, i) => (
-            <div className="bulk-row" key={i}>
-              <div className="bulk-row-top">
-                <span style={{ fontSize: '.75rem', color: 'var(--sub)', fontWeight: 700 }}>用語 {i + 1}</span>
-                <button className="btn-row-del" onClick={() => removeRow(i)}>削除</button>
+          {rows.map((row, i) => {
+            const isDup = duplicateIndices.has(i);
+            return (
+              <div
+                className="bulk-row"
+                key={i}
+                style={isDup ? { background: '#fee2e2', border: '1.5px solid #fca5a5', borderRadius: 8, padding: 8 } : undefined}
+              >
+                <div className="bulk-row-top">
+                  <span style={{ fontSize: '.75rem', color: 'var(--sub)', fontWeight: 700 }}>用語 {i + 1}</span>
+                  <button className="btn-row-del" onClick={() => removeRow(i)}>削除</button>
+                </div>
+                <div className="bulk-row-fields">
+                  <input className="bulk-name" placeholder="用語名 *" value={row.name} onChange={(e) => updateRow(i, 'name', e.target.value)} />
+                  <select className="bulk-cat" value={row.knowledgeType || ''} onChange={(e) => { updateRow(i, 'knowledgeType', e.target.value); updateRow(i, 'knowledgeSubType', ''); }}>
+                    <option value="">知識区分：選択なし</option>
+                    {KNOWLEDGE_TYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                  {(row.knowledgeType === '自社知識' || row.knowledgeType === '他社知識') && (
+                    <select className="bulk-cat" value={row.knowledgeSubType || ''} onChange={(e) => updateRow(i, 'knowledgeSubType', e.target.value)}>
+                      <option value="">区分：選択なし</option>
+                      {KNOWLEDGE_SUBTYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  )}
+                  <select className="bulk-cat" value={row.category} onChange={(e) => updateRow(i, 'category', e.target.value)}>
+                    {CATEGORIES_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select className="bulk-cat" value={row.section || ''} onChange={(e) => updateRow(i, 'section', e.target.value)}>
+                    <option value="">部分知識：選択なし</option>
+                    {CATEGORIES_SECTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="bulk-rank-row">
+                  {RANKS.map((r) => (
+                    <label key={r}>
+                      <input type="radio" name={`br-${i}`} checked={row.rank === r} onChange={() => updateRow(i, 'rank', r)} /> {r}
+                    </label>
+                  ))}
+                </div>
+                <textarea className="bulk-desc" rows={2} placeholder="説明 *" value={row.description} onChange={(e) => updateRow(i, 'description', e.target.value)} />
+                <textarea className="bulk-note" rows={1} placeholder="補足・注意点（任意）" value={row.note} onChange={(e) => updateRow(i, 'note', e.target.value)} />
               </div>
-              <div className="bulk-row-fields">
-                <input className="bulk-name" placeholder="用語名 *" value={row.name} onChange={(e) => updateRow(i, 'name', e.target.value)} />
-                <select className="bulk-cat" value={row.category} onChange={(e) => updateRow(i, 'category', e.target.value)}>
-                  {CATEGORIES_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <select className="bulk-cat" value={row.section || ''} onChange={(e) => updateRow(i, 'section', e.target.value)}>
-                  <option value="">部分知識：選択なし</option>
-                  {CATEGORIES_SECTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="bulk-rank-row">
-                {RANKS.map((r) => (
-                  <label key={r}>
-                    <input type="radio" name={`br-${i}`} checked={row.rank === r} onChange={() => updateRow(i, 'rank', r)} /> {r}
-                  </label>
-                ))}
-              </div>
-              <textarea className="bulk-desc" rows={2} placeholder="説明 *" value={row.description} onChange={(e) => updateRow(i, 'description', e.target.value)} />
-              <textarea className="bulk-note" rows={1} placeholder="補足・注意点（任意）" value={row.note} onChange={(e) => updateRow(i, 'note', e.target.value)} />
-            </div>
-          ))}
+            );
+          })}
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <button
               onClick={addRow}
@@ -131,6 +144,8 @@ function BulkAddSection({ onSaved }) {
 
 function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }) {
   const [name, setName] = useState(term.name || '');
+  const [knowledgeType, setKnowledgeType] = useState(term.knowledgeType || '');
+  const [knowledgeSubType, setKnowledgeSubType] = useState(term.knowledgeSubType || '');
   const [category, setCategory] = useState(term.category || CATEGORIES_BASE[0]);
   const [section, setSection] = useState(term.section || '');
   const [rank, setRank] = useState(term.rank || '秀');
@@ -143,7 +158,7 @@ function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }
   const save = async () => {
     if (!name.trim() || !description.trim()) return showToast('用語名と説明は必須です');
     try {
-      await dbSet('terms/' + id, { name, category, section, rank, description, note, updatedAt: Date.now() });
+      await dbSet('terms/' + id, { name, knowledgeType, knowledgeSubType, category, section, rank, description, note, updatedAt: Date.now() });
       const oldIds = Object.keys(term.related || {});
       await saveTermRelations(id, oldIds, related);
       showToast('✅ 更新しました');
@@ -178,6 +193,26 @@ function TermItem({ id, term, allTerms, expanded, onToggle, onSaved, onDeleted }
             <label>用語名</label>
             <input className="admin-edit-input" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
+          <div className="admin-edit-group">
+            <label>知識区分（任意）</label>
+            <select
+              className="admin-cat-sel"
+              value={knowledgeType}
+              onChange={(e) => { setKnowledgeType(e.target.value); setKnowledgeSubType(''); }}
+            >
+              <option value="">選択なし</option>
+              {KNOWLEDGE_TYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </div>
+          {(knowledgeType === '自社知識' || knowledgeType === '他社知識') && (
+            <div className="admin-edit-group">
+              <label>区分（モバイル/ネット）</label>
+              <select className="admin-cat-sel" value={knowledgeSubType} onChange={(e) => setKnowledgeSubType(e.target.value)}>
+                <option value="">選択なし</option>
+                {KNOWLEDGE_SUBTYPES.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+          )}
           <div className="admin-edit-group">
             <label>カテゴリ</label>
             <select className="admin-cat-sel" value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -231,6 +266,42 @@ export default function AdminTermsTab({ terms }) {
   const [search, setSearch] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // 一括登録の行データ（検索欄の下に重複まとめを出すため、ここで持つ）
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRows, setBulkRows] = useState([emptyRow()]);
+  const [parseText, setParseText] = useState('');
+
+  const existingNames = useMemo(
+    () => new Set(Object.values(terms).map((t) => (t.name || '').trim()).filter(Boolean)),
+    [terms]
+  );
+
+  // 重複している行のインデックスを判定する（完全一致のみ：既存の用語 or 一括登録内での重複）
+  const duplicateIndices = useMemo(() => {
+    const nameCounts = {};
+    bulkRows.forEach((r) => {
+      const n = r.name.trim();
+      if (n) nameCounts[n] = (nameCounts[n] || 0) + 1;
+    });
+    const dupSet = new Set();
+    bulkRows.forEach((r, i) => {
+      const n = r.name.trim();
+      if (!n) return;
+      if (existingNames.has(n) || nameCounts[n] > 1) dupSet.add(i);
+    });
+    return dupSet;
+  }, [bulkRows, existingNames]);
+
+  const duplicateRows = useMemo(
+    () => bulkRows.map((r, i) => ({ ...r, i })).filter((r) => duplicateIndices.has(r.i)),
+    [bulkRows, duplicateIndices]
+  );
+
+  const removeBulkRow = (i) => setBulkRows((rs) => {
+    const next = rs.filter((_, idx) => idx !== i);
+    return next.length ? next : [emptyRow()];
+  });
+
   const handleRefresh = () => {
     // ブラウザの再読み込みはせず、この画面内だけで最新の状態を反映させる
     if (window.caches?.keys) {
@@ -281,7 +352,34 @@ export default function AdminTermsTab({ terms }) {
         style={{ width: '100%', border: '1.5px solid var(--border)', borderRadius: 9, padding: '9px 12px', fontSize: '.85rem', fontFamily: 'inherit', marginBottom: 12, background: '#fff' }}
       />
 
-      <BulkAddSection />
+      {/* 一括登録中に重複がある時だけ、検索欄の下にまとめて表示する */}
+      {duplicateRows.length > 0 && (
+        <div style={{ background: '#fee2e2', border: '1.5px solid #fca5a5', borderRadius: 9, padding: 12, marginBottom: 12 }}>
+          <div style={{ fontSize: '.78rem', fontWeight: 800, color: '#dc2626', marginBottom: 8 }}>
+            重複している用語が{duplicateRows.length}件あります
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {duplicateRows.map((r) => (
+              <div key={r.i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: 7, padding: '6px 10px' }}>
+                <span style={{ fontSize: '.82rem', fontWeight: 700 }}>{r.name || '（未入力）'}</span>
+                <button
+                  onClick={() => removeBulkRow(r.i)}
+                  style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '4px 9px', color: '#dc2626', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  削除
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <BulkAddSection
+        rows={bulkRows} setRows={setBulkRows}
+        parseText={parseText} setParseText={setParseText}
+        open={bulkOpen} setOpen={setBulkOpen}
+        duplicateIndices={duplicateIndices}
+      />
 
       {!sorted.length ? (
         <div className="tc ts" style={{ padding: 30 }}>{search ? '該当する用語がありません' : '用語データなし'}</div>

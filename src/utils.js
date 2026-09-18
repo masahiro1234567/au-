@@ -23,6 +23,9 @@ export function showToast(msg) {
 }
 
 export const RANKS = ['秀', '優', '良', '可'];
+// 知識区分（新しい絞り込みの入り口）。自社知識・他社知識はモバイル/ネットでさらに分かれる
+export const KNOWLEDGE_TYPES = ['自社知識', '他社知識', '端末知識(iPhone)', '端末知識(Android)'];
+export const KNOWLEDGE_SUBTYPES = ['モバイル', 'ネット'];
 // 既存の絞り込みカテゴリ
 export const CATEGORIES_BASE = ['商材・プラン', '契約種別', '用語', 'ステークホルダー'];
 // 「編」区分（部分知識）。役割・工程ごとの学習単位で、既存カテゴリとは別グループとして扱う
