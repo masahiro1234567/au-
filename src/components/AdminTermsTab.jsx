@@ -229,6 +229,18 @@ export default function AdminTermsTab({ terms }) {
   // デフォルトは全収束。展開したIDだけをセットで管理。
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [search, setSearch] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = () => {
+    // ブラウザの再読み込みはせず、この画面内だけで最新の状態を反映させる
+    if (window.caches?.keys) {
+      caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+    }
+    setExpandedIds(new Set());
+    setSearch('');
+    setRefreshKey((k) => k + 1);
+    showToast('✅ 最新の状態に更新しました');
+  };
 
   const sorted = useMemo(() => {
     const ro = { 秀: 0, 優: 1, 良: 2, 可: 3 };
@@ -251,6 +263,9 @@ export default function AdminTermsTab({ terms }) {
 
   return (
     <div>
+      <button className="btn-force-refresh" onClick={handleRefresh}>
+        🔄 更新（変更が反映されない時はこちら）
+      </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div className="section-title" style={{ marginBottom: 0 }}>用語管理</div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -274,7 +289,7 @@ export default function AdminTermsTab({ terms }) {
         <div className="admin-terms-list">
           {sorted.map(([id, t]) => (
             <TermItem
-              key={id} id={id} term={t} allTerms={terms}
+              key={id + '_' + refreshKey} id={id} term={t} allTerms={terms}
               expanded={expandedIds.has(id)}
               onToggle={() => toggle(id)}
             />
