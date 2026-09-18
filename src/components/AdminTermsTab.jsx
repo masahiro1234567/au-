@@ -13,17 +13,21 @@ async function ensureTypeId(type) {
 }
 
 // ①すべて → ②知識区分 → ③区分、の3階層をそのまま管理できるアコーディオン形式の設定パネル
+// prompt()は環境によって出ない場合があるため使わず、常に見えてる入力欄＋ボタンで追加する
 function KnowledgeConfigManager({ knowledgeTypes }) {
   const [open, setOpen] = useState(false);
   const [openIds, setOpenIds] = useState({});
+  const [newLevel2Name, setNewLevel2Name] = useState('');
+  const [newLevel3Names, setNewLevel3Names] = useState({}); // { [typeKey]: text }
 
   const toggleOpen = (key) => setOpenIds((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const addLevel2 = async () => {
-    const name = prompt('新しい②の項目名を入力してください（例：他社知識(法人)）');
-    if (!name || !name.trim()) return;
+    const name = newLevel2Name.trim();
+    if (!name) return showToast('②の名前を入力してください');
     try {
-      await dbPush('knowledge_types', { name: name.trim() });
+      await dbPush('knowledge_types', { name });
+      setNewLevel2Name('');
       showToast('✅ 追加しました');
     } catch (e) { showToast('エラー:' + e.message); }
   };
@@ -33,6 +37,7 @@ function KnowledgeConfigManager({ knowledgeTypes }) {
     try {
       const id = await ensureTypeId(type);
       await dbSet(`knowledge_types/${id}/name`, name.trim());
+      showToast('✅ 変更しました');
     } catch (e) { showToast('エラー:' + e.message); }
   };
 
@@ -42,12 +47,13 @@ function KnowledgeConfigManager({ knowledgeTypes }) {
     try { await dbRemove(`knowledge_types/${type.id}`); showToast('🗑 削除しました'); } catch (e) { showToast('エラー:' + e.message); }
   };
 
-  const addLevel3 = async (type) => {
-    const name = prompt('新しい③の項目名を入力してください（例：モバイル）');
-    if (!name || !name.trim()) return;
+  const addLevel3 = async (type, key) => {
+    const name = (newLevel3Names[key] || '').trim();
+    if (!name) return showToast('③の名前を入力してください');
     try {
       const id = await ensureTypeId(type);
-      await dbPush(`knowledge_types/${id}/children`, { name: name.trim() });
+      await dbPush(`knowledge_types/${id}/children`, { name });
+      setNewLevel3Names((prev) => ({ ...prev, [key]: '' }));
       showToast('✅ 追加しました');
     } catch (e) { showToast('エラー:' + e.message); }
   };
@@ -62,6 +68,16 @@ function KnowledgeConfigManager({ knowledgeTypes }) {
     } catch (e) { showToast('エラー:' + e.message); }
   };
 
+  const NumBadge = ({ n, color }) => (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: 20, height: 20, borderRadius: '50%', background: color || 'var(--sub)', color: '#fff',
+      fontSize: '.68rem', fontWeight: 800, flexShrink: 0, marginRight: 7,
+    }}>
+      {n}
+    </span>
+  );
+
   return (
     <div style={{ marginBottom: 12 }}>
       <div
@@ -72,11 +88,12 @@ function KnowledgeConfigManager({ knowledgeTypes }) {
         <span style={{ fontSize: '1rem', color: 'var(--sub)' }}>{open ? '▲' : '▼'}</span>
       </div>
       {open && (
-        <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: 14 }}>
-          <div style={{ background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '9px 12px', fontSize: '.82rem', fontWeight: 700, marginBottom: 10 }}>
-            ① すべて
+        <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--primary)', color: '#fff', borderRadius: 9, padding: '11px 14px', fontSize: '.86rem', fontWeight: 800, marginBottom: 14 }}>
+            <NumBadge n="①" color="rgba(255,255,255,.3)" />すべて
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 12, borderLeft: '2px solid var(--border)', marginBottom: 10 }}>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 14, borderLeft: '3px solid var(--border)', marginBottom: 12 }}>
             {knowledgeTypes.map((type, ti) => {
               const key = type.id || `default-${ti}`;
               const isOpen = !!openIds[key];
@@ -84,54 +101,90 @@ function KnowledgeConfigManager({ knowledgeTypes }) {
               const border = ['#1D9E75', '#D85A30', '#7F77DD', '#D4537E', '#BA7517'][ti % 5];
               const text = ['#04342C', '#4A1B0C', '#26215C', '#4B1528', '#412402'][ti % 5];
               return (
-                <div key={key}>
+                <div key={key} style={{ border: `1.5px solid ${border}`, borderRadius: 10, overflow: 'hidden' }}>
                   <div
                     onClick={() => toggleOpen(key)}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: bg, borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: bg, padding: '10px 12px', cursor: 'pointer' }}
                   >
-                    <span style={{ fontSize: '.8rem', fontWeight: 700, color: text }}>② {type.name}{!type.id && <span style={{ fontSize: '.66rem', opacity: .7 }}>（初期値）</span>}</span>
-                    <span style={{ fontSize: '.9rem', color: text }}>{isOpen ? '▲' : '▼'}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', fontSize: '.84rem', fontWeight: 800, color: text }}>
+                      <NumBadge n="②" color={border} />
+                      {type.name}
+                      {!type.id && <span style={{ fontSize: '.64rem', opacity: .7, marginLeft: 6, fontWeight: 500 }}>（初期値）</span>}
+                      <span style={{ fontSize: '.66rem', fontWeight: 700, marginLeft: 8, background: 'rgba(255,255,255,.6)', padding: '2px 7px', borderRadius: 10 }}>
+                        ③ {type.children.length}件
+                      </span>
+                    </span>
+                    <span style={{ fontSize: '1rem', color: text }}>{isOpen ? '▲' : '▼'}</span>
                   </div>
                   {isOpen && (
-                    <div style={{ paddingLeft: 16, marginLeft: 8, borderLeft: `2px solid ${border}`, marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <div style={{ padding: 12, background: '#fff' }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ fontSize: '.68rem', color: 'var(--sub)', flexShrink: 0 }}>②の名前</span>
                         <input
                           defaultValue={type.name}
                           onBlur={(e) => renameLevel2(type, e.target.value)}
                           style={{ flex: 1, border: '1.5px solid var(--border)', borderRadius: 7, padding: '6px 8px', fontSize: '.78rem', fontFamily: 'inherit' }}
                         />
-                        {type.id ? (
-                          <button onClick={() => removeLevel2(type)} style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '5px 8px', color: '#dc2626', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>削除</button>
-                        ) : (
-                          <span style={{ fontSize: '.64rem', color: 'var(--sub)' }}>編集すると保存されます</span>
+                        {type.id && (
+                          <button onClick={() => removeLevel2(type)} style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 9px', color: '#dc2626', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>削除</button>
                         )}
                       </div>
-                      {type.children.map((child) => (
-                        <div key={child.id || child.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: bg, opacity: .85, borderRadius: 6, padding: '6px 10px' }}>
-                          <span style={{ fontSize: '.76rem', color: text }}>③ {child.name}{!child.id && <span style={{ fontSize: '.62rem', opacity: .7 }}>（初期値）</span>}</span>
-                          {child.id ? (
-                            <button onClick={() => removeLevel3(type, child)} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer' }}>削除</button>
-                          ) : null}
+
+                      <div style={{ paddingLeft: 14, borderLeft: `3px solid ${border}` }}>
+                        <div style={{ fontSize: '.68rem', color: text, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center' }}>
+                          <NumBadge n="③" color={border} />この②に含まれる区分
                         </div>
-                      ))}
-                      <button
-                        onClick={() => addLevel3(type)}
-                        style={{ padding: '6px 10px', borderRadius: 7, border: `1.5px dashed ${border}`, background: 'none', color: text, fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
-                        ＋ ③の項目を追加
-                      </button>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                          {type.children.length === 0 && <span style={{ fontSize: '.72rem', color: 'var(--sub)' }}>まだ区分がありません</span>}
+                          {type.children.map((child) => (
+                            <span key={child.id || child.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: bg, border: `1px solid ${border}`, color: text, borderRadius: 20, padding: '5px 6px 5px 12px', fontSize: '.76rem', fontWeight: 700 }}>
+                              {child.name}
+                              {!child.id && <span style={{ fontSize: '.6rem', opacity: .7, fontWeight: 500 }}>（初期値）</span>}
+                              {child.id && (
+                                <button onClick={() => removeLevel3(type, child)} style={{ background: 'none', border: 'none', color: text, opacity: .6, cursor: 'pointer', fontSize: '.85rem', lineHeight: 1, padding: '0 4px' }}>✕</button>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <input
+                            value={newLevel3Names[key] || ''}
+                            onChange={(e) => setNewLevel3Names((prev) => ({ ...prev, [key]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && addLevel3(type, key)}
+                            placeholder="例：モバイル"
+                            style={{ flex: 1, border: `1.5px solid ${border}`, borderRadius: 7, padding: '7px 9px', fontSize: '.78rem', fontFamily: 'inherit' }}
+                          />
+                          <button
+                            onClick={() => addLevel3(type, key)}
+                            style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: border, color: '#fff', fontSize: '.76rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+                          >
+                            ＋追加
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-          <button
-            onClick={addLevel2}
-            style={{ width: '100%', padding: 9, borderRadius: 8, border: '2px dashed var(--border)', background: 'var(--bg)', fontSize: '.8rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--sub)' }}
-          >
-            ＋ ②の項目を追加
-          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg)', border: '1.5px dashed var(--border)', borderRadius: 9, padding: 10 }}>
+            <NumBadge n="②" color="var(--sub)" />
+            <input
+              value={newLevel2Name}
+              onChange={(e) => setNewLevel2Name(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addLevel2()}
+              placeholder="新しい②の名前（例：他社知識(法人)）"
+              style={{ flex: 1, border: '1.5px solid var(--border)', borderRadius: 7, padding: '7px 9px', fontSize: '.8rem', fontFamily: 'inherit' }}
+            />
+            <button
+              onClick={addLevel2}
+              style={{ padding: '8px 16px', borderRadius: 7, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+            >
+              ＋追加
+            </button>
+          </div>
         </div>
       )}
     </div>
