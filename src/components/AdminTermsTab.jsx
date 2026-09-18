@@ -142,7 +142,7 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
   );
 }
 
-// 用語管理画面の上部に出す縦型のグルーピング表示（タップしやすいHTML/CSSレイアウト）
+// 用語管理画面の上部に出すマインドマップ（線でつながった構成図・縦方向・コンパクト）
 function TermMindMap({ terms, mapFilter, onSelect }) {
   const counts = useMemo(() => {
     const c = { self: { モバイル: 0, ネット: 0 }, other: { モバイル: 0, ネット: 0 }, device: { iPhone: 0, Android: 0 } };
@@ -161,74 +161,60 @@ function TermMindMap({ terms, mapFilter, onSelect }) {
   }, [terms]);
 
   const isActive = (type, sub) => !!mapFilter && mapFilter.type === type && mapFilter.sub === (sub || null);
+  const dim = (active) => (mapFilter && !active ? 0.4 : 1);
 
   const COLORS = {
     自社知識: { bg: '#E1F5EE', border: '#1D9E75', text: '#04342C' },
     端末知識: { bg: '#EEEDFE', border: '#7F77DD', text: '#26215C' },
     他社知識: { bg: '#FAECE7', border: '#D85A30', text: '#4A1B0C' },
   };
-
-  const Branch = ({ type, children }) => {
-    const col = COLORS[type];
-    const active = isActive(type, null);
-    return (
-      <div style={{ marginBottom: 6 }}>
-        <button
-          onClick={() => onSelect(active ? null : { type, sub: null })}
-          style={{
-            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            background: col.bg, border: `${active ? 2 : 1}px solid ${col.border}`, borderRadius: 8,
-            padding: '9px 12px', fontSize: '.82rem', fontWeight: 700, color: col.text, cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          <span>{type}</span>
-          <span style={{ fontSize: '.72rem', opacity: .8 }}>{active ? '選択中 ✕' : ''}</span>
-        </button>
-        <div style={{ display: 'flex', gap: 6, marginTop: 4, marginLeft: 14, borderLeft: `2px solid ${col.border}`, paddingLeft: 8 }}>
-          {children.map((ch) => {
-            const chActive = isActive(type, ch.sub);
-            return (
-              <button
-                key={ch.sub}
-                onClick={() => onSelect(chActive ? null : { type, sub: ch.sub })}
-                style={{
-                  flex: 1, background: chActive ? col.border : '#fff', color: chActive ? '#fff' : col.text,
-                  border: `1px solid ${col.border}`, borderRadius: 7, padding: '7px 6px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                {ch.sub}（{ch.count}）
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
+  // 3列（自社/端末/他社）× 各列2つの子ノード。縦方向：上から すべて → 3列 → 各列の子2つ
+  const cols = [
+    { type: '自社知識', x: 10, children: [{ sub: 'モバイル', count: counts.self.モバイル }, { sub: 'ネット', count: counts.self.ネット }] },
+    { type: '端末知識', x: 135, children: [{ sub: 'iPhone', count: counts.device.iPhone }, { sub: 'Android', count: counts.device.Android }] },
+    { type: '他社知識', x: 260, children: [{ sub: 'モバイル', count: counts.other.モバイル }, { sub: 'ネット', count: counts.other.ネット }] },
+  ];
+  const COL_W = 110;
 
   return (
-    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
-      <button
-        onClick={() => onSelect(null)}
-        style={{
-          width: '100%', background: mapFilter === null ? 'var(--primary)' : '#f0ebe6',
-          color: mapFilter === null ? '#fff' : 'var(--sub)', border: 'none', borderRadius: 8,
-          padding: '8px 12px', fontSize: '.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8,
-        }}
-      >
-        すべて
-      </button>
-      <Branch type="自社知識" children={[
-        { sub: 'モバイル', count: counts.self.モバイル },
-        { sub: 'ネット', count: counts.self.ネット },
-      ]} />
-      <Branch type="端末知識" children={[
-        { sub: 'iPhone', count: counts.device.iPhone },
-        { sub: 'Android', count: counts.device.Android },
-      ]} />
-      <Branch type="他社知識" children={[
-        { sub: 'モバイル', count: counts.other.モバイル },
-        { sub: 'ネット', count: counts.other.ネット },
-      ]} />
+    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 8, marginBottom: 12 }}>
+      <svg width="100%" viewBox="0 0 380 172" style={{ overflow: 'visible' }}>
+        {/* すべて（頂点） */}
+        <g style={{ cursor: 'pointer' }} onClick={() => onSelect(null)}>
+          <rect x={140} y={4} width={100} height={28} rx={8} fill={mapFilter === null ? '#f97316' : '#F1EFE8'} stroke="#888780" strokeWidth={0.5} />
+          <text x={190} y={18} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700} fill={mapFilter === null ? '#fff' : '#2C2C2A'}>すべて</text>
+        </g>
+
+        {cols.map((col) => {
+          const c = COLORS[col.type];
+          const cx = col.x + COL_W / 2;
+          const active = isActive(col.type, null);
+          return (
+            <g key={col.type}>
+              <path d={`M190 32 C190 42, ${cx} 46, ${cx} 56`} fill="none" stroke={c.border} strokeWidth={0.75} />
+              <g style={{ cursor: 'pointer', opacity: dim(active) }} onClick={() => onSelect(active ? null : { type: col.type, sub: null })}>
+                <rect x={col.x} y={56} width={COL_W} height={30} rx={8} fill={c.bg} stroke={c.border} strokeWidth={active ? 2 : 0.5} />
+                <text x={cx} y={71} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700} fill={c.text}>{col.type}</text>
+              </g>
+              {col.children.map((ch, i) => {
+                const chX = col.x + i * (COL_W / 2 + 3);
+                const chW = COL_W / 2 - 3;
+                const chCx = chX + chW / 2;
+                const chActive = isActive(col.type, ch.sub);
+                return (
+                  <g key={ch.sub}>
+                    <path d={`M${cx} 86 C${cx} 96, ${chCx} 98, ${chCx} 108`} fill="none" stroke={c.border} strokeWidth={0.5} />
+                    <g style={{ cursor: 'pointer', opacity: dim(chActive) }} onClick={() => onSelect(chActive ? null : { type: col.type, sub: ch.sub })}>
+                      <rect x={chX} y={108} width={chW} height={28} rx={6} fill={chActive ? c.border : '#fff'} stroke={c.border} strokeWidth={chActive ? 2 : 0.5} />
+                      <text x={chCx} y={122} textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={700} fill={chActive ? '#fff' : c.text}>{ch.sub}({ch.count})</text>
+                    </g>
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }
