@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
+import { ConfirmButton } from './ConfirmButton.jsx';
 
 // 知識区分の階層セレクタ。選んだ項目がさらに子を持ってたら、その下に次の選択欄が自動で増える（何段でも）
 export function PathSelector({ tree, path, onChange }) {
@@ -206,7 +207,7 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
           </div>
         </div>
         <div className="modal-footer">
-          {mode === 'edit' && <button className="mbtn mbtn-danger" onClick={onDelete}>削除</button>}
+          {mode === 'edit' && <ConfirmButton label="削除" message={`「${form.name}」を削除しますか？`} onConfirm={onDelete} className="mbtn mbtn-danger" />}
           <button className="mbtn mbtn-cancel" onClick={onClose}>キャンセル</button>
           <button className="mbtn mbtn-primary" onClick={handleSubmit}>{mode === 'add' ? '保存' : '更新'}</button>
         </div>

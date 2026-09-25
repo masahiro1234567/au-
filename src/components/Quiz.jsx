@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { shuffle } from '../utils.js';
+import { ConfirmButton } from './ConfirmButton.jsx';
 
 function buildQuiz(terms, qtype, selRank) {
   const all = Object.values(terms);
@@ -54,10 +55,6 @@ export default function Quiz({ terms, mode, qtype, selRank, onFinish, onQuit }) 
     }
   };
 
-  const confirmQuit = () => {
-    if (confirm('テストを終了しますか？')) onQuit();
-  };
-
   return (
     <div className="page">
       <div className="hdr">
@@ -66,7 +63,7 @@ export default function Quiz({ terms, mode, qtype, selRank, onFinish, onQuit }) 
           <span className={`mode-badge ${mode === 'practice' ? 'mode-practice' : 'mode-official'}`}>
             {mode === 'practice' ? '練習モード' : '本番モード'}
           </span>
-          <button className="btn-ghost" onClick={confirmQuit}>終了</button>
+          <ConfirmButton label="終了" message="テストを終了しますか？" onConfirm={onQuit} className="btn-ghost" />
         </div>
       </div>
       <div className="t-body">

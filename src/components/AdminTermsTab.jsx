@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { CATEGORIES_BASE, CATEGORIES_SECTIONS, DEFAULT_KNOWLEDGE_TYPES, RANKS, showToast, getTermPath, termMatchesPath } from '../utils.js';
 import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
 import { RelatedTermsTagInput, PathSelector } from './TermModals.jsx';
+import { ConfirmButton } from './ConfirmButton.jsx';
 
 const emptyRow = () => ({ name: '', knowledgePath: [], category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' });
 
@@ -159,7 +160,6 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
   };
 
   const del = async () => {
-    if (!confirm('この用語を削除しますか？')) return;
     try {
       const relatedIds = Object.keys(term.related || {});
       await removeTermWithRelations(id, relatedIds);
@@ -227,7 +227,7 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
             />
           </div>
           <div className="admin-action-row">
-            <button className="btn-del-term" onClick={del}>🗑 削除</button>
+            <ConfirmButton label="🗑 削除" message={`「${term.name}」を削除しますか？`} onConfirm={del} className="btn-del-term" style={{}} confirmStyle={{ background: '#dc2626', border: 'none', borderRadius: 6, padding: '8px 12px', color: '#fff', fontSize: '.78rem', fontWeight: 700, cursor: 'pointer' }} />
             <button className="btn-save-term" onClick={save}>✅ 保存</button>
           </div>
         </div>

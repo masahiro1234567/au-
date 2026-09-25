@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { showToast, getTermPath } from '../utils.js';
 import { dbPush, dbSet, dbRemove } from '../useFirebase.js';
+import { ConfirmButton } from './ConfirmButton.jsx';
 
 // デフォルト値（id=null）はFirebaseにまだ無いので、書き込みが必要になった時点で実体化してidを得る。
 // pathは「ルートから対象ノードまでの名前の配列」。実体化しながらFirebase上の実パス（idの配列）を返す。
@@ -63,7 +64,12 @@ export function TreeNode({ node, path, depth, siblingIndex, openIds, setOpenIds,
               style={{ flex: 1, border: '1.5px solid var(--border)', borderRadius: 7, padding: '6px 8px', fontSize: '.78rem', fontFamily: 'inherit' }}
             />
             {node.id && (
-              <button onClick={() => onRemove(path, node)} style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 9px', color: '#dc2626', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>削除</button>
+              <ConfirmButton
+                label="削除"
+                message={`「${node.name || '（名前なし）'}」を削除しますか？`}
+                onConfirm={() => onRemove(path, node)}
+                style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 9px', color: '#dc2626', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+              />
             )}
           </div>
 
@@ -109,6 +115,7 @@ export function KnowledgeConfigManager({ knowledgeTypes, defaultOpen }) {
   const addRoot = async () => {
     const name = newRootName.trim();
     if (!name) return showToast('名前を入力してください');
+    if (knowledgeTypes.some((t) => t.name === name)) return showToast('同じ名前の項目がすでにあります');
     try {
       await dbPush('knowledge_types', { name });
       setNewRootName('');
@@ -127,7 +134,6 @@ export function KnowledgeConfigManager({ knowledgeTypes, defaultOpen }) {
 
   const onRemove = async (parentPath, node) => {
     if (!node.id) return showToast('初期値は削除できません');
-    if (!confirm(`「${node.name}」を削除しますか？（すでに用語に付けたタグはそのまま残ります）`)) return;
     try {
       const dbPath = await ensureNodeId(knowledgeTypes, [...parentPath, node.name]);
       await dbRemove(`knowledge_types/${dbPath}`);
@@ -135,9 +141,22 @@ export function KnowledgeConfigManager({ knowledgeTypes, defaultOpen }) {
     } catch (e) { showToast('エラー:' + e.message); }
   };
 
+  const findNode = (path) => {
+    let nodes = knowledgeTypes;
+    let node = null;
+    for (const name of path) {
+      node = nodes.find((n) => n.name === name);
+      if (!node) return null;
+      nodes = node.children;
+    }
+    return node;
+  };
+
   const onAddChild = async (parentPath, key) => {
     const name = (newChildNames[key] || '').trim();
     if (!name) return showToast('名前を入力してください');
+    const parentNode = findNode(parentPath);
+    if (parentNode && parentNode.children.some((c) => c.name === name)) return showToast('同じ名前の項目がすでにあります');
     try {
       const dbPath = await ensureNodeId(knowledgeTypes, parentPath);
       await dbPush(`knowledge_types/${dbPath}/children`, { name });

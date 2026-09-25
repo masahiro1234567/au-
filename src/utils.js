@@ -44,11 +44,16 @@ function parseDefaultNode(t) {
 }
 
 // Firebaseの knowledge_types コレクションをツリー配列に変換する。
-// デフォルト値は常に含めた上で、Firebaseに追加された分をあとに連結する（追加＝上書きにならないようにする）。
+// デフォルト値は常に含めるが、同名のものがFirebaseに実体化済みならそちらを優先する（重複表示を防ぐ）。
+// Firebaseにしか無い名前（ユーザーが新規追加したもの）は、デフォルトの後ろに連結する。
 export function resolveKnowledgeTypes(knowledgeTypesDb) {
   const custom = Object.entries(knowledgeTypesDb || {}).map(([id, t]) => parseKnowledgeNode(id, t));
+  const customByName = new Map(custom.map((c) => [c.name, c]));
   const defaults = DEFAULT_KNOWLEDGE_TYPES.map(parseDefaultNode);
-  return [...defaults, ...custom];
+  const merged = defaults.map((d) => customByName.get(d.name) || d);
+  const defaultNames = new Set(defaults.map((d) => d.name));
+  const extra = custom.filter((c) => !defaultNames.has(c.name));
+  return [...merged, ...extra];
 }
 
 // 用語に保存されている知識区分の「パス」（[レベル1, レベル2, レベル3, ...]）を取得する。

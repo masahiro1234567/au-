@@ -83,7 +83,7 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, i
   };
 
   const handleDelete = async () => {
-    if (!editing || !confirm('削除しますか？')) return;
+    if (!editing) return;
     try {
       const relatedIds = Object.keys(editing.term.related || {});
       await removeTermWithRelations(editing.id, relatedIds);

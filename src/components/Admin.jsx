@@ -3,6 +3,7 @@ import AdminTermsTab from './AdminTermsTab.jsx';
 import AdminKnowledgeTab from './AdminKnowledgeTab.jsx';
 import { showToast } from '../utils.js';
 import { dbSet, dbRemove } from '../useFirebase.js';
+import { ConfirmButton } from './ConfirmButton.jsx';
 
 function SummaryTab({ results }) {
   const entries = useMemo(() => {
@@ -165,8 +166,7 @@ function ProfileTab({ profiles }) {
   const [editUid, setEditUid] = useState(null);
   const list = Object.entries(profiles || {});
 
-  const del = async (uid, name) => {
-    if (!confirm(`「${name}」のプロフィールを削除しますか？\n※テスト結果のログは残ります`)) return;
+  const del = async (uid) => {
     try {
       await dbRemove('user_profiles/' + uid);
       showToast('🗑 削除しました');
@@ -192,12 +192,12 @@ function ProfileTab({ profiles }) {
               >
                 変更
               </button>
-              <button
-                onClick={() => del(uid, p.name)}
+              <ConfirmButton
+                label="削除"
+                message={`「${p.name}」を削除しますか？（テスト結果のログは残ります）`}
+                onConfirm={() => del(uid)}
                 style={{ background: '#fee2e2', border: '1.5px solid #fecaca', borderRadius: 7, padding: '5px 10px', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', color: '#dc2626', fontFamily: 'inherit' }}
-              >
-                削除
-              </button>
+              />
             </div>
           </div>
         ))
