@@ -216,8 +216,8 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
   );
 }
 
-// 関連用語1行（カテゴリで色分けした左バー、アイコンなし）
-function RelatedRow({ term, isChild, onClick }) {
+// 関連用語1行（カテゴリで色分けした左バー、アイコンなし、さらに関連があれば開閉シェブロン）
+function RelatedRow({ term, isChild, onClick, hasChildren, isOpen, onToggle }) {
   const color = CATEGORY_COLORS[term.category] || CATEGORY_COLORS[term.section] || '#888780';
   return (
     <div className={`related-thread-row ${isChild ? 'child' : ''}`} onClick={onClick}>
@@ -226,20 +226,41 @@ function RelatedRow({ term, isChild, onClick }) {
         <div className="related-thread-name">{term.name}</div>
         <div className="related-thread-desc">{term.description}</div>
       </div>
+      {hasChildren && (
+        <span
+          className="related-thread-chevron"
+          onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        >
+          {isOpen ? '▼' : '▶'}
+        </span>
+      )}
     </div>
   );
 }
 
-// 関連用語をコメントスレッド風に表示する（1段のみ・アイコンなし・カテゴリで色分け）
-function RelatedThread({ relatedIds, allTerms, onSelectRelated }) {
+// 関連用語を折りたたみリスト形式で表示する（デフォルトは閉じた状態。さらに関連があればシェブロンで再帰的に展開できる）
+// visited: これまでに辿ってきた用語idの一覧。循環（AのB→BのA…）を防ぐために子の候補から除外する
+function RelatedThread({ relatedIds, allTerms, onSelectRelated, visited }) {
+  const [openIds, setOpenIds] = useState({});
   return (
     <div>
       {relatedIds.map((id, i) => {
         const t = allTerms?.[id];
         if (!t) return null;
+        const childIds = Object.keys(t.related || {}).filter((cid) => !visited.includes(cid) && allTerms?.[cid]);
+        const isOpen = !!openIds[id];
         return (
           <div key={id} className="related-thread-block" style={{ borderBottom: i < relatedIds.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
-            <RelatedRow term={t} onClick={() => onSelectRelated(id)} />
+            <RelatedRow
+              term={t} onClick={() => onSelectRelated(id)}
+              hasChildren={childIds.length > 0} isOpen={isOpen}
+              onToggle={() => setOpenIds((prev) => ({ ...prev, [id]: !prev[id] }))}
+            />
+            {isOpen && childIds.length > 0 && (
+              <div className="related-thread-children">
+                <RelatedThread relatedIds={childIds} allTerms={allTerms} onSelectRelated={onSelectRelated} visited={[...visited, id]} />
+              </div>
+            )}
           </div>
         );
       })}
@@ -248,7 +269,7 @@ function RelatedThread({ relatedIds, allTerms, onSelectRelated }) {
 }
 
 // 関連用語セクション：デフォルト収束。「関連用語を見る」ボタンで展開する
-function RelatedSection({ relatedIds, allTerms, onSelectRelated }) {
+function RelatedSection({ relatedIds, allTerms, currentTermId, onSelectRelated }) {
   const [sectionOpen, setSectionOpen] = useState(false);
   return (
     <div className="detail-sec">
@@ -260,7 +281,7 @@ function RelatedSection({ relatedIds, allTerms, onSelectRelated }) {
       ) : (
         <>
           <button type="button" className="related-section-toggle" onClick={() => setSectionOpen(false)}>閉じる</button>
-          <RelatedThread relatedIds={relatedIds} allTerms={allTerms} onSelectRelated={onSelectRelated} />
+          <RelatedThread relatedIds={relatedIds} allTerms={allTerms} onSelectRelated={onSelectRelated} visited={[currentTermId]} />
         </>
       )}
     </div>
@@ -302,6 +323,7 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
               key={currentId}
               relatedIds={relatedIds}
               allTerms={allTerms}
+              currentTermId={currentId}
               onSelectRelated={onSelectRelated}
             />
           )}

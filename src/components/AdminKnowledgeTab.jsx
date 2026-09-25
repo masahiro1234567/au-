@@ -4,7 +4,7 @@ import { saveTermRelations } from '../useFirebase.js';
 import { RelatedTermsTagInput } from './TermModals.jsx';
 import { ConfirmButton } from './ConfirmButton.jsx';
 import {
-  KnowledgeConfigManager, TermMindMap,
+  KnowledgeConfigManager, TermMindMap, MindMapList, ZoomPanBox,
   findKnowledgeNode, renameKnowledgeNode, removeKnowledgeNode, addKnowledgeChild,
 } from './KnowledgeTree.jsx';
 
@@ -141,6 +141,7 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
   const [mapFilter, setMapFilter] = useState(null);
   const [mapEditMode, setMapEditMode] = useState(false);
   const [editingPath, setEditingPath] = useState(null);
+  const [viewMode, setViewMode] = useState('list'); // 'list'（折りたたみリスト）| 'map'（ズーム対応の図）
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -159,7 +160,21 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
 
       <KnowledgeConfigManager knowledgeTypes={kTypes} defaultOpen />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => setViewMode('list')}
+            style={{ fontSize: '.72rem', fontWeight: 700, padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit', border: viewMode === 'list' ? 'none' : '1.5px solid var(--border)', background: viewMode === 'list' ? 'var(--pd)' : '#fff', color: viewMode === 'list' ? '#fff' : 'var(--sub)' }}
+          >
+            📋 折りたたみリスト
+          </button>
+          <button
+            onClick={() => setViewMode('map')}
+            style={{ fontSize: '.72rem', fontWeight: 700, padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit', border: viewMode === 'map' ? 'none' : '1.5px solid var(--border)', background: viewMode === 'map' ? 'var(--pd)' : '#fff', color: viewMode === 'map' ? '#fff' : 'var(--sub)' }}
+          >
+            🔍 図（拡大・移動）
+          </button>
+        </div>
         <button
           onClick={() => { setMapEditMode((v) => !v); setEditingPath(null); setMapFilter(null); }}
           style={{
@@ -169,14 +184,23 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
             color: mapEditMode ? '#fff' : 'var(--sub)',
           }}
         >
-          ✏️ {mapEditMode ? 'マインドマップを編集中（タップして終了）' : 'マインドマップを直接編集する'}
+          ✏️ {mapEditMode ? '編集中（タップして終了）' : '直接編集する'}
         </button>
       </div>
 
-      <TermMindMap
-        terms={terms} knowledgeTypes={kTypes} mapFilter={mapFilter} onSelect={setMapFilter}
-        editable={mapEditMode} onEditNode={setEditingPath}
-      />
+      {viewMode === 'list' ? (
+        <MindMapList
+          terms={terms} knowledgeTypes={kTypes} mapFilter={mapFilter} onSelect={setMapFilter}
+          editable={mapEditMode} onEditNode={setEditingPath}
+        />
+      ) : (
+        <ZoomPanBox height={280}>
+          <TermMindMap
+            terms={terms} knowledgeTypes={kTypes} mapFilter={mapFilter} onSelect={setMapFilter}
+            editable={mapEditMode} onEditNode={setEditingPath}
+          />
+        </ZoomPanBox>
+      )}
 
       {mapEditMode && editingPath && (
         <MindMapNodeEditor knowledgeTypes={kTypes} path={editingPath} onClose={() => setEditingPath(null)} />

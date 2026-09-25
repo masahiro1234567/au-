@@ -348,3 +348,121 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editab
     </div>
   );
 }
+
+// マインドマップを折りたたみリスト形式で表示する（デフォルトは全部閉じた状態。深い階層でもごちゃつかない）
+function ListNode({ node, path, colorIndex, isActive, handleClick, editable, countFor, openIds, setOpenIds }) {
+  const key = path.join(' / ');
+  const isOpen = !!openIds[key];
+  const c = DEPTH_COLORS[colorIndex % DEPTH_COLORS.length];
+  const active = isActive(path);
+  const hasChildren = node.children.length > 0;
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px',
+          borderRadius: 8, cursor: 'pointer', marginBottom: 4,
+          background: active ? c.border : c.bg, border: `0.5px solid ${c.border}`,
+        }}
+        onClick={() => handleClick(path)}
+      >
+        <span style={{ fontSize: '.8rem', fontWeight: 700, color: active ? '#fff' : c.text }}>
+          {node.name || '（名前なし）'}{path.length > 1 ? `（${countFor(path)}）` : ''}
+          {editable && <span style={{ marginLeft: 6, fontSize: '.72rem' }}>✏️</span>}
+        </span>
+        {hasChildren && (
+          <span
+            style={{ fontSize: '.85rem', color: active ? '#fff' : c.text, padding: '0 4px' }}
+            onClick={(e) => { e.stopPropagation(); setOpenIds((prev) => ({ ...prev, [key]: !prev[key] })); }}
+          >
+            {isOpen ? '▼' : '▶'}
+          </span>
+        )}
+      </div>
+      {hasChildren && isOpen && (
+        <div style={{ paddingLeft: 16, borderLeft: `2px solid ${c.border}`, marginLeft: 4, marginBottom: 4 }}>
+          {node.children.map((child) => (
+            <ListNode
+              key={child.id || child.name}
+              node={child} path={[...path, child.name]} colorIndex={colorIndex}
+              isActive={isActive} handleClick={handleClick} editable={editable} countFor={countFor}
+              openIds={openIds} setOpenIds={setOpenIds}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function MindMapList({ terms, knowledgeTypes, mapFilter, onSelect, editable, onEditNode }) {
+  const [openIds, setOpenIds] = useState({});
+  const countFor = (path) => Object.values(terms).filter((t) => {
+    const tp = getTermPath(t);
+    return tp.length === path.length && path.every((p, i) => tp[i] === p);
+  }).length;
+  const isActive = (path) => !!mapFilter && mapFilter.length === path.length && mapFilter.every((p, i) => p === path[i]);
+  const handleClick = (path) => {
+    if (editable) { onEditNode?.(path); return; }
+    onSelect(isActive(path) ? null : path);
+  };
+
+  return (
+    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+      <div
+        onClick={() => !editable && onSelect(null)}
+        style={{ padding: '8px 10px', borderRadius: 8, marginBottom: 6, cursor: 'pointer', background: mapFilter === null ? '#f97316' : '#F1EFE8', color: mapFilter === null ? '#fff' : '#2C2C2A', fontSize: '.8rem', fontWeight: 700 }}
+      >
+        すべて
+      </div>
+      {knowledgeTypes.map((node, i) => (
+        <ListNode
+          key={node.id || i}
+          node={node} path={[node.name]} colorIndex={i}
+          isActive={isActive} handleClick={handleClick} editable={editable} countFor={countFor}
+          openIds={openIds} setOpenIds={setOpenIds}
+        />
+      ))}
+    </div>
+  );
+}
+
+// マインドマップ（図）に拡大縮小・ドラッグ移動をつけて表示するラッパー
+export function ZoomPanBox({ children, height }) {
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragRef = useState({ dragging: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })[0];
+
+  const apply = () => ({ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: '0 0' });
+
+  const onDown = (e) => {
+    const p = e.touches ? e.touches[0] : e;
+    dragRef.dragging = true;
+    dragRef.startX = p.clientX; dragRef.startY = p.clientY;
+    dragRef.startPanX = pan.x; dragRef.startPanY = pan.y;
+  };
+  const onMove = (e) => {
+    if (!dragRef.dragging) return;
+    const p = e.touches ? e.touches[0] : e;
+    setPan({ x: dragRef.startPanX + (p.clientX - dragRef.startX), y: dragRef.startPanY + (p.clientY - dragRef.startY) });
+  };
+  const onUp = () => { dragRef.dragging = false; };
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
+        <button onClick={() => setScale((s) => Math.max(0.4, s - 0.2))} style={{ width: 32, padding: 0, border: '1.5px solid var(--border)', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>－</button>
+        <button onClick={() => { setScale(1); setPan({ x: 0, y: 0 }); }} style={{ padding: '4px 10px', border: '1.5px solid var(--border)', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: '.72rem' }}>リセット</button>
+        <button onClick={() => setScale((s) => Math.min(2.5, s + 0.2))} style={{ width: 32, padding: 0, border: '1.5px solid var(--border)', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>＋</button>
+      </div>
+      <div
+        style={{ overflow: 'hidden', border: '1.5px solid var(--border)', borderRadius: 10, height: height || 260, cursor: 'grab', background: '#fff' }}
+        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
+      >
+        <div style={apply()}>{children}</div>
+      </div>
+    </div>
+  );
+}
