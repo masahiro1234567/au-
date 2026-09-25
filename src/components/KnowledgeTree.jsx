@@ -1,12 +1,12 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { showToast, getTermPath } from '../utils.js';
-import { dbPush, dbSet, dbRemove } from '../useFirebase.js';
+import { dbPush, dbSet, dbRemove, dbGet, dbUpdateMany } from '../useFirebase.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
 // デフォルトの子ノード群を、実体化した親の下に再帰的に複製する（実体化のたびに子が消えてしまうのを防ぐ）
 async function seedDefaultChildren(childrenDbPath, children) {
-  for (const child of children) {
-    const ref = await dbPush(childrenDbPath, { name: child.name });
+  for (const [i, child] of children.entries()) {
+    const ref = await dbPush(childrenDbPath, { name: child.name, order: i });
     if (child.children && child.children.length) {
       await seedDefaultChildren(`${childrenDbPath}/${ref.key}/children`, child.children);
     }
@@ -82,7 +82,22 @@ export async function addKnowledgeChild(knowledgeTypes, parentPath, name) {
     return;
   }
   const dbPath = await ensureNodeId(knowledgeTypes, parentPath);
-  await dbPush(`knowledge_types/${dbPath}/children`, { name: trimmed });
+  // 新しい子は末尾に来るよう、order に現在時刻を入れる
+  await dbPush(`knowledge_types/${dbPath}/children`, { name: trimmed, order: Date.now() });
+}
+
+// 指定したノードの子の並び順を保存する（orderedNames＝並べたい順の子の名前）
+export async function reorderKnowledgeChildren(knowledgeTypes, parentPath, orderedNames) {
+  const dbPath = await ensureNodeId(knowledgeTypes, parentPath);
+  // 親を実体化した直後は子のidが手元に無いので、Firebaseから読み直して名前で対応付ける
+  const raw = (await dbGet(`knowledge_types/${dbPath}/children`)) || {};
+  const idByName = new Map(Object.entries(raw).map(([id, c]) => [c.name, id]));
+  const updates = {};
+  orderedNames.forEach((name, i) => {
+    const id = idByName.get(name);
+    if (id) updates[`knowledge_types/${dbPath}/children/${id}/order`] = i;
+  });
+  await dbUpdateMany(updates);
 }
 
 // 1つのノードを再帰的に描画する（子がいれば、その子もまた同じ形で描画される＝何段でも深くできる）

@@ -32,12 +32,13 @@ export const DEFAULT_KNOWLEDGE_TYPES = [
 
 // Firebaseの入れ子構造（{name, children: {childId: {name, children: {...}}}}）を再帰的に
 // [{id, name, children:[...]}] へ変換する（何段ネストしても対応する）
+// 子は order（並び順）で並べる。order が無い古いデータは登録順のまま
 function parseKnowledgeNode(id, raw) {
-  return {
-    id,
-    name: raw.name,
-    children: Object.entries(raw.children || {}).map(([cid, c]) => parseKnowledgeNode(cid, c)),
-  };
+  const children = Object.entries(raw.children || {})
+    .map(([cid, c], i) => ({ node: parseKnowledgeNode(cid, c), order: typeof c.order === 'number' ? c.order : i }))
+    .sort((a, b) => a.order - b.order)
+    .map((x) => x.node);
+  return { id, name: raw.name, children };
 }
 function parseDefaultNode(t) {
   return { id: null, name: t.name, children: (t.children || []).map(parseDefaultNode) };

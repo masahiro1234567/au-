@@ -1,12 +1,93 @@
-import React, { useMemo, useState } from 'react';
-import { DEFAULT_KNOWLEDGE_TYPES, termMatchesPath, showToast } from '../utils.js';
-import { saveTermRelations } from '../useFirebase.js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_KNOWLEDGE_TYPES, termMatchesPath, getTermPath, showToast } from '../utils.js';
+import { saveTermRelations, dbUpdateMany } from '../useFirebase.js';
 import { RelatedTermsTagInput } from './TermModals.jsx';
 import { ConfirmButton } from './ConfirmButton.jsx';
 import {
   KnowledgeConfigManager, TermMindMap, MindMapList, ZoomPanBox,
-  findKnowledgeNode, renameKnowledgeNode, removeKnowledgeNode, addKnowledgeChild,
+  findKnowledgeNode, renameKnowledgeNode, removeKnowledgeNode, addKnowledgeChild, reorderKnowledgeChildren,
 } from './KnowledgeTree.jsx';
+
+
+// 子の並び替え（ドラッグ）。マウス・タッチ両対応のため Pointer Events で実装
+function SortableChildren({ items, onRemove, onReorder }) {
+  const [order, setOrder] = useState(items.map((c) => c.name));
+  const [dragName, setDragName] = useState(null);
+  const drag = useRef({ name: null, startX: 0, startY: 0, active: false, changed: false });
+  const itemsKey = items.map((c) => c.name).join('\u0001');
+
+  // Firebaseから並びが更新されたら反映（ドラッグ中は反映しない）
+  useEffect(() => { if (!drag.current.name) setOrder(items.map((c) => c.name)); }, [itemsKey]);
+
+  const byName = new Map(items.map((c) => [c.name, c]));
+  const orderRef = useRef(order);
+  orderRef.current = order;
+
+  const onDown = (e, name) => {
+    if (e.target.closest('button')) return; // ✕ボタンは通常のクリック
+    drag.current = { name, startX: e.clientX, startY: e.clientY, active: false, changed: false };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onMove = (e) => {
+    const d = drag.current;
+    if (!d.name) return;
+    if (!d.active) {
+      if (Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) < 5) return;
+      d.active = true;
+      setDragName(d.name);
+    }
+    const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-sort-name]');
+    const over = el?.getAttribute('data-sort-name');
+    if (!over || over === d.name) return;
+    setOrder((o) => {
+      const from = o.indexOf(d.name), to = o.indexOf(over);
+      if (from < 0 || to < 0) return o;
+      const n = [...o];
+      n.splice(from, 1);
+      n.splice(to, 0, d.name);
+      d.changed = true;
+      return n;
+    });
+  };
+  const onUp = () => {
+    const d = drag.current;
+    const changed = d.active && d.changed;
+    drag.current = { name: null, startX: 0, startY: 0, active: false, changed: false };
+    setDragName(null);
+    if (changed) onReorder(orderRef.current);
+  };
+
+  if (!items.length) return <span style={{ fontSize: '.72rem', color: 'var(--sub)' }}>まだ子がありません</span>;
+
+  return (
+    <>
+      {order.map((name) => {
+        const c = byName.get(name);
+        if (!c) return null;
+        const dragging = dragName === name;
+        return (
+          <span
+            key={c.id || c.name}
+            data-sort-name={name}
+            className={`sort-chip ${dragging ? 'dragging' : ''}`}
+            onPointerDown={(e) => onDown(e, name)}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
+            onPointerCancel={onUp}
+          >
+            <svg className="sort-grip" width="10" height="14" viewBox="0 0 10 14" aria-hidden="true">
+              {[2, 7, 12].map((y) => [2, 8].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.3" fill="currentColor" />))}
+            </svg>
+            {c.name || '（名前なし）'}
+            {c.id && (
+              <button onClick={() => onRemove(c.name)} className="sort-chip-x">✕</button>
+            )}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 // マインドマップ上で選んだノードを直接編集するパネル（名前変更・子の追加・子の削除・自分自身の削除）
 function MindMapNodeEditor({ knowledgeTypes, path, onClose }) {
@@ -36,6 +117,13 @@ function MindMapNodeEditor({ knowledgeTypes, path, onClose }) {
       await removeKnowledgeNode(knowledgeTypes, [...path, childName]);
       showToast('🗑 削除しました');
     } catch (e) { showToast(e.message); }
+  };
+
+  const doReorder = async (names) => {
+    try {
+      await reorderKnowledgeChildren(knowledgeTypes, path, names);
+      showToast('並び順を保存しました');
+    } catch (e) { showToast('エラー:' + e.message); }
   };
 
   const doRemoveSelf = async () => {
@@ -69,17 +157,9 @@ function MindMapNodeEditor({ knowledgeTypes, path, onClose }) {
         )}
       </div>
 
-      <div style={{ fontSize: '.7rem', color: 'var(--sub)', marginBottom: 6 }}>子（{node.children.length}件）</div>
+      <div style={{ fontSize: '.7rem', color: 'var(--sub)', marginBottom: 6 }}>子（{node.children.length}件）{node.children.length > 1 && '　ドラッグで並び替えできます'}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-        {node.children.length === 0 && <span style={{ fontSize: '.72rem', color: 'var(--sub)' }}>まだ子がありません</span>}
-        {node.children.map((c) => (
-          <span key={c.id || c.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#fff', border: '1px solid var(--border)', borderRadius: 20, padding: '5px 6px 5px 12px', fontSize: '.76rem', fontWeight: 700 }}>
-            {c.name || '（名前なし）'}
-            {c.id && (
-              <button onClick={() => doRemoveChild(c.name)} style={{ background: 'none', border: 'none', color: 'var(--sub)', cursor: 'pointer', fontSize: '.85rem', lineHeight: 1, padding: '0 4px' }}>✕</button>
-            )}
-          </span>
-        ))}
+        <SortableChildren items={node.children} onRemove={doRemoveChild} onReorder={doReorder} />
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
         <input
@@ -129,6 +209,144 @@ function RelationRow({ id, term, allTerms }) {
             ✅ 関連付けを保存
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+
+// マインドマップで選んだ区分に、複数の用語をまとめて登録する（カテゴリ分け作業の簡略化用）
+function BulkAssignPanel({ terms, path }) {
+  const [scope, setScope] = useState('unassigned'); // 'unassigned'（未分類のみ）| 'all'（すべて）
+  const [q, setQ] = useState('');
+  const [selected, setSelected] = useState(() => new Set());
+  const [saving, setSaving] = useState(false);
+  const pathKey = path.join('/');
+
+  // 区分を切り替えたら選択をリセット
+  React.useEffect(() => { setSelected(new Set()); }, [pathKey]);
+
+  const isHere = (t) => getTermPath(t).join('/') === pathKey;
+
+  const list = useMemo(() => {
+    return Object.entries(terms)
+      .filter(([, t]) => (scope === 'all' ? true : getTermPath(t).length === 0))
+      .filter(([, t]) => !q || (t.name || '').includes(q))
+      .sort((a, b) => {
+        // この区分に登録済みの用語は下に回す
+        const ha = isHere(a[1]) ? 1 : 0, hb = isHere(b[1]) ? 1 : 0;
+        if (ha !== hb) return ha - hb;
+        return (a[1].name || '').localeCompare(b[1].name || '', 'ja');
+      });
+  }, [terms, scope, q, pathKey]);
+
+  const unassignedCount = useMemo(() => Object.values(terms).filter((t) => getTermPath(t).length === 0).length, [terms]);
+  const selectable = list.filter(([, t]) => !isHere(t)).map(([id]) => id);
+  const allSelected = selectable.length > 0 && selectable.every((id) => selected.has(id));
+  const selectedHere = [...selected].filter((id) => terms[id] && isHere(terms[id]));
+  const selectedToAssign = [...selected].filter((id) => terms[id] && !isHere(terms[id]));
+
+  const toggle = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected((s) => {
+    const n = new Set(s);
+    if (allSelected) selectable.forEach((id) => n.delete(id)); else selectable.forEach((id) => n.add(id));
+    return n;
+  });
+
+  const assign = async () => {
+    if (!selectedToAssign.length) return;
+    setSaving(true);
+    try {
+      const updates = {};
+      selectedToAssign.forEach((id) => {
+        updates[`terms/${id}/knowledgePath`] = path;
+        // 旧形式のフィールドは新形式と食い違わないよう消しておく
+        updates[`terms/${id}/knowledgeType`] = null;
+        updates[`terms/${id}/knowledgeSubType`] = null;
+      });
+      await dbUpdateMany(updates);
+      showToast(`${selectedToAssign.length}件を「${path.join(' / ')}」に登録しました`);
+      setSelected(new Set());
+    } catch (e) { showToast('エラー:' + e.message); }
+    setSaving(false);
+  };
+
+  const unassign = async () => {
+    if (!selectedHere.length) return;
+    setSaving(true);
+    try {
+      const updates = {};
+      selectedHere.forEach((id) => {
+        updates[`terms/${id}/knowledgePath`] = null;
+        updates[`terms/${id}/knowledgeType`] = null;
+        updates[`terms/${id}/knowledgeSubType`] = null;
+      });
+      await dbUpdateMany(updates);
+      showToast(`${selectedHere.length}件を区分から外しました`);
+      setSelected(new Set());
+    } catch (e) { showToast('エラー:' + e.message); }
+    setSaving(false);
+  };
+
+  const pill = (active) => ({
+    fontSize: '.72rem', fontWeight: 700, padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit',
+    border: active ? 'none' : '1.5px solid var(--border)', background: active ? 'var(--pd)' : '#fff', color: active ? '#fff' : 'var(--sub)',
+  });
+
+  return (
+    <div className="ba-panel">
+      <div className="ba-head">
+        <div className="ba-title">用語をまとめて登録</div>
+        <div className="ba-target">登録先：<b>{path.join(' / ')}</b></div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+        <button style={pill(scope === 'unassigned')} onClick={() => setScope('unassigned')}>未分類のみ（{unassignedCount}）</button>
+        <button style={pill(scope === 'all')} onClick={() => setScope('all')}>すべての用語</button>
+      </div>
+      <input
+        value={q} onChange={(e) => setQ(e.target.value)} placeholder="用語名で絞り込み"
+        className="ba-search"
+      />
+
+      <div className="ba-listbar">
+        <label className="ba-check">
+          <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={!selectable.length} />
+          <span>表示中をすべて選択</span>
+        </label>
+        <span className="ba-count">{selected.size}件選択中</span>
+      </div>
+
+      <div className="ba-list">
+        {list.length === 0 ? (
+          <div className="ba-empty">{scope === 'unassigned' ? '未分類の用語はありません' : '該当する用語がありません'}</div>
+        ) : list.map(([id, t]) => {
+          const cur = getTermPath(t);
+          const here = isHere(t);
+          return (
+            <label key={id} className={`ba-row ${selected.has(id) ? 'on' : ''}`}>
+              <input type="checkbox" checked={selected.has(id)} onChange={() => toggle(id)} />
+              <span className="ba-row-name">{t.name}</span>
+              <span className={`ba-row-path ${here ? 'here' : ''}`}>
+                {here ? '登録済み' : cur.length ? cur.join(' / ') : '未分類'}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+
+      <div className="ba-actions">
+        {selectedHere.length > 0 && (
+          <button className="ba-btn ba-btn-sub" disabled={saving} onClick={unassign}>
+            {selectedHere.length}件を区分から外す
+          </button>
+        )}
+        <button className="ba-btn" disabled={saving || !selectedToAssign.length} onClick={assign}>
+          {saving ? '保存中…' : `${selectedToAssign.length}件をこの区分に登録`}
+        </button>
+      </div>
+      {scope === 'all' && selectedToAssign.some((id) => getTermPath(terms[id]).length) && (
+        <div className="ba-note">別の区分に入っている用語は、この区分へ移動します</div>
       )}
     </div>
   );
@@ -213,6 +431,12 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
           </span>
           <button onClick={() => setMapFilter(null)} style={{ background: 'none', border: 'none', color: 'var(--sub)', fontSize: '.78rem', cursor: 'pointer', fontFamily: 'inherit' }}>✕ 解除</button>
         </div>
+      )}
+
+      {!mapEditMode && mapFilter && <BulkAssignPanel terms={terms} path={mapFilter} />}
+
+      {!mapEditMode && !mapFilter && (
+        <div className="ba-hint">マインドマップで区分を1つ選ぶと、その区分に用語をまとめて登録できます</div>
       )}
 
       <div className="section-title" style={{ fontSize: '.85rem', marginTop: 16 }}>関連付けの管理</div>

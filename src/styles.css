@@ -374,3 +374,36 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
   .hm-card:hover .hm-arrow{transform:translateX(3px);}
   .hm-admin{align-self:flex-end;}
 }
+
+/* ===== 用語管理：一括カテゴリ登録 ===== */
+.ba-panel{background:#fff;border:1.5px solid var(--primary);border-radius:12px;padding:14px;margin-bottom:14px;}
+.ba-head{margin-bottom:10px;}
+.ba-title{font-size:.9rem;font-weight:900;color:var(--text);margin-bottom:2px;}
+.ba-target{font-size:.76rem;color:var(--sub);font-weight:600;}
+.ba-target b{color:var(--pd);}
+.ba-search{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:.84rem;font-family:inherit;margin-bottom:8px;background:#fff;}
+.ba-search:focus{outline:none;border-color:var(--primary);}
+.ba-listbar{display:flex;justify-content:space-between;align-items:center;padding:0 2px 6px;}
+.ba-check{display:flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;color:var(--text);cursor:pointer;}
+.ba-count{font-size:.74rem;font-weight:800;color:var(--pd);}
+.ba-list{border:1.5px solid var(--border);border-radius:9px;max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.ba-row{display:flex;align-items:center;gap:9px;padding:10px 12px;border-bottom:1px solid #fbe7da;cursor:pointer;}
+.ba-row:last-child{border-bottom:none;}
+.ba-row.on{background:var(--pl);}
+.ba-row input,.ba-check input{width:17px;height:17px;accent-color:var(--primary);flex-shrink:0;}
+.ba-row-name{flex:1;min-width:0;font-size:.84rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ba-row-path{font-size:.66rem;font-weight:700;color:var(--sub);flex-shrink:0;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ba-row-path.here{color:#059669;}
+.ba-empty{padding:20px;text-align:center;font-size:.8rem;color:var(--sub);}
+.ba-actions{display:flex;gap:8px;margin-top:10px;position:sticky;bottom:0;}
+.ba-btn{flex:1;padding:11px;border:none;border-radius:9px;background:var(--primary);color:#fff;font-size:.84rem;font-weight:800;cursor:pointer;font-family:inherit;}
+.ba-btn:disabled{opacity:.45;cursor:default;}
+.ba-btn-sub{flex:0 0 auto;background:#fff;color:var(--sub);border:1.5px solid var(--border);padding:11px 14px;}
+.ba-note{margin-top:6px;font-size:.7rem;color:var(--sub);}
+.ba-hint{background:var(--pl);border:1.5px dashed var(--border);border-radius:10px;padding:10px 12px;font-size:.76rem;font-weight:700;color:var(--pd);margin-bottom:14px;}
+
+/* ===== 知識区分：子の並び替え ===== */
+.sort-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:20px;padding:5px 6px 5px 9px;font-size:.76rem;font-weight:700;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;transition:box-shadow .12s,transform .12s;}
+.sort-chip.dragging{cursor:grabbing;border-color:var(--primary);background:var(--pl);box-shadow:0 4px 14px rgba(255,102,0,.25);transform:scale(1.05);}
+.sort-grip{color:#cbb09e;flex-shrink:0;}
+.sort-chip-x{background:none;border:none;color:var(--sub);cursor:pointer;font-size:.85rem;line-height:1;padding:0 4px;}

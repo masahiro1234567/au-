@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ref, onValue, push, set, remove, update } from 'firebase/database';
+import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
 import { db } from './firebase.js';
 
 // terms / test_results / user_profiles を購読し、{id: data} 形式で返す
@@ -53,4 +53,15 @@ export async function removeTermWithRelations(termId, relatedIds = []) {
   const updates = { [`terms/${termId}`]: null };
   relatedIds.forEach((id) => { updates[`terms/${id}/related/${termId}`] = null; });
   await update(ref(db), updates);
+}
+
+// 複数パスをまとめて1回で更新する（一括カテゴリ分けなどで使用）。値にnullを入れるとその項目は削除される
+export async function dbUpdateMany(updates) {
+  if (Object.keys(updates).length) await update(ref(db), updates);
+}
+
+// 1回だけ値を読み取る
+export async function dbGet(path) {
+  const snap = await get(ref(db, path));
+  return snap.val();
 }
