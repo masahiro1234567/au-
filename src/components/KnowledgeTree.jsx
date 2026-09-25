@@ -3,6 +3,16 @@ import { showToast, getTermPath } from '../utils.js';
 import { dbPush, dbSet, dbRemove } from '../useFirebase.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
+// デフォルトの子ノード群を、実体化した親の下に再帰的に複製する（実体化のたびに子が消えてしまうのを防ぐ）
+async function seedDefaultChildren(childrenDbPath, children) {
+  for (const child of children) {
+    const ref = await dbPush(childrenDbPath, { name: child.name });
+    if (child.children && child.children.length) {
+      await seedDefaultChildren(`${childrenDbPath}/${ref.key}/children`, child.children);
+    }
+  }
+}
+
 // デフォルト値（id=null）はFirebaseにまだ無いので、書き込みが必要になった時点で実体化してidを得る。
 // pathは「ルートから対象ノードまでの名前の配列」。実体化しながらFirebase上の実パス（idの配列）を返す。
 export async function ensureNodeId(tree, path) {
@@ -12,8 +22,13 @@ export async function ensureNodeId(tree, path) {
     const node = nodes.find((n) => n.name === path[i]);
     let id = node?.id;
     if (!id) {
-      const ref = await dbPush(i === 0 ? 'knowledge_types' : `knowledge_types/${dbPath}`, { name: path[i] });
+      const pushPath = i === 0 ? 'knowledge_types' : `knowledge_types/${dbPath}`;
+      const ref = await dbPush(pushPath, { name: path[i] });
       id = ref.key;
+      // 実体化した瞬間に、デフォルトとして持ってた子（iPhone/Android等）もそのままFirebaseへ複製する
+      if (node?.children?.length) {
+        await seedDefaultChildren(`${pushPath}/${id}/children`, node.children);
+      }
     }
     dbPath = i === 0 ? id : `${dbPath}/children/${id}`;
     nodes = node?.children || [];
@@ -232,6 +247,61 @@ export function KnowledgeConfigManager({ knowledgeTypes, defaultOpen }) {
 
 // 用語管理画面の上部に出すマインドマップ（線でつながった構成図・縦方向・コンパクト）
 // ※見た目は「ルート→その子」までの2段で表示（さらに深い階層はここには出ないが、登録画面のPathSelectorでは何段でも選べる）
+// ノードの直下の「葉」の数（子が無ければ1、あれば子の葉の合計）を数える。横幅の配分に使う。
+function countLeaves(node) {
+  if (!node.children.length) return 1;
+  return node.children.reduce((s, c) => s + countLeaves(c), 0);
+}
+// ツリー全体で一番深い階層数を求める（描画エリアの高さを決めるため）
+function maxDepth(nodes) {
+  if (!nodes.length) return 0;
+  return 1 + Math.max(...nodes.map((n) => maxDepth(n.children)));
+}
+
+const ROW_H = 52; // 1階層ごとの縦の間隔
+
+// 1つのノードと、その子孫すべてを再帰的に描画する（何段でも深くなれる）
+function MindMapBranch({ node, path, x, width, y, colorIndex, isActive, dim, handleClick, editable, countFor, parentCx }) {
+  const c = DEPTH_COLORS[colorIndex % DEPTH_COLORS.length];
+  const boxH = 28;
+  const boxW = Math.max(30, Math.min(width - 6, path.length === 1 ? 110 : 90));
+  const cx = x + width / 2;
+  const active = isActive(path);
+  const totalLeaves = node.children.reduce((s, ch) => s + countLeaves(ch), 0) || 1;
+  let cursor = x;
+
+  return (
+    <React.Fragment>
+      {parentCx != null && (
+        <path d={`M${parentCx} ${y - ROW_H + 30} C${parentCx} ${y - ROW_H + 40}, ${cx} ${y - 10}, ${cx} ${y}`} fill="none" stroke={c.border} strokeWidth={0.6} />
+      )}
+      <g style={{ cursor: 'pointer', opacity: dim(active) }} onClick={() => handleClick(path)}>
+        <rect x={cx - boxW / 2} y={y} width={boxW} height={boxH} rx={7} fill={active ? c.border : c.bg} stroke={c.border} strokeWidth={active ? 2 : 0.5} />
+        <text x={cx} y={y + boxH / 2} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(10, boxW / 8)} fontWeight={700} fill={active ? '#fff' : c.text}>
+          {node.name || '（名前なし）'}{path.length > 1 ? `(${countFor(path)})` : ''}
+        </text>
+        {editable && <text x={cx + boxW / 2 - 9} y={y + 8} fontSize={9}>✏️</text>}
+      </g>
+      {node.children.map((child) => {
+        const leaves = countLeaves(child);
+        const w = (leaves / totalLeaves) * width;
+        const el = (
+          <MindMapBranch
+            key={child.id || child.name}
+            node={child} path={[...path, child.name]} x={cursor} width={w} y={y + ROW_H}
+            colorIndex={colorIndex} isActive={isActive} dim={dim} handleClick={handleClick}
+            editable={editable} countFor={countFor} parentCx={cx}
+          />
+        );
+        cursor += w;
+        return el;
+      })}
+    </React.Fragment>
+  );
+}
+
+// 用語管理画面の上部に出すマインドマップ（線でつながった構成図・縦方向・コンパクト）
+// ノードとその子孫を再帰的に描画するので、何段ネストしても図の中にそのまま表示される
 export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editable, onEditNode }) {
   const countFor = (path) => Object.values(terms).filter((t) => {
     const tp = getTermPath(t);
@@ -245,60 +315,34 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editab
     onSelect(isActive(path) ? null : path);
   };
 
-  const N = Math.max(knowledgeTypes.length, 1);
-  const GAP = 8;
-  const COL_W = Math.min(110, (360 - GAP * (N - 1)) / N);
-  const totalW = COL_W * N + GAP * (N - 1);
-  const startX = (380 - totalW) / 2;
+  const totalW = 360;
+  const startX = 10;
+  const depth = maxDepth(knowledgeTypes);
+  const viewH = 56 + Math.max(depth, 1) * ROW_H + 8;
+  let cursor = startX;
+  const totalLeaves = knowledgeTypes.reduce((s, n) => s + countLeaves(n), 0) || 1;
 
   return (
     <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 8, marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
-      <svg width="100%" viewBox="0 0 380 172" style={{ maxWidth: 700, display: 'block' }}>
+      <svg width="100%" viewBox={`0 0 380 ${viewH}`} style={{ maxWidth: 700, display: 'block' }}>
         <g style={{ cursor: 'pointer' }} onClick={() => !editable && onSelect(null)}>
           <rect x={140} y={4} width={100} height={28} rx={8} fill={mapFilter === null ? '#f97316' : '#F1EFE8'} stroke="#888780" strokeWidth={0.5} />
           <text x={190} y={18} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700} fill={mapFilter === null ? '#fff' : '#2C2C2A'}>すべて</text>
         </g>
 
         {knowledgeTypes.map((type, ti) => {
-          const c = DEPTH_COLORS[ti % DEPTH_COLORS.length];
-          const x = startX + ti * (COL_W + GAP);
-          const cx = x + COL_W / 2;
-          const rootPath = [type.name];
-          const active = isActive(rootPath);
-
-          return (
-            <g key={type.id || ti}>
-              <path d={`M190 32 C190 42, ${cx} 46, ${cx} 56`} fill="none" stroke={c.border} strokeWidth={0.75} />
-              <g
-                style={{ cursor: 'pointer', opacity: dim(active) }}
-                onClick={() => handleClick(rootPath)}
-              >
-                <rect x={x} y={56} width={COL_W} height={30} rx={8} fill={c.bg} stroke={c.border} strokeWidth={active ? 2 : 0.5} />
-                <text x={cx} y={71} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(12, COL_W / 7)} fontWeight={700} fill={c.text}>{type.name || '（名前なし）'}</text>
-                {editable && <text x={cx} y={71} textAnchor="middle" dx={COL_W / 2 - 8} fontSize={11}>✏️</text>}
-              </g>
-              {(() => {
-                const chCount = type.children.length;
-                const chGap = 4;
-                const chW = chCount > 0 ? Math.max(22, (COL_W - chGap * (chCount - 1)) / chCount) : 0;
-                return type.children.map((ch, i) => {
-                  const chX = x + i * (chW + chGap);
-                  const chCx = chX + chW / 2;
-                  const chPath = [...rootPath, ch.name];
-                  const chActive = isActive(chPath);
-                  return (
-                    <g key={ch.id || ch.name}>
-                      <path d={`M${cx} 86 C${cx} 96, ${chCx} 98, ${chCx} 108`} fill="none" stroke={c.border} strokeWidth={0.5} />
-                      <g style={{ cursor: 'pointer', opacity: dim(chActive) }} onClick={() => handleClick(chPath)}>
-                        <rect x={chX} y={108} width={chW} height={28} rx={6} fill={chActive ? c.border : '#fff'} stroke={c.border} strokeWidth={chActive ? 2 : 0.5} />
-                        <text x={chCx} y={122} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(9, chW / 6)} fontWeight={700} fill={chActive ? '#fff' : c.text}>{ch.name || '（名前なし）'}({countFor(chPath)})</text>
-                      </g>
-                    </g>
-                  );
-                });
-              })()}
-            </g>
+          const leaves = countLeaves(type);
+          const w = (leaves / totalLeaves) * totalW;
+          const el = (
+            <MindMapBranch
+              key={type.id || ti}
+              node={type} path={[type.name]} x={cursor} width={w} y={56}
+              colorIndex={ti} isActive={isActive} dim={dim} handleClick={handleClick}
+              editable={editable} countFor={countFor} parentCx={190}
+            />
           );
+          cursor += w;
+          return el;
         })}
       </svg>
     </div>
