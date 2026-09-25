@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
 // 知識区分の階層セレクタ。選んだ項目がさらに子を持ってたら、その下に次の選択欄が自動で増える（何段でも）
@@ -52,7 +52,7 @@ function RankSelect({ name, value, onChange }) {
 
 // 関連用語のタグ付け入力。手入力での追加（用語名検索＋Enter）と、
 // 説明文・カテゴリから即時に計算する候補（APIは使わず文字の重なりだけで判定）の両方に対応する
-export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, name, category, section, description }) {
+export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, name, category, description }) {
   const [text, setText] = useState('');
 
   const matches = useMemo(() => {
@@ -64,8 +64,8 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
   }, [allTerms, excludeId, selected, text]);
 
   const suggestions = useMemo(() => {
-    return suggestRelatedTerms({ allTerms, excludeId, name, category, section, description, alreadySelected: selected, limit: 6 });
-  }, [allTerms, excludeId, name, category, section, description, selected]);
+    return suggestRelatedTerms({ allTerms, excludeId, name, category, description, alreadySelected: selected, limit: 6 });
+  }, [allTerms, excludeId, name, category, description, selected]);
 
   const add = (id) => {
     onChange([...selected, id]);
@@ -118,7 +118,7 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
   );
 }
 
-const EMPTY = { name: '', knowledgePath: [], category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '', related: [] };
+const EMPTY = { name: '', knowledgePath: [], category: CATEGORIES_BASE[0], rank: '秀', description: '', note: '', related: [] };
 
 // 追加・編集 共通フォームモーダル
 export function TermFormModal({ open, mode, initial, allTerms, currentId, knowledgeTypes, onClose, onSubmit, onDelete }) {
@@ -174,13 +174,6 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
             </select>
           </div>
           <div className="form-group">
-            <label>部分知識（任意）</label>
-            <select value={form.section || ''} onChange={(e) => set('section')(e.target.value)}>
-              <option value="">選択なし</option>
-              {CATEGORIES_SECTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
             <label>ランク <span className="req">*</span></label>
             <RankSelect name={`${mode}-rank`} value={form.rank} onChange={set('rank')} />
           </div>
@@ -201,7 +194,6 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
               onChange={set('related')}
               name={form.name}
               category={form.category}
-              section={form.section}
               description={form.description}
             />
           </div>
@@ -218,7 +210,7 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
 
 // 関連用語1行（カテゴリで色分けした左バー、アイコンなし、さらに関連があれば開閉シェブロン）
 function RelatedRow({ term, isChild, onClick, hasChildren, isOpen, onToggle }) {
-  const color = CATEGORY_COLORS[term.category] || CATEGORY_COLORS[term.section] || '#888780';
+  const color = CATEGORY_COLORS[term.category] || '#888780';
   return (
     <div className={`related-thread-row ${isChild ? 'child' : ''}`} onClick={onClick}>
       <div className="related-thread-bar" style={{ background: color }} />
@@ -306,7 +298,6 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
           <div className="detail-badges">
             {term.rank && <span className={`badge badge-rank-${term.rank}`}>{term.rank}</span>}
             <span className="badge badge-cat">{term.category}</span>
-            {term.section && <span className="badge badge-section">{term.section}</span>}
           </div>
           <div className="detail-sec">
             <span className="lbl">説明</span>

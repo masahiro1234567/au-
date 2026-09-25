@@ -1,53 +1,38 @@
 import React, { useMemo, useState } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORY_ICONS, CATEGORY_COLORS } from '../utils.js';
 
-function PillRow({ label, options, value, onSelect, counts }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 12, color: 'var(--sub)', marginBottom: 6, fontWeight: 700 }}>{label}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {options.map((opt) => {
-          const active = value === opt;
-          return (
-            <button
-              key={opt}
-              onClick={() => onSelect(opt)}
-              style={{
-                padding: '7px 14px', borderRadius: 20, fontSize: '.82rem', fontWeight: 700, cursor: 'pointer',
-                border: active ? 'none' : '1.5px solid var(--border)',
-                background: active ? 'var(--primary)' : '#fff',
-                color: active ? '#fff' : 'var(--text)',
-              }}
-            >
-              {opt}{counts && counts[opt] != null ? `（${counts[opt]}）` : ''}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+// ホーム画面：検索 → 主要アクション → カテゴリ → 学習状況 → 新着 の順で、
+// 「開いてすぐ調べる／テストに行ける」ことを優先した構成
+export default function Home({ terms, results, testUser, onOpenFiltered, onGoTest, onAdminLogin }) {
+  const entries = useMemo(() => Object.values(terms || {}), [terms]);
+  const [q, setQ] = useState('');
+
+  const catCounts = useMemo(() => {
+    const c = {};
+    entries.forEach((t) => { c[t.category] = (c[t.category] || 0) + 1; });
+    return c;
+  }, [entries]);
+
+  const recent = useMemo(
+    () => entries.filter((t) => t.createdAt).sort((a, b) => b.createdAt - a.createdAt).slice(0, 5),
+    [entries]
   );
-}
 
-export default function Home({ terms, knowledgeTypes, onOpenFiltered, onViewAll, onGoTest, onAdminLogin }) {
-  const entries = useMemo(() => Object.values(terms), [terms]);
-  const typeNames = useMemo(() => (knowledgeTypes || []).map((t) => t.name), [knowledgeTypes]);
+  // 自分のテスト成績（ログイン中のユーザーのみ）
+  const myStats = useMemo(() => {
+    if (!testUser) return null;
+    const mine = Object.values(results || {})
+      .filter((r) => r.userId === testUser.id)
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    if (!mine.length) return { count: 0 };
+    return {
+      count: mine.length,
+      latest: mine[0].pct,
+      best: Math.max(...mine.map((r) => r.pct || 0)),
+    };
+  }, [results, testUser]);
 
-  const [knowledgeType, setKnowledgeType] = useState('');
-  const [knowledgeSubType, setKnowledgeSubType] = useState('');
-  const [category, setCategory] = useState('');
-  const [section, setSection] = useState('');
-
-  const currentTypeChildren = (knowledgeTypes || []).find((t) => t.name === knowledgeType)?.children || [];
-  const subtypeNames = currentTypeChildren.map((c) => c.name);
-  const needsSub = subtypeNames.length > 0;
-  const readyForCategory = knowledgeType && (!needsSub || knowledgeSubType);
-  const readyForResult = readyForCategory && category;
-
-  const selectType = (v) => { setKnowledgeType(v); setKnowledgeSubType(''); setCategory(''); setSection(''); };
-  const selectSub = (v) => { setKnowledgeSubType(v); setCategory(''); setSection(''); };
-  const selectCategory = (v) => { setCategory(v); setSection(''); };
-
-  const pathLabel = [knowledgeType, knowledgeSubType, category, section].filter(Boolean).join(' / ');
+  const search = () => onOpenFiltered({ q: q.trim() });
 
   return (
     <div className="page">
@@ -56,43 +41,93 @@ export default function Home({ terms, knowledgeTypes, onOpenFiltered, onViewAll,
           <div className="logo-mark">au</div>
           <h1>au事業部 用語集</h1>
         </div>
+        {testUser?.name && <div className="user-chip">{testUser.name}</div>}
       </header>
-      <div className="t-body">
-        <div className="home-hero">
-          <div className="home-hero-title">今日も学んでいこう 🔥</div>
-          <div className="home-hero-sub">全{entries.length}件の用語を収録</div>
-        </div>
 
-        <PillRow label="知識の種類" options={typeNames} value={knowledgeType} onSelect={selectType} />
+      <div className="t-body hm">
+        {/* ヒーロー：あいさつ＋検索 */}
+        <section className="hm-hero">
+          <div className="hm-hero-greet">{testUser?.name ? `${testUser.name}さん、おつかれさま👋` : 'おつかれさま👋'}</div>
+          <div className="hm-hero-title">今日はなにを調べる？</div>
+          <div className="hm-search">
+            <span className="hm-search-ico">🔍</span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') search(); }}
+              placeholder={`${entries.length}件の用語から検索`}
+              enterKeyHint="search"
+              autoComplete="off"
+            />
+            <button className="hm-search-btn" onClick={search}>検索</button>
+          </div>
+        </section>
 
-        {needsSub && (
-          <PillRow label="区分" options={subtypeNames} value={knowledgeSubType} onSelect={selectSub} />
-        )}
-
-        {readyForCategory && (
-          <PillRow label="カテゴリ" options={CATEGORIES_BASE} value={category} onSelect={selectCategory} />
-        )}
-
-        {category && (
-          <PillRow label="部分知識（任意）" options={CATEGORIES_SECTIONS} value={section} onSelect={(v) => setSection(v === section ? '' : v)} />
-        )}
-
-        {readyForResult && (
-          <button
-            className="home-viewall"
-            style={{ marginTop: 4 }}
-            onClick={() => onOpenFiltered({ knowledgeType, knowledgeSubType, category, section })}
-          >
-            この条件で見る（{pathLabel}）
+        {/* 主要アクション */}
+        <section className="hm-actions">
+          <button className="hm-action" onClick={() => onOpenFiltered({})}>
+            <span className="hm-action-ico">📚</span>
+            <span className="hm-action-name">用語一覧</span>
+            <span className="hm-action-sub">全{entries.length}件</span>
           </button>
+          <button className="hm-action hm-action-accent" onClick={onGoTest}>
+            <span className="hm-action-ico">📝</span>
+            <span className="hm-action-name">テスト</span>
+            <span className="hm-action-sub">練習・本番</span>
+          </button>
+        </section>
+
+        {/* カテゴリ */}
+        <div className="hm-label">カテゴリから探す</div>
+        <section className="hm-cats">
+          {CATEGORIES_BASE.map((c) => (
+            <button
+              key={c}
+              className="hm-cat"
+              style={{ '--cc': CATEGORY_COLORS[c] || 'var(--primary)' }}
+              onClick={() => onOpenFiltered({ category: c })}
+            >
+              <span className="hm-cat-ico">{CATEGORY_ICONS[c] || '📁'}</span>
+              <span className="hm-cat-name">{c}</span>
+              <span className="hm-cat-count">{catCounts[c] || 0}</span>
+            </button>
+          ))}
+        </section>
+
+        {/* 学習状況 */}
+        {myStats && (
+          <>
+            <div className="hm-label">あなたの学習</div>
+            {myStats.count ? (
+              <section className="hm-stats">
+                <div className="hm-stat"><div className="hm-stat-num">{myStats.count}<small>回</small></div><div className="hm-stat-lbl">受験回数</div></div>
+                <div className="hm-stat"><div className="hm-stat-num">{myStats.latest ?? '-'}<small>%</small></div><div className="hm-stat-lbl">前回の正答率</div></div>
+                <div className="hm-stat"><div className="hm-stat-num">{myStats.best}<small>%</small></div><div className="hm-stat-lbl">最高正答率</div></div>
+              </section>
+            ) : (
+              <button className="hm-empty" onClick={onGoTest}>まだテストの記録がありません。まずは練習モードからやってみよう →</button>
+            )}
+          </>
         )}
 
-        <button className="home-viewall" onClick={onViewAll}>📚 すべての用語を見る</button>
+        {/* 新着 */}
+        {recent.length > 0 && (
+          <>
+            <div className="hm-label">新しく追加された用語</div>
+            <section className="hm-recent">
+              {recent.map((t, i) => (
+                <button key={i} className="hm-recent-row" onClick={() => onOpenFiltered({ q: t.name })}>
+                  <span className="hm-recent-dot" style={{ background: CATEGORY_COLORS[t.category] || 'var(--primary)' }} />
+                  <span className="hm-recent-name">{t.name}</span>
+                  <span className="hm-recent-cat">{t.category}</span>
+                  <span className="hm-recent-arrow">›</span>
+                </button>
+              ))}
+            </section>
+          </>
+        )}
 
-        <div className="home-actions">
-          <button className="tbtn tbtn-outline" onClick={onGoTest}>📝 テストを受ける</button>
-          <button className="tbtn tbtn-outline" onClick={onAdminLogin}>🔐 管理者ログイン</button>
-        </div>
+        <button className="hm-admin" onClick={onAdminLogin}>🔐 管理者ログイン</button>
       </div>
     </div>
   );

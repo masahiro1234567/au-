@@ -120,7 +120,7 @@ function RelationRow({ id, term, allTerms }) {
         <div style={{ padding: '0 12px 12px' }}>
           <RelatedTermsTagInput
             allTerms={allTerms} excludeId={id} selected={related} onChange={setRelated}
-            name={term.name} category={term.category} section={term.section} description={term.description}
+            name={term.name} category={term.category} description={term.description}
           />
           <button
             onClick={save}

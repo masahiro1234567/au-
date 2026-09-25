@@ -1,9 +1,9 @@
 import React from 'react';
-import { RANKS, CATEGORIES_BASE, CATEGORIES_SECTIONS } from '../utils.js';
+import { RANKS, CATEGORIES_BASE } from '../utils.js';
 
 export default function Sidebar({
-  open, onClose, rank, setRank, cat, setCat, section, setSection,
-  rankCounts, catCounts, sectionCounts, totalCount,
+  open, onClose, rank, setRank, cat, setCat,
+  rankCounts, catCounts, totalCount,
   onReset, onGoTest, onAdminLogin,
 }) {
   return (
@@ -42,19 +42,6 @@ export default function Sidebar({
             {CATEGORIES_BASE.map((c) => (
               <button key={c} className={`cat-btn ${cat === c ? 'active' : ''}`} onClick={() => setCat(c)}>
                 {c} <span className="ccnt">{catCounts[c] || 0}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="sb-sec">
-          <div className="sb-lbl">部分知識</div>
-          <div className="cat-btns">
-            <button className={`cat-btn ${section === 'all' ? 'active' : ''}`} onClick={() => setSection('all')}>
-              すべて
-            </button>
-            {CATEGORIES_SECTIONS.map((c) => (
-              <button key={c} className={`cat-btn ${section === c ? 'active' : ''}`} onClick={() => setSection(c)}>
-                {c} <span className="ccnt">{sectionCounts[c] || 0}</span>
               </button>
             ))}
           </div>

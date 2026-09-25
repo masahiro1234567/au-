@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import Sidebar from './Sidebar.jsx';
 import { TermFormModal, TermDetailModal } from './TermModals.jsx';
-import { esc, escRe, showToast, RANKS, CATEGORIES_BASE, CATEGORIES_SECTIONS } from '../utils.js';
+import { esc, escRe, showToast, RANKS, CATEGORIES_BASE } from '../utils.js';
 import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
 
 function highlight(text, q) {
@@ -14,13 +14,12 @@ function highlight(text, q) {
   }
 }
 
-export default function Glossary({ terms, isAdmin, initialCat, initialSection, initialKnowledgeType, initialKnowledgeSubType, knowledgeTypes, onBackHome, onGoTest, onAdminLogin }) {
+export default function Glossary({ terms, isAdmin, initialCat, initialQuery, initialKnowledgeType, initialKnowledgeSubType, knowledgeTypes, onBackHome, onGoTest, onAdminLogin }) {
   const [rank, setRank] = useState('all');
   const [cat, setCat] = useState(initialCat || 'all');
-  const [section, setSection] = useState(initialSection || 'all');
   const [knowledgeType, setKnowledgeType] = useState(initialKnowledgeType || 'all');
   const [knowledgeSubType, setKnowledgeSubType] = useState(initialKnowledgeSubType || 'all');
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(initialQuery || '');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
   const [detailHistory, setDetailHistory] = useState([]);
@@ -40,30 +39,23 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, i
     return c;
   }, [entries]);
 
-  const sectionCounts = useMemo(() => {
-    const c = {};
-    entries.forEach(([, t]) => { if (t.section) c[t.section] = (c[t.section] || 0) + 1; });
-    return c;
-  }, [entries]);
-
   const filtered = useMemo(() => {
     return entries.filter(([, t]) =>
       (rank === 'all' || t.rank === rank) &&
       (cat === 'all' || t.category === cat) &&
-      (section === 'all' || t.section === section) &&
       (knowledgeType === 'all' || t.knowledgeType === knowledgeType) &&
       (knowledgeSubType === 'all' || t.knowledgeSubType === knowledgeSubType) &&
       (!q || (t.name || '').includes(q) || (t.description || '').includes(q) || (t.note || '').includes(q))
     );
-  }, [entries, rank, cat, section, knowledgeType, knowledgeSubType, q]);
+  }, [entries, rank, cat, knowledgeType, knowledgeSubType, q]);
 
-  const resetFilters = () => { setRank('all'); setCat('all'); setSection('all'); setKnowledgeType('all'); setKnowledgeSubType('all'); };
+  const resetFilters = () => { setRank('all'); setCat('all'); setKnowledgeType('all'); setKnowledgeSubType('all'); };
 
   const detailTerm = detailId ? terms[detailId] : null;
 
   const handleAdd = async (form) => {
     try {
-      const { related, ...rest } = form;
+      const { related, section, ...rest } = form; // 部分知識(section)は廃止したので保存しない
       const newId = await dbPush('terms', { ...rest, createdAt: Date.now() });
       await saveTermRelations(newId.key, [], related || []);
       setEditing(null);
@@ -73,7 +65,7 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, i
 
   const handleUpdate = async (form) => {
     try {
-      const { related, ...rest } = form;
+      const { related, section, ...rest } = form; // 部分知識(section)は廃止したので保存しない
       await dbSet('terms/' + editing.id, { ...rest, updatedAt: Date.now() });
       const oldIds = Object.keys(editing.term.related || {});
       await saveTermRelations(editing.id, oldIds, related || []);
@@ -138,9 +130,6 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, i
             {cat !== 'all' && (
               <span className="filter-chip fc-cat" onClick={() => setCat('all')}>{cat} ✕</span>
             )}
-            {section !== 'all' && (
-              <span className="filter-chip fc-section" onClick={() => setSection('all')}>{section} ✕</span>
-            )}
           </div>
           <div className="terms-count">{filtered.length}件</div>
           {!filtered.length ? (
@@ -159,7 +148,6 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, i
                       <div className="term-badges">
                         {t.rank && <span className={`badge badge-rank-${t.rank}`}>{t.rank}</span>}
                         <span className="badge badge-cat">{t.category}</span>
-                        {t.section && <span className="badge badge-section">{t.section}</span>}
                       </div>
                     </div>
                     <p className="term-desc" dangerouslySetInnerHTML={{ __html: highlight(t.description, q) }} />
@@ -174,8 +162,7 @@ export default function Glossary({ terms, isAdmin, initialCat, initialSection, i
           onClose={() => setSidebarOpen(false)}
           rank={rank} setRank={(r) => { setRank(r); }}
           cat={cat} setCat={(c) => { setCat(c); }}
-          section={section} setSection={(s) => { setSection(s); }}
-          rankCounts={rankCounts} catCounts={catCounts} sectionCounts={sectionCounts} totalCount={entries.length}
+          rankCounts={rankCounts} catCounts={catCounts} totalCount={entries.length}
           onReset={resetFilters}
           onGoTest={() => { setSidebarOpen(false); onGoTest(); }}
           onAdminLogin={() => { setSidebarOpen(false); onAdminLogin(); }}

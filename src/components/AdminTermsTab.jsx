@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { CATEGORIES_BASE, CATEGORIES_SECTIONS, DEFAULT_KNOWLEDGE_TYPES, RANKS, showToast, getTermPath, termMatchesPath } from '../utils.js';
+import { CATEGORIES_BASE, DEFAULT_KNOWLEDGE_TYPES, RANKS, showToast, getTermPath, termMatchesPath } from '../utils.js';
 import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
 import { RelatedTermsTagInput, PathSelector } from './TermModals.jsx';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
-const emptyRow = () => ({ name: '', knowledgePath: [], category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '' });
+const emptyRow = () => ({ name: '', knowledgePath: [], category: CATEGORIES_BASE[0], rank: '秀', description: '', note: '' });
 
 function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen, duplicateIndices, knowledgeTypes, onSaved }) {
   const updateRow = (i, key, val) => {
@@ -90,10 +90,6 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
                   <select className="bulk-cat" value={row.category} onChange={(e) => updateRow(i, 'category', e.target.value)}>
                     {CATEGORIES_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <select className="bulk-cat" value={row.section || ''} onChange={(e) => updateRow(i, 'section', e.target.value)}>
-                    <option value="">部分知識：選択なし</option>
-                    {CATEGORIES_SECTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
                 </div>
                 <div style={{ marginBottom: 8 }}>
                   <PathSelector tree={knowledgeTypes} path={row.knowledgePath || []} onChange={(p) => updateRow(i, 'knowledgePath', p)} />
@@ -140,7 +136,6 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
   const [name, setName] = useState(term.name || '');
   const [knowledgePath, setKnowledgePath] = useState(getTermPath(term));
   const [category, setCategory] = useState(term.category || CATEGORIES_BASE[0]);
-  const [section, setSection] = useState(term.section || '');
   const [rank, setRank] = useState(term.rank || '秀');
   const [description, setDescription] = useState(term.description || '');
   const [note, setNote] = useState(term.note || '');
@@ -151,7 +146,7 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
   const save = async () => {
     if (!name.trim() || !description.trim()) return showToast('用語名と説明は必須です');
     try {
-      await dbSet('terms/' + id, { name, knowledgePath, category, section, rank, description, note, updatedAt: Date.now() });
+      await dbSet('terms/' + id, { name, knowledgePath, category, rank, description, note, updatedAt: Date.now() });
       const oldIds = Object.keys(term.related || {});
       await saveTermRelations(id, oldIds, related);
       showToast('✅ 更新しました');
@@ -175,7 +170,6 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
         <div className="admin-term-badges">
           {term.rank && <span className={`badge ${rc[term.rank] || ''}`}>{term.rank}</span>}
           <span className="badge badge-cat">{term.category}</span>
-          {term.section && <span className="badge badge-section">{term.section}</span>}
         </div>
         <button className="collapse-btn" onClick={(e) => { e.stopPropagation(); onToggle(); }}>{expanded ? '－' : '＋'}</button>
       </div>
@@ -193,13 +187,6 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
             <label>カテゴリ</label>
             <select className="admin-cat-sel" value={category} onChange={(e) => setCategory(e.target.value)}>
               {CATEGORIES_BASE.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="admin-edit-group">
-            <label>部分知識（任意）</label>
-            <select className="admin-cat-sel" value={section} onChange={(e) => setSection(e.target.value)}>
-              <option value="">選択なし</option>
-              {CATEGORIES_SECTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="admin-edit-group"><label>ランク</label></div>
@@ -223,7 +210,7 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
             <label>関連用語（任意）</label>
             <RelatedTermsTagInput
               allTerms={allTerms} excludeId={id} selected={related} onChange={setRelated}
-              name={name} category={category} section={section} description={description}
+              name={name} category={category} description={description}
             />
           </div>
           <div className="admin-action-row">

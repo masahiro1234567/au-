@@ -334,3 +334,44 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .bulk-desc,.bulk-note{width:100%;border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.82rem;font-family:inherit;resize:vertical;}
 .bulk-note{margin-top:5px;font-size:.78rem;padding:7px 10px;}
 .btn-row-del{background:#fde8e8;border:none;border-radius:6px;padding:3px 8px;font-size:.72rem;font-weight:700;cursor:pointer;color:var(--shu);font-family:inherit;}
+
+/* ===== ホーム画面（リデザイン） ===== */
+.hm{padding:16px 14px 28px;max-width:640px;margin:0 auto;width:100%;}
+.hm-hero{background:var(--grad);border-radius:20px;padding:22px 18px 18px;color:#fff;box-shadow:0 8px 24px rgba(255,102,0,.25);position:relative;overflow:hidden;margin-bottom:14px;}
+.hm-hero::after{content:'';position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);}
+.hm-hero-greet{font-size:.78rem;font-weight:700;opacity:.9;margin-bottom:4px;position:relative;}
+.hm-hero-title{font-size:1.25rem;font-weight:900;margin-bottom:14px;position:relative;letter-spacing:.02em;}
+.hm-search{display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:4px 4px 4px 14px;position:relative;box-shadow:0 2px 10px rgba(0,0,0,.08);}
+.hm-search-ico{font-size:.9rem;}
+.hm-search input{flex:1;min-width:0;border:none;outline:none;font-size:.9rem;font-family:inherit;background:transparent;color:var(--text);padding:8px 0;}
+.hm-search input::placeholder{color:#cbb09e;}
+.hm-search-btn{border:none;background:var(--primary);color:#fff;font-weight:800;font-size:.8rem;border-radius:999px;padding:9px 16px;cursor:pointer;font-family:inherit;}
+.hm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.hm-action{display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:14px;cursor:pointer;font-family:inherit;text-align:left;box-shadow:var(--sh-sm);transition:transform .12s;}
+.hm-action:active,.hm-cat:active,.hm-recent-row:active{transform:scale(.97);}
+.hm-action-ico{font-size:1.5rem;margin-bottom:4px;}
+.hm-action-name{font-size:.95rem;font-weight:900;color:var(--text);}
+.hm-action-sub{font-size:.7rem;font-weight:700;color:var(--sub);}
+.hm-action-accent{background:var(--text);border-color:var(--text);}
+.hm-action-accent .hm-action-name{color:#fff;}
+.hm-action-accent .hm-action-sub{color:#ffb380;}
+.hm-label{font-size:.74rem;font-weight:800;color:var(--sub);margin:0 2px 8px;letter-spacing:.04em;}
+.hm-cats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;}
+.hm-cat{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--border);border-left:4px solid var(--cc);border-radius:12px;padding:12px 10px;cursor:pointer;font-family:inherit;text-align:left;transition:transform .12s;}
+.hm-cat-ico{font-size:1.15rem;}
+.hm-cat-name{flex:1;font-size:.8rem;font-weight:800;color:var(--text);line-height:1.3;}
+.hm-cat-count{font-size:.7rem;font-weight:800;color:var(--cc);}
+.hm-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;}
+.hm-stat{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 6px;text-align:center;}
+.hm-stat-num{font-size:1.3rem;font-weight:900;color:var(--pd);line-height:1.1;}
+.hm-stat-num small{font-size:.65rem;margin-left:1px;}
+.hm-stat-lbl{font-size:.66rem;font-weight:700;color:var(--sub);margin-top:3px;}
+.hm-empty{width:100%;background:var(--pl);border:1.5px dashed var(--border);border-radius:12px;padding:13px;font-size:.78rem;font-weight:700;color:var(--pd);cursor:pointer;font-family:inherit;text-align:left;margin-bottom:20px;}
+.hm-recent{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:22px;}
+.hm-recent-row{width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;background:none;border:none;border-bottom:1px solid #fbe7da;cursor:pointer;font-family:inherit;text-align:left;}
+.hm-recent-row:last-child{border-bottom:none;}
+.hm-recent-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.hm-recent-name{flex:1;font-size:.86rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hm-recent-cat{font-size:.66rem;font-weight:700;color:var(--sub);flex-shrink:0;}
+.hm-recent-arrow{color:var(--sub);font-size:1.1rem;}
+.hm-admin{display:block;margin:0 auto;background:none;border:none;color:var(--sub);font-size:.74rem;font-weight:700;cursor:pointer;font-family:inherit;padding:8px;}
