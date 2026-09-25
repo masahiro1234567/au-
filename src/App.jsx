@@ -58,7 +58,6 @@ export default function App() {
   const homeEl = (
     <Home
       terms={terms}
-      results={results}
       testUser={testUser}
       onOpenFiltered={({ category, q }) => {
         setGlossaryCat(category || 'all');

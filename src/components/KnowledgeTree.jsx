@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { showToast, getTermPath } from '../utils.js';
 import { dbPush, dbSet, dbRemove } from '../useFirebase.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
@@ -245,64 +245,61 @@ export function KnowledgeConfigManager({ knowledgeTypes, defaultOpen }) {
   );
 }
 
-// 用語管理画面の上部に出すマインドマップ（線でつながった構成図・縦方向・コンパクト）
-// ※見た目は「ルート→その子」までの2段で表示（さらに深い階層はここには出ないが、登録画面のPathSelectorでは何段でも選べる）
-// ノードの直下の「葉」の数（子が無ければ1、あれば子の葉の合計）を数える。横幅の配分に使う。
-function countLeaves(node) {
-  if (!node.children.length) return 1;
-  return node.children.reduce((s, c) => s + countLeaves(c), 0);
+// ===== マインドマップ（図） =====
+// ノードの横幅を「文字の長さ」から計算し、子孫全体の幅を下から積み上げて配置する。
+// そのため、どれだけ階層が深く・枝が多くてもノード同士が重ならない。
+// zoom を上げると文字だけでなく「横の間隔・縦の間隔」も広がるので、混み合った部分が見やすくなる。
+
+// 文字列の表示幅をざっくり推定（全角≒1em、半角≒0.6em）
+function estimateTextW(str, fontSize) {
+  let w = 0;
+  for (const ch of str || '') w += /[\u0000-\u00ff]/.test(ch) ? 0.6 : 1;
+  return w * fontSize;
 }
-// ツリー全体で一番深い階層数を求める（描画エリアの高さを決めるため）
+
+// ツリーをレイアウト用の構造に変換（各ノードの箱の幅と、子孫を含めた幅を計算）
+function measureTree(node, path, labelFor, m) {
+  const label = labelFor(node, path);
+  const boxW = estimateTextW(label, m.font) + m.padX * 2;
+  const children = (node.children || []).map((ch) => measureTree(ch, [...path, ch.name], labelFor, m));
+  const childrenW = children.reduce((s, c) => s + c.subtreeW, 0) + Math.max(0, children.length - 1) * m.gapX;
+  return { node, path, label, boxW, children, childrenW, subtreeW: Math.max(boxW, childrenW) };
+}
+
+// 計算済みの幅をもとに、実際の座標を決める
+function placeTree(item, x, depth, m, out, parent) {
+  const cx = x + item.subtreeW / 2;
+  const y = m.top + depth * m.rowH;
+  const placed = { ...item, cx, y };
+  out.push({ item: placed, parent });
+  let cursor = x + (item.subtreeW - item.childrenW) / 2;
+  item.children.forEach((ch) => {
+    placeTree(ch, cursor, depth + 1, m, out, placed);
+    cursor += ch.subtreeW + m.gapX;
+  });
+}
+
+// ツリー全体で一番深い階層数（描画エリアの高さを決めるため）
 function maxDepth(nodes) {
-  if (!nodes.length) return 0;
+  if (!nodes || !nodes.length) return 0;
   return 1 + Math.max(...nodes.map((n) => maxDepth(n.children)));
 }
 
-const ROW_H = 52; // 1階層ごとの縦の間隔
-
-// 1つのノードと、その子孫すべてを再帰的に描画する（何段でも深くなれる）
-function MindMapBranch({ node, path, x, width, y, colorIndex, isActive, dim, handleClick, editable, countFor, parentCx }) {
-  const c = DEPTH_COLORS[colorIndex % DEPTH_COLORS.length];
-  const boxH = 28;
-  const boxW = Math.max(30, Math.min(width - 6, path.length === 1 ? 110 : 90));
-  const cx = x + width / 2;
-  const active = isActive(path);
-  const totalLeaves = node.children.reduce((s, ch) => s + countLeaves(ch), 0) || 1;
-  let cursor = x;
-
-  return (
-    <React.Fragment>
-      {parentCx != null && (
-        <path d={`M${parentCx} ${y - ROW_H + 30} C${parentCx} ${y - ROW_H + 40}, ${cx} ${y - 10}, ${cx} ${y}`} fill="none" stroke={c.border} strokeWidth={0.6} />
-      )}
-      <g style={{ cursor: 'pointer', opacity: dim(active) }} onClick={() => handleClick(path)}>
-        <rect x={cx - boxW / 2} y={y} width={boxW} height={boxH} rx={7} fill={active ? c.border : c.bg} stroke={c.border} strokeWidth={active ? 2 : 0.5} />
-        <text x={cx} y={y + boxH / 2} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(10, boxW / 8)} fontWeight={700} fill={active ? '#fff' : c.text}>
-          {node.name || '（名前なし）'}{path.length > 1 ? `(${countFor(path)})` : ''}
-        </text>
-        {editable && <text x={cx + boxW / 2 - 9} y={y + 8} fontSize={9}>✏️</text>}
-      </g>
-      {node.children.map((child) => {
-        const leaves = countLeaves(child);
-        const w = (leaves / totalLeaves) * width;
-        const el = (
-          <MindMapBranch
-            key={child.id || child.name}
-            node={child} path={[...path, child.name]} x={cursor} width={w} y={y + ROW_H}
-            colorIndex={colorIndex} isActive={isActive} dim={dim} handleClick={handleClick}
-            editable={editable} countFor={countFor} parentCx={cx}
-          />
-        );
-        cursor += w;
-        return el;
-      })}
-    </React.Fragment>
-  );
+function metricsFor(zoom) {
+  const z = zoom || 1;
+  return {
+    font: Math.round(11 + 2 * (z - 1)),       // 文字は控えめに大きくなる
+    padX: 10 + 2 * (z - 1),
+    boxH: 26 + 4 * (z - 1),
+    gapX: 14 * z * z,                          // 横の間隔は大きく広がる
+    rowH: 58 * (0.7 + 0.3 * z) + 10 * (z - 1), // 縦の間隔も広がる
+    top: 12,
+    margin: 16,
+  };
 }
 
-// 用語管理画面の上部に出すマインドマップ（線でつながった構成図・縦方向・コンパクト）
-// ノードとその子孫を再帰的に描画するので、何段ネストしても図の中にそのまま表示される
-export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editable, onEditNode }) {
+// 用語管理画面の上部に出すマインドマップ。ノードとその子孫を何段でも描画する
+export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editable, onEditNode, zoom = 1 }) {
   const countFor = (path) => Object.values(terms).filter((t) => {
     const tp = getTermPath(t);
     return tp.length === path.length && path.every((p, i) => tp[i] === p);
@@ -311,41 +308,66 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editab
   const isActive = (path) => !!mapFilter && mapFilter.length === path.length && mapFilter.every((p, i) => p === path[i]);
   const dim = (active) => (mapFilter && !active ? 0.4 : 1);
   const handleClick = (path) => {
-    if (editable) { onEditNode?.(path); return; }
+    if (editable) { if (path.length) onEditNode?.(path); return; }
+    if (!path.length) { onSelect(null); return; }
     onSelect(isActive(path) ? null : path);
   };
 
-  const totalW = 360;
-  const startX = 10;
+  const m = metricsFor(zoom);
+  const labelFor = (node, path) => {
+    if (!path.length) return 'すべて';
+    const name = node.name || '（名前なし）';
+    return path.length > 1 ? `${name}（${countFor(path)}）` : name;
+  };
+  const root = measureTree({ name: 'すべて', children: knowledgeTypes }, [], labelFor, m);
+  const nodes = [];
+  placeTree(root, m.margin, 0, m, nodes, null);
+
+  const width = root.subtreeW + m.margin * 2;
   const depth = maxDepth(knowledgeTypes);
-  const viewH = 56 + Math.max(depth, 1) * ROW_H + 8;
-  let cursor = startX;
-  const totalLeaves = knowledgeTypes.reduce((s, n) => s + countLeaves(n), 0) || 1;
+  const height = m.top + depth * m.rowH + m.boxH + m.margin;
+
+  // 最上位の枝ごとに色を変える
+  const colorOf = (path) => {
+    if (!path.length) return { bg: '#F1EFE8', border: '#888780', text: '#2C2C2A' };
+    const idx = knowledgeTypes.findIndex((t) => t.name === path[0]);
+    return DEPTH_COLORS[(idx < 0 ? 0 : idx) % DEPTH_COLORS.length];
+  };
 
   return (
-    <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 8, marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
-      <svg width="100%" viewBox={`0 0 380 ${viewH}`} style={{ maxWidth: 700, display: 'block' }}>
-        <g style={{ cursor: 'pointer' }} onClick={() => !editable && onSelect(null)}>
-          <rect x={140} y={4} width={100} height={28} rx={8} fill={mapFilter === null ? '#f97316' : '#F1EFE8'} stroke="#888780" strokeWidth={0.5} />
-          <text x={190} y={18} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700} fill={mapFilter === null ? '#fff' : '#2C2C2A'}>すべて</text>
-        </g>
-
-        {knowledgeTypes.map((type, ti) => {
-          const leaves = countLeaves(type);
-          const w = (leaves / totalLeaves) * totalW;
-          const el = (
-            <MindMapBranch
-              key={type.id || ti}
-              node={type} path={[type.name]} x={cursor} width={w} y={56}
-              colorIndex={ti} isActive={isActive} dim={dim} handleClick={handleClick}
-              editable={editable} countFor={countFor} parentCx={190}
-            />
-          );
-          cursor += w;
-          return el;
-        })}
-      </svg>
-    </div>
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', margin: '0 auto' }}>
+      {nodes.filter((n) => n.parent).map(({ item, parent }) => {
+        const c = colorOf(item.path);
+        const y1 = parent.y + m.boxH;
+        const y2 = item.y;
+        const my = (y1 + y2) / 2;
+        return (
+          <path key={'l-' + item.path.join('/')}
+            d={`M${parent.cx} ${y1} C${parent.cx} ${my}, ${item.cx} ${my}, ${item.cx} ${y2}`}
+            fill="none" stroke={c.border} strokeWidth={1} opacity={dim(isActive(item.path))} />
+        );
+      })}
+      {nodes.map(({ item }) => {
+        const c = colorOf(item.path);
+        const isRoot = !item.path.length;
+        const active = isRoot ? mapFilter === null : isActive(item.path);
+        const fill = active ? (isRoot ? '#f97316' : c.border) : c.bg;
+        return (
+          <g key={'n-' + (item.path.join('/') || 'root')} data-node="1"
+            style={{ cursor: 'pointer', opacity: isRoot ? 1 : dim(active) }}
+            onClick={() => handleClick(item.path)}>
+            <rect x={item.cx - item.boxW / 2} y={item.y} width={item.boxW} height={m.boxH} rx={m.boxH / 3.5}
+              fill={fill} stroke={active && isRoot ? '#f97316' : c.border}
+              strokeWidth={active ? 2 : 0.8}
+              strokeDasharray={editable && !isRoot ? '4 3' : undefined} />
+            <text x={item.cx} y={item.y + m.boxH / 2} textAnchor="middle" dominantBaseline="central"
+              fontSize={m.font} fontWeight={700} fill={active ? '#fff' : c.text}>
+              {item.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
@@ -428,40 +450,78 @@ export function MindMapList({ terms, knowledgeTypes, mapFilter, onSelect, editab
   );
 }
 
-// マインドマップ（図）に拡大縮小・ドラッグ移動をつけて表示するラッパー
+// マインドマップ（図）の表示枠。
+// ＋／－で zoom を変えると、図のレイアウト自体が広がる（単純な拡大ではなく、間隔が開いて重なりが解消される）。
+// 枠内はスクロール可能で、PCではドラッグでも移動できる。拡大・縮小時は見ている中心位置を保つ。
+const ZOOM_STEPS = [0.8, 1, 1.25, 1.5, 1.8, 2.2];
+
 export function ZoomPanBox({ children, height }) {
-  const [scale, setScale] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const dragRef = useState({ dragging: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })[0];
+  const [zi, setZi] = useState(1);
+  const zoom = ZOOM_STEPS[zi];
+  const boxRef = useRef(null);
+  const drag = useRef({ on: false, moved: false, sx: 0, sy: 0, sl: 0, st: 0 });
+  const ratio = useRef(null);
 
-  const apply = () => ({ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: '0 0' });
+  const changeZoom = (next) => {
+    const el = boxRef.current;
+    if (el) {
+      ratio.current = {
+        x: (el.scrollLeft + el.clientWidth / 2) / Math.max(1, el.scrollWidth),
+        y: (el.scrollTop + el.clientHeight / 2) / Math.max(1, el.scrollHeight),
+      };
+    }
+    setZi(Math.max(0, Math.min(ZOOM_STEPS.length - 1, next)));
+  };
 
+  // 拡大・縮小後に、直前に見ていた中心へスクロール位置を戻す
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el || !ratio.current) return;
+    el.scrollLeft = ratio.current.x * el.scrollWidth - el.clientWidth / 2;
+    el.scrollTop = ratio.current.y * el.scrollHeight - el.clientHeight / 2;
+    ratio.current = null;
+  }, [zi]);
+
+  // PC：マウスドラッグで移動（スマホは通常のスクロールで移動）
   const onDown = (e) => {
-    const p = e.touches ? e.touches[0] : e;
-    dragRef.dragging = true;
-    dragRef.startX = p.clientX; dragRef.startY = p.clientY;
-    dragRef.startPanX = pan.x; dragRef.startPanY = pan.y;
+    const el = boxRef.current;
+    drag.current = { on: true, moved: false, sx: e.clientX, sy: e.clientY, sl: el.scrollLeft, st: el.scrollTop };
   };
   const onMove = (e) => {
-    if (!dragRef.dragging) return;
-    const p = e.touches ? e.touches[0] : e;
-    setPan({ x: dragRef.startPanX + (p.clientX - dragRef.startX), y: dragRef.startPanY + (p.clientY - dragRef.startY) });
+    const d = drag.current;
+    if (!d.on) return;
+    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+    boxRef.current.scrollLeft = d.sl - dx;
+    boxRef.current.scrollTop = d.st - dy;
   };
-  const onUp = () => { dragRef.dragging = false; };
+  const onUp = () => { drag.current.on = false; };
+  // ドラッグ直後のクリックでノードが反応しないようにする
+  const onClickCapture = (e) => {
+    if (drag.current.moved) { e.stopPropagation(); drag.current.moved = false; }
+  };
+
+  const btn = { minWidth: 32, height: 30, padding: '0 10px', border: '1.5px solid var(--border)', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: '.8rem', fontWeight: 700, fontFamily: 'inherit', color: 'var(--text)' };
 
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
-        <button onClick={() => setScale((s) => Math.max(0.4, s - 0.2))} style={{ width: 32, padding: 0, border: '1.5px solid var(--border)', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>－</button>
-        <button onClick={() => { setScale(1); setPan({ x: 0, y: 0 }); }} style={{ padding: '4px 10px', border: '1.5px solid var(--border)', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: '.72rem' }}>リセット</button>
-        <button onClick={() => setScale((s) => Math.min(2.5, s + 0.2))} style={{ width: 32, padding: 0, border: '1.5px solid var(--border)', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>＋</button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <span style={{ fontSize: '.72rem', color: 'var(--sub)', fontWeight: 700, marginRight: 'auto' }}>
+          ＋で間隔が広がります
+        </span>
+        <button style={{ ...btn, opacity: zi === 0 ? 0.4 : 1 }} disabled={zi === 0} onClick={() => changeZoom(zi - 1)}>－</button>
+        <button style={btn} onClick={() => changeZoom(1)}>{Math.round(zoom * 100)}%</button>
+        <button style={{ ...btn, opacity: zi === ZOOM_STEPS.length - 1 ? 0.4 : 1 }} disabled={zi === ZOOM_STEPS.length - 1} onClick={() => changeZoom(zi + 1)}>＋</button>
       </div>
       <div
-        style={{ overflow: 'hidden', border: '1.5px solid var(--border)', borderRadius: 10, height: height || 260, cursor: 'grab', background: '#fff' }}
+        ref={boxRef}
+        style={{ overflow: 'auto', WebkitOverflowScrolling: 'touch', border: '1.5px solid var(--border)', borderRadius: 10, height: height || 280, cursor: 'grab', background: '#fff', userSelect: 'none' }}
         onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
-        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
+        onClickCapture={onClickCapture}
       >
-        <div style={apply()}>{children}</div>
+        <div style={{ minWidth: '100%', width: 'max-content', padding: '4px 0' }}>
+          {React.isValidElement(children) ? React.cloneElement(children, { zoom }) : children}
+        </div>
       </div>
     </div>
   );
