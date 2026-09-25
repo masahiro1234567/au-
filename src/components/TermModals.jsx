@@ -1,6 +1,34 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { CATEGORIES_BASE, CATEGORIES_SECTIONS, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
 
+// 知識区分の階層セレクタ。選んだ項目がさらに子を持ってたら、その下に次の選択欄が自動で増える（何段でも）
+export function PathSelector({ tree, path, onChange }) {
+  const levels = [];
+  let nodes = tree || [];
+  for (let i = 0; i <= path.length; i++) {
+    if (!nodes.length) break;
+    levels.push({ nodes, selected: path[i] || '' });
+    if (!path[i]) break;
+    const node = nodes.find((n) => n.name === path[i]);
+    if (!node) break;
+    nodes = node.children;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {levels.map((lvl, i) => (
+        <select
+          key={i}
+          value={lvl.selected}
+          onChange={(e) => onChange([...path.slice(0, i), e.target.value].filter(Boolean))}
+        >
+          <option value="">{i === 0 ? '知識区分：選択なし' : '選択なし'}</option>
+          {lvl.nodes.map((n) => <option key={n.name} value={n.name}>{n.name}</option>)}
+        </select>
+      ))}
+    </div>
+  );
+}
+
 function RankSelect({ name, value, onChange }) {
   return (
     <div className="rank-select-row">
@@ -89,20 +117,21 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
   );
 }
 
-const EMPTY = { name: '', knowledgeType: '', knowledgeSubType: '', category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '', related: [] };
+const EMPTY = { name: '', knowledgePath: [], category: CATEGORIES_BASE[0], section: '', rank: '秀', description: '', note: '', related: [] };
 
 // 追加・編集 共通フォームモーダル
 export function TermFormModal({ open, mode, initial, allTerms, currentId, knowledgeTypes, onClose, onSubmit, onDelete }) {
   const [form, setForm] = useState(EMPTY);
   const kTypes = knowledgeTypes || [];
-  const currentType = kTypes.find((t) => t.name === form.knowledgeType);
-  const kSubtypes = (currentType?.children || []).map((c) => c.name);
 
   useEffect(() => {
     if (!open) return;
     if (initial) {
       const relatedIds = Object.keys(initial.related || {});
-      setForm({ ...EMPTY, ...initial, related: relatedIds });
+      const path = Array.isArray(initial.knowledgePath) && initial.knowledgePath.length
+        ? initial.knowledgePath
+        : [initial.knowledgeType, initial.knowledgeSubType].filter(Boolean);
+      setForm({ ...EMPTY, ...initial, knowledgePath: path, related: relatedIds });
     } else {
       setForm(EMPTY);
     }
@@ -135,23 +164,8 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
           </div>
           <div className="form-group">
             <label>知識区分（任意）</label>
-            <select
-              value={form.knowledgeType || ''}
-              onChange={(e) => setForm((f) => ({ ...f, knowledgeType: e.target.value, knowledgeSubType: '' }))}
-            >
-              <option value="">選択なし</option>
-              {kTypes.map((k) => <option key={k.name} value={k.name}>{k.name}</option>)}
-            </select>
+            <PathSelector tree={kTypes} path={form.knowledgePath} onChange={set('knowledgePath')} />
           </div>
-          {kSubtypes.length > 0 && (
-            <div className="form-group">
-              <label>区分（任意）</label>
-              <select value={form.knowledgeSubType || ''} onChange={(e) => set('knowledgeSubType')(e.target.value)}>
-                <option value="">選択なし</option>
-                {kSubtypes.map((k) => <option key={k} value={k}>{k}</option>)}
-              </select>
-            </div>
-          )}
           <div className="form-group">
             <label>カテゴリ <span className="req">*</span></label>
             <select value={form.category} onChange={(e) => set('category')(e.target.value)}>

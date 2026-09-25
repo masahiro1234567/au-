@@ -23,30 +23,49 @@ export function showToast(msg) {
 }
 
 export const RANKS = ['秀', '優', '良', '可'];
-// 知識区分のデフォルト（②の項目それぞれが、自分専用の③（children）リストを持つ）
-// Firebaseの knowledge_types が未登録の場合のフォールバックとしても使う
+// 知識区分のデフォルト。各ノードは children を持てて、その children もさらに children を持てる（何段でも深くできる）
 export const DEFAULT_KNOWLEDGE_TYPES = [
-  { name: '自社知識', children: ['モバイル', 'ネット'] },
-  { name: '他社知識', children: ['モバイル', 'ネット'] },
-  { name: '端末知識', children: ['iPhone', 'Android'] },
+  { name: '自社知識', children: [{ name: 'モバイル', children: [] }, { name: 'ネット', children: [] }] },
+  { name: '他社知識', children: [{ name: 'モバイル', children: [] }, { name: 'ネット', children: [] }] },
+  { name: '端末知識', children: [{ name: 'iPhone', children: [] }, { name: 'Android', children: [] }] },
 ];
 
-// Firebaseの knowledge_types コレクション（id -> {name, children: {childId:{name}}}）を
-// [{id, name, children:[{id,name}]}] の配列に変換する。
+// Firebaseの入れ子構造（{name, children: {childId: {name, children: {...}}}}）を再帰的に
+// [{id, name, children:[...]}] へ変換する（何段ネストしても対応する）
+function parseKnowledgeNode(id, raw) {
+  return {
+    id,
+    name: raw.name,
+    children: Object.entries(raw.children || {}).map(([cid, c]) => parseKnowledgeNode(cid, c)),
+  };
+}
+function parseDefaultNode(t) {
+  return { id: null, name: t.name, children: (t.children || []).map(parseDefaultNode) };
+}
+
+// Firebaseの knowledge_types コレクションをツリー配列に変換する。
 // デフォルト値は常に含めた上で、Firebaseに追加された分をあとに連結する（追加＝上書きにならないようにする）。
 export function resolveKnowledgeTypes(knowledgeTypesDb) {
-  const custom = Object.entries(knowledgeTypesDb || {}).map(([id, t]) => ({
-    id,
-    name: t.name,
-    children: Object.entries(t.children || {}).map(([cid, c]) => ({ id: cid, name: c.name })),
-  }));
-  const defaults = DEFAULT_KNOWLEDGE_TYPES.map((t) => ({
-    id: null,
-    name: t.name,
-    children: t.children.map((name) => ({ id: null, name })),
-  }));
+  const custom = Object.entries(knowledgeTypesDb || {}).map(([id, t]) => parseKnowledgeNode(id, t));
+  const defaults = DEFAULT_KNOWLEDGE_TYPES.map(parseDefaultNode);
   return [...defaults, ...custom];
 }
+
+// 用語に保存されている知識区分の「パス」（[レベル1, レベル2, レベル3, ...]）を取得する。
+// 新しい knowledgePath フィールドがあればそれを使い、無ければ旧フィールド(knowledgeType/knowledgeSubType)から組み立てる。
+export function getTermPath(term) {
+  if (Array.isArray(term.knowledgePath) && term.knowledgePath.length) return term.knowledgePath;
+  return [term.knowledgeType, term.knowledgeSubType].filter(Boolean);
+}
+
+// 用語のパスが、指定したパス（またはその先）に当たるかどうかを判定する（指定パスを先頭に含んでいればOK）
+export function termMatchesPath(term, path) {
+  if (!path || !path.length) return true;
+  const tp = getTermPath(term);
+  if (tp.length < path.length) return false;
+  return path.every((p, i) => tp[i] === p);
+}
+
 // 後方互換用（旧: グローバル共有の区分リスト）。今は使わないが、まだ参照している箇所があれば安全のため残す。
 export const KNOWLEDGE_TYPES = DEFAULT_KNOWLEDGE_TYPES.map((t) => t.name);
 export const KNOWLEDGE_SUBTYPES = ['モバイル', 'ネット'];

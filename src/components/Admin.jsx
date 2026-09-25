@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import AdminTermsTab from './AdminTermsTab.jsx';
+import AdminKnowledgeTab from './AdminKnowledgeTab.jsx';
 import { showToast } from '../utils.js';
 import { dbSet, dbRemove } from '../useFirebase.js';
 
@@ -224,12 +225,14 @@ export default function Admin({ terms, results, profiles, knowledgeTypes, onBack
         <div className="tab-bar">
           <button className={`tab ${tab === 'summary' ? 'active' : ''}`} onClick={() => setTab('summary')}>サマリー</button>
           <button className={`tab ${tab === 'log' ? 'active' : ''}`} onClick={() => setTab('log')}>テストログ</button>
-          <button className={`tab ${tab === 'terms' ? 'active' : ''}`} onClick={() => setTab('terms')}>用語管理</button>
+          <button className={`tab ${tab === 'terms' ? 'active' : ''}`} onClick={() => setTab('terms')}>用語追加</button>
+          <button className={`tab ${tab === 'knowledge' ? 'active' : ''}`} onClick={() => setTab('knowledge')}>用語管理</button>
           <button className={`tab ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>プロフィール管理</button>
         </div>
         {tab === 'summary' && <SummaryTab results={results} />}
         {tab === 'log' && <LogTab results={results} />}
         {tab === 'terms' && <AdminTermsTab terms={terms} knowledgeTypes={knowledgeTypes} />}
+        {tab === 'knowledge' && <AdminKnowledgeTab terms={terms} knowledgeTypes={knowledgeTypes} />}
         {tab === 'profile' && <ProfileTab profiles={profiles} />}
       </div>
     </div>
