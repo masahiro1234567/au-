@@ -277,22 +277,26 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editab
                 <text x={cx} y={71} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(12, COL_W / 7)} fontWeight={700} fill={c.text}>{type.name || '（名前なし）'}</text>
                 {editable && <text x={cx} y={71} textAnchor="middle" dx={COL_W / 2 - 8} fontSize={11}>✏️</text>}
               </g>
-              {type.children.map((ch, i) => {
-                const chW = COL_W / 2 - 3;
-                const chX = x + i * (COL_W / 2 + 3);
-                const chCx = chX + chW / 2;
-                const chPath = [...rootPath, ch.name];
-                const chActive = isActive(chPath);
-                return (
-                  <g key={ch.id || ch.name}>
-                    <path d={`M${cx} 86 C${cx} 96, ${chCx} 98, ${chCx} 108`} fill="none" stroke={c.border} strokeWidth={0.5} />
-                    <g style={{ cursor: 'pointer', opacity: dim(chActive) }} onClick={() => handleClick(chPath)}>
-                      <rect x={chX} y={108} width={chW} height={28} rx={6} fill={chActive ? c.border : '#fff'} stroke={c.border} strokeWidth={chActive ? 2 : 0.5} />
-                      <text x={chCx} y={122} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight={700} fill={chActive ? '#fff' : c.text}>{ch.name || '（名前なし）'}({countFor(chPath)})</text>
+              {(() => {
+                const chCount = type.children.length;
+                const chGap = 4;
+                const chW = chCount > 0 ? Math.max(22, (COL_W - chGap * (chCount - 1)) / chCount) : 0;
+                return type.children.map((ch, i) => {
+                  const chX = x + i * (chW + chGap);
+                  const chCx = chX + chW / 2;
+                  const chPath = [...rootPath, ch.name];
+                  const chActive = isActive(chPath);
+                  return (
+                    <g key={ch.id || ch.name}>
+                      <path d={`M${cx} 86 C${cx} 96, ${chCx} 98, ${chCx} 108`} fill="none" stroke={c.border} strokeWidth={0.5} />
+                      <g style={{ cursor: 'pointer', opacity: dim(chActive) }} onClick={() => handleClick(chPath)}>
+                        <rect x={chX} y={108} width={chW} height={28} rx={6} fill={chActive ? c.border : '#fff'} stroke={c.border} strokeWidth={chActive ? 2 : 0.5} />
+                        <text x={chCx} y={122} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(9, chW / 6)} fontWeight={700} fill={chActive ? '#fff' : c.text}>{ch.name || '（名前なし）'}({countFor(chPath)})</text>
+                      </g>
                     </g>
-                  </g>
-                );
-              })}
+                  );
+                });
+              })()}
             </g>
           );
         })}
