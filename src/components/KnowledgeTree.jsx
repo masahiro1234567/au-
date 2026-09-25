@@ -29,6 +29,47 @@ export const DEPTH_COLORS = [
   { bg: '#FAEEDA', border: '#BA7517', text: '#412402' },
 ];
 
+export function findKnowledgeNode(knowledgeTypes, path) {
+  let nodes = knowledgeTypes;
+  let node = null;
+  for (const name of path) {
+    node = nodes.find((n) => n.name === name);
+    if (!node) return null;
+    nodes = node.children;
+  }
+  return node;
+}
+
+// ノードの名前を変更する（path=ルートから対象ノードまでの名前の配列）
+export async function renameKnowledgeNode(knowledgeTypes, path, name) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const dbPath = await ensureNodeId(knowledgeTypes, path);
+  await dbSet(`knowledge_types/${dbPath}/name`, trimmed);
+}
+
+// ノードを削除する（初期値=idが無いものは削除不可）
+export async function removeKnowledgeNode(knowledgeTypes, path) {
+  const node = findKnowledgeNode(knowledgeTypes, path);
+  if (!node?.id) throw new Error('初期値は削除できません');
+  const dbPath = await ensureNodeId(knowledgeTypes, path);
+  await dbRemove(`knowledge_types/${dbPath}`);
+}
+
+// 指定したノード（parentPath、[]ならルート）に新しい子を追加する
+export async function addKnowledgeChild(knowledgeTypes, parentPath, name) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const parentNode = parentPath.length ? findKnowledgeNode(knowledgeTypes, parentPath) : { children: knowledgeTypes };
+  if (parentNode && parentNode.children.some((c) => c.name === trimmed)) throw new Error('同じ名前の項目がすでにあります');
+  if (!parentPath.length) {
+    await dbPush('knowledge_types', { name: trimmed });
+    return;
+  }
+  const dbPath = await ensureNodeId(knowledgeTypes, parentPath);
+  await dbPush(`knowledge_types/${dbPath}/children`, { name: trimmed });
+}
+
 // 1つのノードを再帰的に描画する（子がいれば、その子もまた同じ形で描画される＝何段でも深くできる）
 export function TreeNode({ node, path, depth, siblingIndex, openIds, setOpenIds, newChildNames, setNewChildNames, onRename, onRemove, onAddChild }) {
   const key = [...path, node.name].join(' / ') + '#' + (node.id || `d${siblingIndex}`);
@@ -113,56 +154,36 @@ export function KnowledgeConfigManager({ knowledgeTypes, defaultOpen }) {
   const [newRootName, setNewRootName] = useState('');
 
   const addRoot = async () => {
-    const name = newRootName.trim();
-    if (!name) return showToast('名前を入力してください');
-    if (knowledgeTypes.some((t) => t.name === name)) return showToast('同じ名前の項目がすでにあります');
     try {
-      await dbPush('knowledge_types', { name });
+      await addKnowledgeChild(knowledgeTypes, [], newRootName);
       setNewRootName('');
       showToast('✅ 追加しました');
-    } catch (e) { showToast('エラー:' + e.message); }
+    } catch (e) { showToast(e.message.includes('入力') || e.message.includes('すでに') ? e.message : 'エラー:' + e.message); }
   };
 
   const onRename = async (parentPath, node, name) => {
     if (!name.trim() || name === node.name) return;
     try {
-      const dbPath = await ensureNodeId(knowledgeTypes, [...parentPath, node.name]);
-      await dbSet(`knowledge_types/${dbPath}/name`, name.trim());
+      await renameKnowledgeNode(knowledgeTypes, [...parentPath, node.name], name);
       showToast('✅ 変更しました');
     } catch (e) { showToast('エラー:' + e.message); }
   };
 
   const onRemove = async (parentPath, node) => {
-    if (!node.id) return showToast('初期値は削除できません');
     try {
-      const dbPath = await ensureNodeId(knowledgeTypes, [...parentPath, node.name]);
-      await dbRemove(`knowledge_types/${dbPath}`);
+      await removeKnowledgeNode(knowledgeTypes, [...parentPath, node.name]);
       showToast('🗑 削除しました');
-    } catch (e) { showToast('エラー:' + e.message); }
-  };
-
-  const findNode = (path) => {
-    let nodes = knowledgeTypes;
-    let node = null;
-    for (const name of path) {
-      node = nodes.find((n) => n.name === name);
-      if (!node) return null;
-      nodes = node.children;
-    }
-    return node;
+    } catch (e) { showToast(e.message); }
   };
 
   const onAddChild = async (parentPath, key) => {
-    const name = (newChildNames[key] || '').trim();
-    if (!name) return showToast('名前を入力してください');
-    const parentNode = findNode(parentPath);
-    if (parentNode && parentNode.children.some((c) => c.name === name)) return showToast('同じ名前の項目がすでにあります');
+    const name = newChildNames[key] || '';
+    if (!name.trim()) return showToast('名前を入力してください');
     try {
-      const dbPath = await ensureNodeId(knowledgeTypes, parentPath);
-      await dbPush(`knowledge_types/${dbPath}/children`, { name });
+      await addKnowledgeChild(knowledgeTypes, parentPath, name);
       setNewChildNames((prev) => ({ ...prev, [key]: '' }));
       showToast('✅ 追加しました');
-    } catch (e) { showToast('エラー:' + e.message); }
+    } catch (e) { showToast(e.message); }
   };
 
   return (
@@ -211,7 +232,7 @@ export function KnowledgeConfigManager({ knowledgeTypes, defaultOpen }) {
 
 // 用語管理画面の上部に出すマインドマップ（線でつながった構成図・縦方向・コンパクト）
 // ※見た目は「ルート→その子」までの2段で表示（さらに深い階層はここには出ないが、登録画面のPathSelectorでは何段でも選べる）
-export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect }) {
+export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editable, onEditNode }) {
   const countFor = (path) => Object.values(terms).filter((t) => {
     const tp = getTermPath(t);
     return tp.length === path.length && path.every((p, i) => tp[i] === p);
@@ -219,6 +240,10 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect }) {
 
   const isActive = (path) => !!mapFilter && mapFilter.length === path.length && mapFilter.every((p, i) => p === path[i]);
   const dim = (active) => (mapFilter && !active ? 0.4 : 1);
+  const handleClick = (path) => {
+    if (editable) { onEditNode?.(path); return; }
+    onSelect(isActive(path) ? null : path);
+  };
 
   const N = Math.max(knowledgeTypes.length, 1);
   const GAP = 8;
@@ -229,7 +254,7 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect }) {
   return (
     <div style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, padding: 8, marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
       <svg width="100%" viewBox="0 0 380 172" style={{ maxWidth: 700, display: 'block' }}>
-        <g style={{ cursor: 'pointer' }} onClick={() => onSelect(null)}>
+        <g style={{ cursor: 'pointer' }} onClick={() => !editable && onSelect(null)}>
           <rect x={140} y={4} width={100} height={28} rx={8} fill={mapFilter === null ? '#f97316' : '#F1EFE8'} stroke="#888780" strokeWidth={0.5} />
           <text x={190} y={18} textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700} fill={mapFilter === null ? '#fff' : '#2C2C2A'}>すべて</text>
         </g>
@@ -246,10 +271,11 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect }) {
               <path d={`M190 32 C190 42, ${cx} 46, ${cx} 56`} fill="none" stroke={c.border} strokeWidth={0.75} />
               <g
                 style={{ cursor: 'pointer', opacity: dim(active) }}
-                onClick={() => onSelect(active ? null : rootPath)}
+                onClick={() => handleClick(rootPath)}
               >
                 <rect x={x} y={56} width={COL_W} height={30} rx={8} fill={c.bg} stroke={c.border} strokeWidth={active ? 2 : 0.5} />
-                <text x={cx} y={71} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(12, COL_W / 7)} fontWeight={700} fill={c.text}>{type.name}</text>
+                <text x={cx} y={71} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(12, COL_W / 7)} fontWeight={700} fill={c.text}>{type.name || '（名前なし）'}</text>
+                {editable && <text x={cx} y={71} textAnchor="middle" dx={COL_W / 2 - 8} fontSize={11}>✏️</text>}
               </g>
               {type.children.map((ch, i) => {
                 const chW = COL_W / 2 - 3;
@@ -260,9 +286,9 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect }) {
                 return (
                   <g key={ch.id || ch.name}>
                     <path d={`M${cx} 86 C${cx} 96, ${chCx} 98, ${chCx} 108`} fill="none" stroke={c.border} strokeWidth={0.5} />
-                    <g style={{ cursor: 'pointer', opacity: dim(chActive) }} onClick={() => onSelect(chActive ? null : chPath)}>
+                    <g style={{ cursor: 'pointer', opacity: dim(chActive) }} onClick={() => handleClick(chPath)}>
                       <rect x={chX} y={108} width={chW} height={28} rx={6} fill={chActive ? c.border : '#fff'} stroke={c.border} strokeWidth={chActive ? 2 : 0.5} />
-                      <text x={chCx} y={122} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight={700} fill={chActive ? '#fff' : c.text}>{ch.name}({countFor(chPath)})</text>
+                      <text x={chCx} y={122} textAnchor="middle" dominantBaseline="central" fontSize={9} fontWeight={700} fill={chActive ? '#fff' : c.text}>{ch.name || '（名前なし）'}({countFor(chPath)})</text>
                     </g>
                   </g>
                 );
