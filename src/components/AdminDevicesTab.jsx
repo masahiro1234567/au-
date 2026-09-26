@@ -211,9 +211,24 @@ export default function AdminDevicesTab({ devices }) {
     const have = new Set(models.map((m) => m.name));
     return sample.models.filter((m) => !have.has(m.name));
   }, [sample, models]);
+  // 登録済みの機種のうち、サンプルに値があって、まだ空欄のマスの数
+  const fillCount = useMemo(() => {
+    const fidByName = new Map(features.map((f) => [f.name, f.id]));
+    let n = 0;
+    sample.models.forEach((sm) => {
+      const m = models.find((x) => x.name === sm.name);
+      if (!m) return;
+      Object.keys(sm.values).forEach((fname) => {
+        const fid = fidByName.get(fname);
+        if (!fid || !m.values[fid]) n++;
+      });
+    });
+    return n;
+  }, [sample, models, features]);
+  const missingFeatures = sample.features.filter((f) => !features.some((x) => x.name === f.name)).length;
   const [saving, setSaving] = useState(false);
 
-  // 足りない項目・機種だけを追加する（登録済みの機種や入力した値には触らない）
+  // 足りない項目・機種・空欄の値だけを追加する（すでに入っている値は上書きしない）
   const loadSample = async () => {
     setSaving(true);
     try {
@@ -233,8 +248,18 @@ export default function AdminDevicesTab({ devices }) {
         Object.entries(m.values).forEach(([fname, v]) => { const fid = idByName.get(fname); if (fid) values[fid] = v; });
         updates[`devices/${os}/models/${id}`] = { name: m.name, year: m.year || null, series: m.series || null, order: mOrder++, values };
       });
+      // 登録済みの機種：空欄のマスだけサンプルの値で埋める
+      let filled = 0;
+      sample.models.forEach((sm) => {
+        const m = models.find((x) => x.name === sm.name);
+        if (!m) return;
+        Object.entries(sm.values).forEach(([fname, v]) => {
+          const fid = idByName.get(fname);
+          if (fid && !m.values[fid]) { updates[`devices/${os}/models/${m.id}/values/${fid}`] = v; filled++; }
+        });
+      });
       await dbUpdateMany(updates);
-      showToast(`${missing.length}機種を追加しました`);
+      showToast([missing.length && `${missing.length}機種を追加`, filled && `${filled}マスを入力`].filter(Boolean).join('・') + 'しました');
     } catch (e) { showToast('エラー:' + e.message); }
     setSaving(false);
   };
@@ -247,15 +272,17 @@ export default function AdminDevicesTab({ devices }) {
         ))}
       </div>
 
-      {missing.length > 0 && (
+      {(missing.length > 0 || fillCount > 0 || missingFeatures > 0) && (
         <div className="adv-sample">
           <div>
-            <div className="adv-sec-title">サンプルに、まだ登録されていない機種が{missing.length}件あります</div>
+            <div className="adv-sec-title">
+              サンプルから追加できるデータがあります（{[missingFeatures && `項目${missingFeatures}件`, missing.length && `機種${missing.length}件`, fillCount && `空欄${fillCount}マス`].filter(Boolean).join('・')}）
+            </div>
             <div className="adv-sec-sub">
               {os === 'ios'
                 ? 'iPhone X以降の主な機種です。'
                 : '2021年秋以降に日本で発売された主なAndroid（Pixel・Galaxy・OPPO・AQUOS・Xperia・motorola・arrows・nubia・nothing）です。'}
-              登録済みの機種や入力した値はそのままで、足りない機種だけ追加します。未確認の値は空欄（－）です。
+              すでに入っている値は上書きせず、足りない項目・機種と空欄のマスだけを埋めます。未確認の値は空欄（－）のままです。
             </div>
           </div>
           <button className="adv-add-btn" disabled={saving} onClick={loadSample}>{saving ? '追加中…' : 'まとめて追加'}</button>
