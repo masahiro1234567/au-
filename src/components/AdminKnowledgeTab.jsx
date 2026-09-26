@@ -93,10 +93,12 @@ function SortableChildren({ items, onRemove, onReorder }) {
 function MindMapNodeEditor({ knowledgeTypes, path, onClose, onRenamed }) {
   const [newChildName, setNewChildName] = useState('');
   const node = findKnowledgeNode(knowledgeTypes, path);
+  // 名前欄は選択中のノードの名前と常に連動させる（別のノードを選ぶとパネルごと作り直される）
+  const [nameDraft, setNameDraft] = useState(node?.name || '');
   if (!node) return null;
 
   const doRename = async (name) => {
-    if (!name.trim() || name === node.name) return;
+    if (!name.trim() || name.trim() === node.name) { setNameDraft(node.name); return; }
     try {
       const n = await renameKnowledgeNode(knowledgeTypes, path, name);
       // 編集パネルを新しい名前のまま開いておく
@@ -139,14 +141,18 @@ function MindMapNodeEditor({ knowledgeTypes, path, onClose, onRenamed }) {
   return (
     <div style={{ background: '#fff8f0', border: '1.5px solid var(--primary)', borderRadius: 10, padding: 14, marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <span style={{ fontSize: '.72rem', color: 'var(--sub)' }}>✏️ 編集中：{path.join(' / ')}</span>
+        <span style={{ fontSize: '.78rem', color: 'var(--sub)' }}>
+          編集中：{path.slice(0, -1).map((p) => p + ' / ')}<b style={{ color: 'var(--pd)', fontSize: '.9rem' }}>{path[path.length - 1]}</b>
+        </span>
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--sub)', fontSize: '.9rem', cursor: 'pointer' }}>✕</button>
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
         <span style={{ fontSize: '.7rem', color: 'var(--sub)', flexShrink: 0 }}>名前</span>
         <input
-          defaultValue={node.name}
-          onBlur={(e) => doRename(e.target.value)}
+          value={nameDraft}
+          onChange={(e) => setNameDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          onBlur={() => doRename(nameDraft)}
           style={{ flex: 1, border: '1.5px solid var(--border)', borderRadius: 7, padding: '7px 9px', fontSize: '.82rem', fontFamily: 'inherit' }}
         />
         {node.id && (
@@ -224,12 +230,12 @@ function BulkAssignPanel({ terms, path }) {
   const [scope, setScope] = useState('unassigned'); // 'unassigned' | 'parent' | 'here' | 'overlap' | 'all'
   const [overlapWith, setOverlapWith] = useState(null); // 重複先で絞り込むとき、その区分の表示名
   const [q, setQ] = useState('');
-  const [selected, setSelected] = useState(() => new Set());
+  // チェック＝「この区分に入っている」。変更したものだけを changes に持ち、保存でまとめて反映する
+  const [changes, setChanges] = useState(() => new Map()); // id → true（登録する）/ false（外す）
   const [saving, setSaving] = useState(false);
   const pathKey = path.join('/');
 
-  useEffect(() => { setSelected(new Set()); }, [pathKey, scope, overlapWith]);
-  useEffect(() => { setOverlapWith(null); }, [pathKey]);
+  useEffect(() => { setChanges(new Map()); setOverlapWith(null); }, [pathKey]);
 
   const ov = useMemo(() => overlapInfo(terms, path), [terms, pathKey]);
 
@@ -264,54 +270,49 @@ function BulkAssignPanel({ terms, path }) {
       })
       .filter(([, t]) => !q || (t.name || '').includes(q))
       .sort((a, b) => {
-        const ha = isHere(a[1]) ? 1 : 0, hb = isHere(b[1]) ? 1 : 0;
+        // 「すべての用語」では登録済みを上に
+        const ha = isHere(a[1]) ? 0 : 1, hb = isHere(b[1]) ? 0 : 1;
         if (scope === 'all' && ha !== hb) return ha - hb;
         return (a[1].name || '').localeCompare(b[1].name || '', 'ja');
       });
   }, [terms, scope, q, pathKey, ov, overlapWith]);
 
   const visibleIds = list.map(([id]) => id);
-  const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
-  const selIds = [...selected].filter((id) => terms[id]);
-  const toAssign = selIds.filter((id) => !isHere(terms[id]));
-  const toUnassign = selIds.filter((id) => isHere(terms[id]));
+  const isChecked = (id) => (changes.has(id) ? changes.get(id) : isHere(terms[id]));
+  const allChecked = visibleIds.length > 0 && visibleIds.every(isChecked);
 
-  const toggle = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const toggleAll = () => setSelected((s) => {
-    const n = new Set(s);
-    if (allSelected) visibleIds.forEach((id) => n.delete(id)); else visibleIds.forEach((id) => n.add(id));
+  const setChecked = (ids, value) => setChanges((m) => {
+    const n = new Map(m);
+    ids.forEach((id) => {
+      if (!terms[id]) return;
+      if (value === isHere(terms[id])) n.delete(id); else n.set(id, value);
+    });
     return n;
   });
+  const toggle = (id) => setChecked([id], !isChecked(id));
+  const toggleAll = () => setChecked(visibleIds, !allChecked);
 
-  const writePaths = async (ids, makePaths) => {
-    const updates = {};
-    ids.forEach((id) => {
-      const f = pathsToDbFields(makePaths(getTermPaths(terms[id])));
-      Object.entries(f).forEach(([k, v]) => { updates[`terms/${id}/${k}`] = v; });
-    });
-    await dbUpdateMany(updates);
-  };
+  const valid = [...changes.entries()].filter(([id]) => terms[id]);
+  const toAssign = valid.filter(([, v]) => v).map(([id]) => id);
+  const toUnassign = valid.filter(([, v]) => !v).map(([id]) => id);
+  const changeCount = toAssign.length + toUnassign.length;
 
-  const assign = async () => {
-    if (!toAssign.length) return;
+  const save = async () => {
+    if (!changeCount) return;
     setSaving(true);
     try {
-      // 既存の区分は残したまま、この区分を追加（親区分に入っていた場合はより詳しいこちらに置き換わる）
-      await writePaths(toAssign, (cur) => [...cur, path]);
-      showToast(`${toAssign.length}件を「${path.join(' / ')}」に登録しました`);
-      setSelected(new Set());
-    } catch (e) { showToast('エラー:' + e.message); }
-    setSaving(false);
-  };
-
-  const unassign = async () => {
-    if (!toUnassign.length) return;
-    setSaving(true);
-    try {
-      // この区分とその配下への登録だけを外す（他の区分への登録は残る）
-      await writePaths(toUnassign, (cur) => cur.filter((p) => !pathStartsWith(p, path)));
-      showToast(`${toUnassign.length}件を「${path.join(' / ')}」から外しました`);
-      setSelected(new Set());
+      const updates = {};
+      const put = (id, paths) => {
+        Object.entries(pathsToDbFields(paths)).forEach(([k, v]) => { updates[`terms/${id}/${k}`] = v; });
+      };
+      // 登録：既存の区分は残したまま追加（親区分に入っていた場合は、より詳しいこちらに置き換わる）
+      toAssign.forEach((id) => put(id, [...getTermPaths(terms[id]), path]));
+      // 解除：この区分とその配下への登録だけを外す（他の区分への登録は残る）
+      toUnassign.forEach((id) => put(id, getTermPaths(terms[id]).filter((p) => !pathStartsWith(p, path))));
+      await dbUpdateMany(updates);
+      const msg = [toAssign.length && `登録${toAssign.length}件`, toUnassign.length && `解除${toUnassign.length}件`].filter(Boolean).join('・');
+      showToast(`「${path.join(' / ')}」を更新しました（${msg}）`);
+      setChanges(new Map());
     } catch (e) { showToast('エラー:' + e.message); }
     setSaving(false);
   };
@@ -362,10 +363,10 @@ function BulkAssignPanel({ terms, path }) {
 
       <div className="ba-listbar">
         <label className="ba-check">
-          <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={!visibleIds.length} />
-          <span>表示中をすべて選択</span>
+          <input type="checkbox" checked={allChecked} onChange={toggleAll} disabled={!visibleIds.length} />
+          <span>表示中をすべてチェック</span>
         </label>
-        <span className="ba-count">{selected.size}件選択中</span>
+        <span className="ba-count">{changeCount ? `未保存の変更 ${changeCount}件` : 'チェック＝この区分に登録'}</span>
       </div>
 
       <div className="ba-list">
@@ -375,9 +376,10 @@ function BulkAssignPanel({ terms, path }) {
           const paths = getTermPaths(t);
           const here = isHere(t);
           return (
-            <label key={id} className={`ba-row ${selected.has(id) ? 'on' : ''}`}>
-              <input type="checkbox" checked={selected.has(id)} onChange={() => toggle(id)} />
+            <label key={id} className={`ba-row ${isChecked(id) ? 'on' : ''} ${changes.has(id) ? 'changed' : ''}`}>
+              <input type="checkbox" checked={isChecked(id)} onChange={() => toggle(id)} />
               <span className="ba-row-name">{t.name}</span>
+              {changes.has(id) && <span className={`ba-chg ${changes.get(id) ? 'add' : 'del'}`}>{changes.get(id) ? '追加' : '解除'}</span>}
               <span className="ba-row-paths">
                 {paths.length ? paths.map((p) => (
                   <span key={p.join('/')} className={`ba-tag ${pathStartsWith(p, path) ? 'here' : ''}`}>{p.join(' / ')}</span>
@@ -389,17 +391,19 @@ function BulkAssignPanel({ terms, path }) {
       </div>
 
       <div className="ba-actions">
-        <button className="ba-btn ba-btn-sub" disabled={saving || !toUnassign.length} onClick={unassign}>
-          {toUnassign.length}件を解除
+        <button className="ba-btn ba-btn-sub" disabled={saving || !changeCount} onClick={() => setChanges(new Map())}>
+          元に戻す
         </button>
-        <button className="ba-btn" disabled={saving || !toAssign.length} onClick={assign}>
-          {saving ? '保存中…' : `${toAssign.length}件をこの区分に登録`}
+        <button className="ba-btn" disabled={saving || !changeCount} onClick={save}>
+          {saving ? '保存中…' : changeCount
+            ? `変更を保存（${[toAssign.length && `登録${toAssign.length}件`, toUnassign.length && `解除${toUnassign.length}件`].filter(Boolean).join('・')}）`
+            : '変更はありません'}
         </button>
       </div>
       <div className="ba-note">
         {scope === 'parent'
-          ? '上の区分に入っている用語をここに登録すると、上の区分からこの区分へ移動します（上の区分の件数にはそのまま含まれます）。'
-          : '登録しても、ほかの区分への登録はそのまま残ります。解除はこの区分（とその配下）への登録だけを外します。'}
+          ? '上の区分に入っている用語をここにチェックすると、上の区分からこの区分へ移動します（上の区分の件数にはそのまま含まれます）。'
+          : 'チェックを付けると登録、外すと解除です。ほかの区分への登録はそのまま残ります。絞り込みを切り替えても、保存前の変更は残ります。'}
       </div>
     </div>
   );
@@ -509,20 +513,20 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
 
       {viewMode === 'list' ? (
         <MindMapList
-          terms={terms} knowledgeTypes={kTypes} mapFilter={mapFilter} onSelect={setMapFilter}
+          terms={terms} knowledgeTypes={kTypes} mapFilter={mapEditMode ? editingPath : mapFilter} onSelect={setMapFilter}
           editable={mapEditMode} onEditNode={setEditingPath}
         />
       ) : (
         <ZoomPanBox height={280}>
           <TermMindMap
-            terms={terms} knowledgeTypes={kTypes} mapFilter={mapFilter} onSelect={setMapFilter}
+            terms={terms} knowledgeTypes={kTypes} mapFilter={mapEditMode ? editingPath : mapFilter} onSelect={setMapFilter}
             editable={mapEditMode} onEditNode={setEditingPath}
           />
         </ZoomPanBox>
       )}
 
       {mapEditMode && editingPath && (
-        <MindMapNodeEditor knowledgeTypes={kTypes} path={editingPath} onClose={() => setEditingPath(null)} onRenamed={setEditingPath} />
+        <MindMapNodeEditor key={editingPath.join('\u0001')} knowledgeTypes={kTypes} path={editingPath} onClose={() => setEditingPath(null)} onRenamed={setEditingPath} />
       )}
 
       {!mapEditMode && mapFilter && (
