@@ -598,3 +598,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
   .adv-grid3{grid-template-columns:1fr 1fr;}
   .adv-grid3 label:first-child{grid-column:1 / -1;}
 }
+
+/* 長い文字（カメラ構成など）は表のマスの中で折り返す */
+.kc-td .kc-text{display:inline-block;max-width:150px;white-space:normal;line-height:1.4;text-align:center;}
+.kc-cmp .kc-text{white-space:normal;line-height:1.45;}
