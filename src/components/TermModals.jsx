@@ -331,28 +331,35 @@ function RelatedSection({ relatedIds, allTerms, currentTermId, onSelectRelated }
   );
 }
 
-// 詳細表示で「同じ知識区分の用語」を自動で最大5件出す（手動で関連付けた用語は除く）
-function AutoRelatedSection({ term, currentId, allTerms, excludeIds, onSelectRelated }) {
+// 詳細表示の「関連用語」：同じ知識区分の用語を自動で最大5件。
+// 初期状態は閉じていて、「関連用語を見る」ボタンで展開する
+function AutoRelatedSection({ term, currentId, allTerms, onSelectRelated }) {
+  const [open, setOpen] = useState(false);
   const list = useMemo(() => suggestByCategory({
-    allTerms, excludeId: currentId, paths: getTermPaths(term), alreadySelected: excludeIds,
+    allTerms, excludeId: currentId, paths: getTermPaths(term),
     name: term.name, description: term.description, limit: 5,
-  }), [allTerms, currentId, term, excludeIds.join(',')]);
+  }), [allTerms, currentId, term]);
   if (!list.length) return null;
   return (
     <div className="detail-sec">
-      <span className="lbl">同じ区分の用語</span>
-      <div className="auto-related-list">
-        {list.map(({ id, term: t, reason }) => (
-          <div key={id} className="related-thread-row" onClick={() => onSelectRelated(id)}>
-            <div className="related-thread-bar" style={{ background: CATEGORY_COLORS[t.category] || '#888780' }} />
-            <div className="related-thread-body">
-              <div className="related-thread-name">{t.name}</div>
-              <div className="related-thread-desc">{t.description}</div>
+      <span className="lbl">関連用語（{list.length}件）</span>
+      <button type="button" className="related-section-toggle" onClick={() => setOpen((o) => !o)}>
+        {open ? '閉じる' : `関連用語を見る（${list.length}件）`}
+      </button>
+      {open && (
+        <div className="auto-related-list">
+          {list.map(({ id, term: t, reason }) => (
+            <div key={id} className="related-thread-row" onClick={() => onSelectRelated(id)}>
+              <div className="related-thread-bar" style={{ background: CATEGORY_COLORS[t.category] || '#888780' }} />
+              <div className="related-thread-body">
+                <div className="related-thread-name">{t.name}</div>
+                <div className="related-thread-desc">{t.description}</div>
+              </div>
+              <span className="related-tag-reason">{reason}</span>
             </div>
-            <span className="related-tag-reason">{reason}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -360,7 +367,6 @@ function AutoRelatedSection({ term, currentId, allTerms, excludeIds, onSelectRel
 // 詳細表示モーダル
 export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onClose, onBack, onEdit, onSelectRelated }) {
   if (!open || !term) return null;
-  const relatedIds = Object.keys(term.related || {});
   return (
     <div className="modal-overlay open" onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}>
       <div className="modal">
@@ -386,16 +392,7 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
               <p>{term.note}</p>
             </div>
           )}
-          <AutoRelatedSection term={term} currentId={currentId} allTerms={allTerms} excludeIds={relatedIds} onSelectRelated={onSelectRelated} />
-          {relatedIds.length > 0 && (
-            <RelatedSection
-              key={currentId}
-              relatedIds={relatedIds}
-              allTerms={allTerms}
-              currentTermId={currentId}
-              onSelectRelated={onSelectRelated}
-            />
-          )}
+          <AutoRelatedSection key={currentId} term={term} currentId={currentId} allTerms={allTerms} onSelectRelated={onSelectRelated} />
         </div>
         <div className="modal-footer">
           <button className="mbtn mbtn-cancel" onClick={onClose}>閉じる</button>
