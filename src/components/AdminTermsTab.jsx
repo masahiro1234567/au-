@@ -16,14 +16,18 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
     return next.length ? next : [emptyRow()];
   });
 
-  // 用語名を改行区切りで貼り付けて、行を一括作成する（カテゴリ・ランク・説明は空のまま／手入力）
+  // 1行＝1用語で貼り付けて、行を一括作成する。
+  // 「用語名｜説明」（全角の縦棒）またはタブ区切りなら、説明もまとめて入る。区切りが無ければ用語名だけ
   const parseNames = () => {
     const names = parseText
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean);
     if (!names.length) return showToast('用語名を入力してください');
-    const newRows = names.map((n) => ({ ...emptyRow(), name: n }));
+    const newRows = names.map((line) => {
+      const m = line.match(/^(.*?)\s*(?:｜|\t)\s*(.*)$/);
+      return m ? { ...emptyRow(), name: m[1].trim(), description: m[2].trim() } : { ...emptyRow(), name: line };
+    }).filter((r) => r.name);
     setRows((rs) => {
       const isBlankStarter = rs.length === 1 && !rs[0].name.trim() && !rs[0].description.trim();
       return isBlankStarter ? newRows : [...rs, ...newRows];
@@ -63,10 +67,10 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
         <div style={{ background: '#fff', border: '1.5px solid var(--primary)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: 14 }}>
           <div style={{ background: 'var(--bg)', border: '1.5px dashed var(--border)', borderRadius: 9, padding: 11, marginBottom: 14 }}>
             <div style={{ fontSize: '.78rem', fontWeight: 800, marginBottom: 6, color: 'var(--pd)' }}>📋 用語名から一括で行を作成</div>
-            <div style={{ fontSize: '.7rem', color: 'var(--sub)', marginBottom: 8 }}>用語名を1行に1つずつ貼り付けてください。カテゴリ・ランク・説明はこのあと行ごとに入力します。</div>
+            <div style={{ fontSize: '.7rem', color: 'var(--sub)', marginBottom: 8 }}>用語名を1行に1つずつ貼り付けてください。「用語名｜説明」の形（全角の縦棒かタブで区切る）なら説明もまとめて入ります。</div>
             <textarea
               rows={4}
-              placeholder={'例：\nMNP\n事務手数料\n家族割'}
+              placeholder={'例：\nMNP｜携帯番号をそのまま他社へ移すこと\n事務手数料\n家族割'}
               value={parseText}
               onChange={(e) => setParseText(e.target.value)}
               style={{ width: '100%', border: '1.5px solid var(--border)', borderRadius: 7, padding: '8px 10px', fontSize: '.82rem', fontFamily: 'inherit', resize: 'vertical', marginBottom: 8 }}

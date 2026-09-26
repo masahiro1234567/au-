@@ -1,3 +1,4 @@
+import AdminDevicesTab from './AdminDevicesTab.jsx';
 import React, { useMemo, useState } from 'react';
 import AdminTermsTab from './AdminTermsTab.jsx';
 import AdminKnowledgeTab from './AdminKnowledgeTab.jsx';
@@ -209,7 +210,7 @@ function ProfileTab({ profiles }) {
   );
 }
 
-export default function Admin({ terms, ghostIds, results, profiles, knowledgeTypes, onBack, onLogout }) {
+export default function Admin({ terms, ghostIds, results, profiles, knowledgeTypes, devices, onBack, onLogout }) {
   const [tab, setTab] = useState('summary');
 
   return (
@@ -227,12 +228,14 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
           <button className={`tab ${tab === 'log' ? 'active' : ''}`} onClick={() => setTab('log')}>テストログ</button>
           <button className={`tab ${tab === 'terms' ? 'active' : ''}`} onClick={() => setTab('terms')}>用語追加</button>
           <button className={`tab ${tab === 'knowledge' ? 'active' : ''}`} onClick={() => setTab('knowledge')}>用語管理</button>
+          <button className={`tab ${tab === 'devices' ? 'active' : ''}`} onClick={() => setTab('devices')}>機種比較</button>
           <button className={`tab ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>プロフィール管理</button>
         </div>
         {tab === 'summary' && <SummaryTab results={results} />}
         {tab === 'log' && <LogTab results={results} />}
         {tab === 'terms' && <AdminTermsTab terms={terms} ghostIds={ghostIds} knowledgeTypes={knowledgeTypes} />}
         {tab === 'knowledge' && <AdminKnowledgeTab terms={terms} knowledgeTypes={knowledgeTypes} />}
+        {tab === 'devices' && <AdminDevicesTab devices={devices} />}
         {tab === 'profile' && <ProfileTab profiles={profiles} />}
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDbCollection } from './useFirebase.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
+import DeviceCompare from './components/DeviceCompare.jsx';
 import Home from './components/Home.jsx';
 import Glossary from './components/Glossary.jsx';
 import Login from './components/Login.jsx';
@@ -28,6 +29,7 @@ export default function App() {
   const [results] = useDbCollection('test_results');
   const [profiles] = useDbCollection('user_profiles');
   const [knowledgeTypesDb] = useDbCollection('knowledge_types');
+  const [devices] = useDbCollection('devices');
   const knowledgeTypes = resolveKnowledgeTypes(knowledgeTypesDb);
 
   const [testUser, setTestUser] = useState(() => {
@@ -78,6 +80,7 @@ export default function App() {
         setPage('glossary');
       }}
       onGoTest={goTest}
+      onGoDevices={() => setPage('devices')}
       onAdminLogin={() => setPage('admin-login')}
     />
   );
@@ -86,6 +89,9 @@ export default function App() {
   switch (page) {
     case 'home':
       content = homeEl;
+      break;
+    case 'devices':
+      content = <DeviceCompare devices={devices} onBack={() => setPage('home')} />;
       break;
     case 'glossary':
       content = (
@@ -154,6 +160,7 @@ export default function App() {
           terms={validTerms}
           ghostIds={ghostIds}
           knowledgeTypes={knowledgeTypes}
+          devices={devices}
           results={results}
           profiles={profiles}
           onBack={() => setPage('home')}

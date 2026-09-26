@@ -73,3 +73,8 @@ export async function dbGet(path) {
   const snap = await get(ref(db, path));
   return snap.val();
 }
+
+// 書き込み前に新しいキー（push id）だけ発行する。まとめて保存するときに使う
+export function newDbKey(path) {
+  return push(ref(db, path)).key;
+}
