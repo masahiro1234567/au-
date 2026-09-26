@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { CATEGORIES_BASE, DEFAULT_KNOWLEDGE_TYPES, RANKS, showToast, getTermPath, termMatchesPath } from '../utils.js';
+import { CATEGORIES_BASE, DEFAULT_KNOWLEDGE_TYPES, RANKS, showToast, getTermPaths, pathsToDbFields, isDescMissing } from '../utils.js';
 import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
-import { RelatedTermsTagInput, PathSelector } from './TermModals.jsx';
+import { RelatedTermsTagInput, MultiPathSelector } from './TermModals.jsx';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
-const emptyRow = () => ({ name: '', knowledgePath: [], category: CATEGORIES_BASE[0], rank: '秀', description: '', note: '' });
+const emptyRow = () => ({ name: '', knowledgePaths: [], category: CATEGORIES_BASE[0], rank: '秀', description: '', note: '' });
 
 function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen, duplicateIndices, knowledgeTypes, onSaved }) {
   const updateRow = (i, key, val) => {
@@ -33,13 +33,18 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
   };
 
   const save = async () => {
-    const items = rows.filter((r) => r.name.trim() && r.description.trim());
+    // 説明が空でも保存する（「説明未入力」として管理画面に別枠で表示し、あとから入力できる）
+    const items = rows.filter((r) => r.name.trim());
     if (!items.length) return showToast('保存できる用語がありません');
-    let ok = 0;
+    let ok = 0, missing = 0;
     for (const item of items) {
-      try { await dbPush('terms', { ...item, createdAt: Date.now() }); ok++; } catch { /* noop */ }
+      try {
+        await dbPush('terms', { ...item, ...pathsToDbFields(item.knowledgePaths), name: item.name.trim(), createdAt: Date.now() });
+        ok++;
+        if (!item.description.trim()) missing++;
+      } catch { /* noop */ }
     }
-    showToast(`✅ ${ok}件を登録しました`);
+    showToast(missing ? `${ok}件を登録しました（うち説明未入力 ${missing}件）` : `${ok}件を登録しました`);
     setRows([emptyRow()]);
     setOpen(false);
     onSaved?.();
@@ -92,7 +97,7 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
                   </select>
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                  <PathSelector tree={knowledgeTypes} path={row.knowledgePath || []} onChange={(p) => updateRow(i, 'knowledgePath', p)} />
+                  <MultiPathSelector tree={knowledgeTypes} paths={row.knowledgePaths || []} onChange={(p) => updateRow(i, 'knowledgePaths', p)} />
                 </div>
                 <div className="bulk-rank-row">
                   {RANKS.map((r) => (
@@ -101,7 +106,7 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
                     </label>
                   ))}
                 </div>
-                <textarea className="bulk-desc" rows={2} placeholder="説明 *" value={row.description} onChange={(e) => updateRow(i, 'description', e.target.value)} />
+                <textarea className="bulk-desc" rows={2} placeholder="説明（空のまま保存すると「説明未入力」に入ります）" value={row.description} onChange={(e) => updateRow(i, 'description', e.target.value)} />
                 <textarea className="bulk-note" rows={1} placeholder="補足・注意点（任意）" value={row.note} onChange={(e) => updateRow(i, 'note', e.target.value)} />
               </div>
             );
@@ -134,7 +139,7 @@ function BulkAddSection({ rows, setRows, parseText, setParseText, open, setOpen,
 
 function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSaved, onDeleted }) {
   const [name, setName] = useState(term.name || '');
-  const [knowledgePath, setKnowledgePath] = useState(getTermPath(term));
+  const [knowledgePaths, setKnowledgePaths] = useState(getTermPaths(term));
   const [category, setCategory] = useState(term.category || CATEGORIES_BASE[0]);
   const [rank, setRank] = useState(term.rank || '秀');
   const [description, setDescription] = useState(term.description || '');
@@ -144,9 +149,9 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
   const rc = { 秀: 'badge-rank-秀', 優: 'badge-rank-優', 良: 'badge-rank-良', 可: 'badge-rank-可' };
 
   const save = async () => {
-    if (!name.trim() || !description.trim()) return showToast('用語名と説明は必須です');
+    if (!name.trim()) return showToast('用語名は必須です');
     try {
-      await dbSet('terms/' + id, { name, knowledgePath, category, rank, description, note, updatedAt: Date.now() });
+      await dbSet('terms/' + id, { name, ...pathsToDbFields(knowledgePaths), category, rank, description, note, createdAt: term.createdAt || Date.now(), updatedAt: Date.now() });
       const oldIds = Object.keys(term.related || {});
       await saveTermRelations(id, oldIds, related);
       showToast('✅ 更新しました');
@@ -181,7 +186,7 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
           </div>
           <div className="admin-edit-group">
             <label>知識区分（任意）</label>
-            <PathSelector tree={knowledgeTypes} path={knowledgePath} onChange={setKnowledgePath} />
+            <MultiPathSelector tree={knowledgeTypes} paths={knowledgePaths} onChange={setKnowledgePaths} />
           </div>
           <div className="admin-edit-group">
             <label>カテゴリ</label>
@@ -289,6 +294,19 @@ export default function AdminTermsTab({ terms, knowledgeTypes }) {
       );
   }, [terms, search]);
 
+  // 説明未入力の用語は別枠に分ける
+  const missingList = useMemo(() => sorted.filter(([, t]) => isDescMissing(t)), [sorted]);
+  const filledList = useMemo(() => sorted.filter(([, t]) => !isDescMissing(t)), [sorted]);
+  const [missingOpen, setMissingOpen] = useState(true);
+
+  const removeAllDuplicates = () => {
+    setBulkRows((rs) => {
+      const next = rs.filter((_, i) => !duplicateIndices.has(i));
+      return next.length ? next : [emptyRow()];
+    });
+    showToast(`${duplicateIndices.size}件の重複行を削除しました`);
+  };
+
   const toggle = (id) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -322,8 +340,16 @@ export default function AdminTermsTab({ terms, knowledgeTypes }) {
       {/* 一括登録中に重複がある時だけ、検索欄の下にまとめて表示する */}
       {duplicateRows.length > 0 && (
         <div style={{ background: '#fee2e2', border: '1.5px solid #fca5a5', borderRadius: 9, padding: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: '.78rem', fontWeight: 800, color: '#dc2626', marginBottom: 8 }}>
-            重複している用語が{duplicateRows.length}件あります
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: '.78rem', fontWeight: 800, color: '#dc2626' }}>
+              重複している用語が{duplicateRows.length}件あります
+            </span>
+            <button
+              onClick={removeAllDuplicates}
+              style={{ background: '#dc2626', border: 'none', borderRadius: 6, padding: '5px 10px', color: '#fff', fontSize: '.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+            >
+              重複をまとめて削除
+            </button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {duplicateRows.map((r) => (
@@ -352,8 +378,19 @@ export default function AdminTermsTab({ terms, knowledgeTypes }) {
       {!sorted.length ? (
         <div className="tc ts" style={{ padding: 30 }}>{search ? '該当する用語がありません' : '用語データなし'}</div>
       ) : (
-        <div className="admin-terms-list">
-          {sorted.map(([id, t]) => (
+        <>
+          {missingList.length > 0 && (
+            <div className="missing-box">
+              <div className="missing-head" onClick={() => setMissingOpen((o) => !o)}>
+                <div>
+                  <div className="missing-title">説明が未入力の用語（{missingList.length}件）</div>
+                  <div className="missing-sub">説明を入れて保存すると下の一覧に移ります。未入力のうちはユーザー側・テストには表示されません</div>
+                </div>
+                <span style={{ color: 'var(--sub)', fontSize: '.9rem' }}>{missingOpen ? '▲' : '▼'}</span>
+              </div>
+              {missingOpen && (
+                <div className="admin-terms-list">
+                  {missingList.map(([id, t]) => (
             <TermItem
               key={id + '_' + refreshKey} id={id} term={t} allTerms={terms}
               knowledgeTypes={kTypes}
@@ -361,7 +398,27 @@ export default function AdminTermsTab({ terms, knowledgeTypes }) {
               onToggle={() => toggle(id)}
             />
           ))}
-        </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="section-title" style={{ fontSize: '.85rem', margin: '4px 0 8px' }}>登録済みの用語（{filledList.length}件）</div>
+          {filledList.length ? (
+            <div className="admin-terms-list">
+              {filledList.map(([id, t]) => (
+            <TermItem
+              key={id + '_' + refreshKey} id={id} term={t} allTerms={terms}
+              knowledgeTypes={kTypes}
+              expanded={expandedIds.has(id)}
+              onToggle={() => toggle(id)}
+            />
+          ))}
+            </div>
+          ) : (
+            <div className="tc ts" style={{ padding: 20 }}>{search ? '該当する用語がありません' : 'まだありません'}</div>
+          )}
+        </>
       )}
     </div>
   );

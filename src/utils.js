@@ -64,12 +64,48 @@ export function getTermPath(term) {
   return [term.knowledgeType, term.knowledgeSubType].filter(Boolean);
 }
 
-// 用語のパスが、指定したパス（またはその先）に当たるかどうかを判定する（指定パスを先頭に含んでいればOK）
+// パス p が prefix で始まっているか（p が prefix そのもの、またはその配下）
+export function pathStartsWith(p, prefix) {
+  if (!prefix || !prefix.length) return true;
+  if (!p || p.length < prefix.length) return false;
+  return prefix.every((x, i) => p[i] === x);
+}
+
+// 用語が登録されている知識区分のパス一覧（複数登録対応）。
+// 新形式 knowledgePaths（パスの配列）→ 旧形式 knowledgePath → さらに古い knowledgeType/SubType の順に読む
+export function getTermPaths(term) {
+  if (!term) return [];
+  if (term.knowledgePaths) {
+    const raw = Array.isArray(term.knowledgePaths) ? term.knowledgePaths : Object.values(term.knowledgePaths);
+    return raw
+      .map((p) => (Array.isArray(p) ? p : Object.values(p || {})).filter(Boolean))
+      .filter((p) => p.length);
+  }
+  const single = getTermPath(term);
+  return single.length ? [single] : [];
+}
+
+// パス一覧を整理：重複を除き、より深いパスに含まれる親パスは省く（子に登録＝親にも登録済みとみなすため）
+export function normalizePaths(paths) {
+  const uniq = [];
+  const seen = new Set();
+  (paths || []).forEach((p) => {
+    const k = p.join('\u0001');
+    if (p.length && !seen.has(k)) { seen.add(k); uniq.push(p); }
+  });
+  return uniq.filter((p) => !uniq.some((q) => q.length > p.length && pathStartsWith(q, p)));
+}
+
+// 保存用：新形式に統一し、旧形式のフィールドは消す
+export function pathsToDbFields(paths) {
+  const n = normalizePaths(paths);
+  return { knowledgePaths: n.length ? n : null, knowledgePath: null, knowledgeType: null, knowledgeSubType: null };
+}
+
+// 用語が、指定したパス（またはその配下）のどれかに登録されているか
 export function termMatchesPath(term, path) {
   if (!path || !path.length) return true;
-  const tp = getTermPath(term);
-  if (tp.length < path.length) return false;
-  return path.every((p, i) => tp[i] === p);
+  return getTermPaths(term).some((tp) => pathStartsWith(tp, path));
 }
 
 // 後方互換用（旧: グローバル共有の区分リスト）。今は使わないが、まだ参照している箇所があれば安全のため残す。
@@ -126,4 +162,43 @@ export function suggestRelatedTerms({ allTerms, excludeId, name, category, descr
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
   return scored;
+}
+
+// 説明がまだ入っていない用語（一括登録で「とりあえず保存」したもの）。ユーザー側・テストには出さない
+export const isDescMissing = (t) => !((t && t.description) || '').trim();
+
+// ===== 区分の重複（1つの用語が複数の区分に登録されている状態）=====
+// 指定した区分（配下含む）に入っている用語のうち、ほかの区分にも入っているものを集計する
+// 戻り値：{ count: 重複用語数, ids: [...], others: [{ path, count, ids }]（重複先ごと・多い順） }
+export function overlapInfo(terms, path) {
+  const others = new Map();
+  const ids = [];
+  Object.entries(terms || {}).forEach(([id, t]) => {
+    const paths = getTermPaths(t);
+    if (!paths.some((p) => pathStartsWith(p, path))) return;
+    const outside = paths.filter((p) => !pathStartsWith(p, path));
+    if (!outside.length) return;
+    ids.push(id);
+    outside.forEach((p) => {
+      const k = p.join(' / ');
+      if (!others.has(k)) others.set(k, { path: p, count: 0, ids: [] });
+      const o = others.get(k);
+      o.count++; o.ids.push(id);
+    });
+  });
+  return { count: ids.length, ids, others: [...others.values()].sort((a, b) => b.count - a.count) };
+}
+
+// 全体の重複を「区分の組み合わせ」ごとにまとめる（例：au と UQ に入っている用語が3件）
+export function overlapGroups(terms) {
+  const groups = new Map();
+  Object.entries(terms || {}).forEach(([id, t]) => {
+    const paths = getTermPaths(t);
+    if (paths.length < 2) return;
+    const labels = paths.map((p) => p.join(' / ')).sort((a, b) => a.localeCompare(b, 'ja'));
+    const k = labels.join('\u0001');
+    if (!groups.has(k)) groups.set(k, { labels, ids: [] });
+    groups.get(k).ids.push(id);
+  });
+  return [...groups.values()].sort((a, b) => b.ids.length - a.ids.length);
 }

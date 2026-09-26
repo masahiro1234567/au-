@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { CATEGORIES_BASE, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms, getTermPaths, normalizePaths, pathsToDbFields } from '../utils.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
 // 知識区分の階層セレクタ。選んだ項目がさらに子を持ってたら、その下に次の選択欄が自動で増える（何段でも）
@@ -26,6 +26,41 @@ export function PathSelector({ tree, path, onChange }) {
           {lvl.nodes.map((n) => <option key={n.name} value={n.name}>{n.name}</option>)}
         </select>
       ))}
+    </div>
+  );
+}
+
+
+// 知識区分を複数登録するための入力。登録済みの区分をチップで並べ、下の選択欄から追加する
+export function MultiPathSelector({ tree, paths, onChange }) {
+  const [draft, setDraft] = useState([]);
+  const list = normalizePaths(paths || []);
+  const add = () => {
+    if (!draft.length) return;
+    onChange(normalizePaths([...list, draft]));
+    setDraft([]);
+  };
+  const remove = (i) => onChange(list.filter((_, idx) => idx !== i));
+  return (
+    <div className="mps">
+      {list.length > 0 ? (
+        <div className="mps-chips">
+          {list.map((p, i) => (
+            <span key={p.join('/')} className="mps-chip">
+              {p.join(' / ')}
+              <button type="button" onClick={() => remove(i)} aria-label="この区分を外す">✕</button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="mps-empty">未分類</div>
+      )}
+      <div className="mps-add">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <PathSelector tree={tree} path={draft} onChange={setDraft} />
+        </div>
+        <button type="button" className="mps-add-btn" disabled={!draft.length} onClick={add}>追加</button>
+      </div>
     </div>
   );
 }
@@ -118,7 +153,7 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
   );
 }
 
-const EMPTY = { name: '', knowledgePath: [], category: CATEGORIES_BASE[0], rank: '秀', description: '', note: '', related: [] };
+const EMPTY = { name: '', knowledgePaths: [], category: CATEGORIES_BASE[0], rank: '秀', description: '', note: '', related: [] };
 
 // 追加・編集 共通フォームモーダル
 export function TermFormModal({ open, mode, initial, allTerms, currentId, knowledgeTypes, onClose, onSubmit, onDelete }) {
@@ -129,10 +164,7 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
     if (!open) return;
     if (initial) {
       const relatedIds = Object.keys(initial.related || {});
-      const path = Array.isArray(initial.knowledgePath) && initial.knowledgePath.length
-        ? initial.knowledgePath
-        : [initial.knowledgeType, initial.knowledgeSubType].filter(Boolean);
-      setForm({ ...EMPTY, ...initial, knowledgePath: path, related: relatedIds });
+      setForm({ ...EMPTY, ...initial, knowledgePaths: getTermPaths(initial), related: relatedIds });
     } else {
       setForm(EMPTY);
     }
@@ -143,11 +175,11 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = () => {
-    if (!form.name.trim() || !form.description.trim()) {
-      showToast('用語名と説明は必須です');
+    if (!form.name.trim()) {
+      showToast('用語名は必須です');
       return;
     }
-    onSubmit(form);
+    onSubmit({ ...form, ...pathsToDbFields(form.knowledgePaths) });
   };
 
   return (
@@ -164,8 +196,8 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
             <input value={form.name} onChange={(e) => set('name')(e.target.value)} placeholder="例：MNP" />
           </div>
           <div className="form-group">
-            <label>知識区分（任意）</label>
-            <PathSelector tree={kTypes} path={form.knowledgePath} onChange={set('knowledgePath')} />
+            <label>知識区分（任意・複数可）</label>
+            <MultiPathSelector tree={kTypes} paths={form.knowledgePaths} onChange={set('knowledgePaths')} />
           </div>
           <div className="form-group">
             <label>カテゴリ <span className="req">*</span></label>
@@ -179,7 +211,7 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
           </div>
           <div className="form-group">
             <label>説明 <span className="req">*</span></label>
-            <textarea value={form.description} onChange={(e) => set('description')(e.target.value)} placeholder="用語の説明を入力" />
+            <textarea value={form.description} onChange={(e) => set('description')(e.target.value)} placeholder="用語の説明を入力（未入力のままだとユーザー側には表示されません）" />
           </div>
           <div className="form-group">
             <label>補足・注意点（任意）</label>

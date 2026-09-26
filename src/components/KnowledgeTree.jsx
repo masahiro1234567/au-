@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { showToast, getTermPath } from '../utils.js';
+import { showToast, termMatchesPath, getTermPaths, pathStartsWith, pathsToDbFields, overlapInfo } from '../utils.js';
 import { dbPush, dbSet, dbRemove, dbGet, dbUpdateMany } from '../useFirebase.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
@@ -56,19 +56,45 @@ export function findKnowledgeNode(knowledgeTypes, path) {
 }
 
 // ノードの名前を変更する（path=ルートから対象ノードまでの名前の配列）
-export async function renameKnowledgeNode(knowledgeTypes, path, name) {
-  const trimmed = name.trim();
-  if (!trimmed) return;
-  const dbPath = await ensureNodeId(knowledgeTypes, path);
-  await dbSet(`knowledge_types/${dbPath}/name`, trimmed);
+// 用語側に保存されている区分パスを一括で書き換える。
+// transform(パス) が新しいパスを返せばそれに置き換え、null を返せばその登録を外す
+async function rewriteTermPaths(prefix, transform) {
+  const terms = (await dbGet('terms')) || {};
+  const updates = {};
+  let changed = 0;
+  Object.entries(terms).forEach(([id, t]) => {
+    const cur = getTermPaths(t);
+    if (!cur.some((p) => pathStartsWith(p, prefix))) return;
+    const next = cur.map((p) => (pathStartsWith(p, prefix) ? transform(p) : p)).filter(Boolean);
+    Object.entries(pathsToDbFields(next)).forEach(([k, v]) => { updates[`terms/${id}/${k}`] = v; });
+    changed++;
+  });
+  await dbUpdateMany(updates);
+  return changed;
 }
 
-// ノードを削除する（初期値=idが無いものは削除不可）
+// ノード名を変更する。その区分（と配下）に登録済みの用語のパスも新しい名前に書き換える
+export async function renameKnowledgeNode(knowledgeTypes, path, name) {
+  const trimmed = name.trim();
+  if (!trimmed) return 0;
+  const oldName = path[path.length - 1];
+  if (trimmed === oldName) return 0;
+  const parentPath = path.slice(0, -1);
+  const siblings = parentPath.length ? (findKnowledgeNode(knowledgeTypes, parentPath)?.children || []) : knowledgeTypes;
+  if (siblings.some((c) => c.name === trimmed)) throw new Error('同じ階層に同じ名前の項目がすでにあります');
+  const dbPath = await ensureNodeId(knowledgeTypes, path);
+  await dbSet(`knowledge_types/${dbPath}/name`, trimmed);
+  const idx = path.length - 1;
+  return rewriteTermPaths(path, (p) => [...p.slice(0, idx), trimmed, ...p.slice(idx + 1)]);
+}
+
+// ノードを削除する（初期値=idが無いものは削除不可）。その区分（と配下）への用語の登録も外す
 export async function removeKnowledgeNode(knowledgeTypes, path) {
   const node = findKnowledgeNode(knowledgeTypes, path);
   if (!node?.id) throw new Error('初期値は削除できません');
   const dbPath = await ensureNodeId(knowledgeTypes, path);
   await dbRemove(`knowledge_types/${dbPath}`);
+  return rewriteTermPaths(path, () => null);
 }
 
 // 指定したノード（parentPath、[]ならルート）に新しい子を追加する
@@ -194,15 +220,15 @@ export function KnowledgeConfigManager({ knowledgeTypes, defaultOpen }) {
   const onRename = async (parentPath, node, name) => {
     if (!name.trim() || name === node.name) return;
     try {
-      await renameKnowledgeNode(knowledgeTypes, [...parentPath, node.name], name);
-      showToast('✅ 変更しました');
+      const n = await renameKnowledgeNode(knowledgeTypes, [...parentPath, node.name], name);
+      showToast(n ? `変更しました（登録済みの用語${n}件も書き換えました）` : '変更しました');
     } catch (e) { showToast('エラー:' + e.message); }
   };
 
   const onRemove = async (parentPath, node) => {
     try {
-      await removeKnowledgeNode(knowledgeTypes, [...parentPath, node.name]);
-      showToast('🗑 削除しました');
+      const n = await removeKnowledgeNode(knowledgeTypes, [...parentPath, node.name]);
+      showToast(n ? `削除しました（${n}件の用語からこの区分を外しました）` : '削除しました');
     } catch (e) { showToast(e.message); }
   };
 
@@ -273,12 +299,15 @@ function estimateTextW(str, fontSize) {
 }
 
 // ツリーをレイアウト用の構造に変換（各ノードの箱の幅と、子孫を含めた幅を計算）
-function measureTree(node, path, labelFor, m) {
+function measureTree(node, path, labelFor, m, overlapFor) {
   const label = labelFor(node, path);
-  const boxW = estimateTextW(label, m.font) + m.padX * 2;
-  const children = (node.children || []).map((ch) => measureTree(ch, [...path, ch.name], labelFor, m));
+  const overlap = path.length && overlapFor ? overlapFor(path) : 0;
+  const badgeText = overlap ? `重複${overlap}` : '';
+  const badgeW = overlap ? estimateTextW(badgeText, m.font * 0.78) + 10 : 0;
+  const boxW = estimateTextW(label, m.font) + m.padX * 2 + (overlap ? badgeW + 4 : 0);
+  const children = (node.children || []).map((ch) => measureTree(ch, [...path, ch.name], labelFor, m, overlapFor));
   const childrenW = children.reduce((s, c) => s + c.subtreeW, 0) + Math.max(0, children.length - 1) * m.gapX;
-  return { node, path, label, boxW, children, childrenW, subtreeW: Math.max(boxW, childrenW) };
+  return { node, path, label, boxW, badgeText, badgeW, children, childrenW, subtreeW: Math.max(boxW, childrenW) };
 }
 
 // 計算済みの幅をもとに、実際の座標を決める
@@ -315,10 +344,8 @@ function metricsFor(zoom) {
 
 // 用語管理画面の上部に出すマインドマップ。ノードとその子孫を何段でも描画する
 export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editable, onEditNode, zoom = 1 }) {
-  const countFor = (path) => Object.values(terms).filter((t) => {
-    const tp = getTermPath(t);
-    return tp.length === path.length && path.every((p, i) => tp[i] === p);
-  }).length;
+  // 配下（子・孫…）に登録された用語も含めて数える
+  const countFor = (path) => Object.values(terms).filter((t) => termMatchesPath(t, path)).length;
 
   const isActive = (path) => !!mapFilter && mapFilter.length === path.length && mapFilter.every((p, i) => p === path[i]);
   const dim = (active) => (mapFilter && !active ? 0.4 : 1);
@@ -334,7 +361,9 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editab
     const name = node.name || '（名前なし）';
     return path.length > 1 ? `${name}（${countFor(path)}）` : name;
   };
-  const root = measureTree({ name: 'すべて', children: knowledgeTypes }, [], labelFor, m);
+  // 各区分の「ほかの区分とも重複している用語数」
+  const overlapFor = (path) => overlapInfo(terms, path).count;
+  const root = measureTree({ name: 'すべて', children: knowledgeTypes }, [], labelFor, m, overlapFor);
   const nodes = [];
   placeTree(root, m.margin, 0, m, nodes, null);
 
@@ -375,10 +404,20 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editab
               fill={fill} stroke={active && isRoot ? '#f97316' : c.border}
               strokeWidth={active ? 2 : 0.8}
               strokeDasharray={editable && !isRoot ? '4 3' : undefined} />
-            <text x={item.cx} y={item.y + m.boxH / 2} textAnchor="middle" dominantBaseline="central"
+            <text x={item.cx - (item.badgeW ? (item.badgeW + 4) / 2 : 0)} y={item.y + m.boxH / 2} textAnchor="middle" dominantBaseline="central"
               fontSize={m.font} fontWeight={700} fill={active ? '#fff' : c.text}>
               {item.label}
             </text>
+            {item.badgeW > 0 && (
+              <>
+                <rect x={item.cx + item.boxW / 2 - item.badgeW - 5} y={item.y + m.boxH * 0.2} width={item.badgeW} height={m.boxH * 0.6}
+                  rx={m.boxH * 0.3} fill="#ea580c" />
+                <text x={item.cx + item.boxW / 2 - 5 - item.badgeW / 2} y={item.y + m.boxH / 2} textAnchor="middle" dominantBaseline="central"
+                  fontSize={m.font * 0.78} fontWeight={800} fill="#fff">
+                  {item.badgeText}
+                </text>
+              </>
+            )}
           </g>
         );
       })}
@@ -387,7 +426,7 @@ export function TermMindMap({ terms, knowledgeTypes, mapFilter, onSelect, editab
 }
 
 // マインドマップを折りたたみリスト形式で表示する（デフォルトは全部閉じた状態。深い階層でもごちゃつかない）
-function ListNode({ node, path, colorIndex, isActive, handleClick, editable, countFor, openIds, setOpenIds }) {
+function ListNode({ node, path, colorIndex, isActive, handleClick, editable, countFor, overlapFor, openIds, setOpenIds }) {
   const key = path.join(' / ');
   const isOpen = !!openIds[key];
   const c = DEPTH_COLORS[colorIndex % DEPTH_COLORS.length];
@@ -406,6 +445,7 @@ function ListNode({ node, path, colorIndex, isActive, handleClick, editable, cou
       >
         <span style={{ fontSize: '.8rem', fontWeight: 700, color: active ? '#fff' : c.text }}>
           {node.name || '（名前なし）'}{path.length > 1 ? `（${countFor(path)}）` : ''}
+          {overlapFor(path) > 0 && <span className="ov-badge">重複{overlapFor(path)}</span>}
           {editable && <span style={{ marginLeft: 6, fontSize: '.72rem' }}>✏️</span>}
         </span>
         {hasChildren && (
@@ -423,7 +463,7 @@ function ListNode({ node, path, colorIndex, isActive, handleClick, editable, cou
             <ListNode
               key={child.id || child.name}
               node={child} path={[...path, child.name]} colorIndex={colorIndex}
-              isActive={isActive} handleClick={handleClick} editable={editable} countFor={countFor}
+              isActive={isActive} handleClick={handleClick} editable={editable} countFor={countFor} overlapFor={overlapFor}
               openIds={openIds} setOpenIds={setOpenIds}
             />
           ))}
@@ -435,10 +475,9 @@ function ListNode({ node, path, colorIndex, isActive, handleClick, editable, cou
 
 export function MindMapList({ terms, knowledgeTypes, mapFilter, onSelect, editable, onEditNode }) {
   const [openIds, setOpenIds] = useState({});
-  const countFor = (path) => Object.values(terms).filter((t) => {
-    const tp = getTermPath(t);
-    return tp.length === path.length && path.every((p, i) => tp[i] === p);
-  }).length;
+  // 配下（子・孫…）に登録された用語も含めて数える
+  const countFor = (path) => Object.values(terms).filter((t) => termMatchesPath(t, path)).length;
+  const overlapFor = (path) => overlapInfo(terms, path).count;
   const isActive = (path) => !!mapFilter && mapFilter.length === path.length && mapFilter.every((p, i) => p === path[i]);
   const handleClick = (path) => {
     if (editable) { onEditNode?.(path); return; }
@@ -457,7 +496,7 @@ export function MindMapList({ terms, knowledgeTypes, mapFilter, onSelect, editab
         <ListNode
           key={node.id || i}
           node={node} path={[node.name]} colorIndex={i}
-          isActive={isActive} handleClick={handleClick} editable={editable} countFor={countFor}
+          isActive={isActive} handleClick={handleClick} editable={editable} countFor={countFor} overlapFor={overlapFor}
           openIds={openIds} setOpenIds={setOpenIds}
         />
       ))}

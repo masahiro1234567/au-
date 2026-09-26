@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_KNOWLEDGE_TYPES, termMatchesPath, getTermPath, showToast } from '../utils.js';
+import { DEFAULT_KNOWLEDGE_TYPES, termMatchesPath, getTermPaths, pathStartsWith, pathsToDbFields, showToast, overlapInfo, overlapGroups } from '../utils.js';
 import { saveTermRelations, dbUpdateMany } from '../useFirebase.js';
 import { RelatedTermsTagInput } from './TermModals.jsx';
 import { ConfirmButton } from './ConfirmButton.jsx';
@@ -90,7 +90,7 @@ function SortableChildren({ items, onRemove, onReorder }) {
 }
 
 // マインドマップ上で選んだノードを直接編集するパネル（名前変更・子の追加・子の削除・自分自身の削除）
-function MindMapNodeEditor({ knowledgeTypes, path, onClose }) {
+function MindMapNodeEditor({ knowledgeTypes, path, onClose, onRenamed }) {
   const [newChildName, setNewChildName] = useState('');
   const node = findKnowledgeNode(knowledgeTypes, path);
   if (!node) return null;
@@ -98,8 +98,10 @@ function MindMapNodeEditor({ knowledgeTypes, path, onClose }) {
   const doRename = async (name) => {
     if (!name.trim() || name === node.name) return;
     try {
-      await renameKnowledgeNode(knowledgeTypes, path, name);
-      showToast('✅ 変更しました');
+      const n = await renameKnowledgeNode(knowledgeTypes, path, name);
+      // 編集パネルを新しい名前のまま開いておく
+      onRenamed?.([...path.slice(0, -1), name.trim()]);
+      showToast(n ? `変更しました（登録済みの用語${n}件も書き換えました）` : '変更しました');
     } catch (e) { showToast('エラー:' + e.message); }
   };
 
@@ -114,8 +116,8 @@ function MindMapNodeEditor({ knowledgeTypes, path, onClose }) {
 
   const doRemoveChild = async (childName) => {
     try {
-      await removeKnowledgeNode(knowledgeTypes, [...path, childName]);
-      showToast('🗑 削除しました');
+      const n = await removeKnowledgeNode(knowledgeTypes, [...path, childName]);
+      showToast(n ? `削除しました（${n}件の用語からこの区分を外しました）` : '削除しました');
     } catch (e) { showToast(e.message); }
   };
 
@@ -128,8 +130,8 @@ function MindMapNodeEditor({ knowledgeTypes, path, onClose }) {
 
   const doRemoveSelf = async () => {
     try {
-      await removeKnowledgeNode(knowledgeTypes, path);
-      showToast('🗑 削除しました');
+      const n = await removeKnowledgeNode(knowledgeTypes, path);
+      showToast(n ? `削除しました（${n}件の用語からこの区分を外しました）` : '削除しました');
       onClose();
     } catch (e) { showToast(e.message); }
   };
@@ -215,74 +217,94 @@ function RelationRow({ id, term, allTerms }) {
 }
 
 
-// マインドマップで選んだ区分に、複数の用語をまとめて登録する（カテゴリ分け作業の簡略化用）
+// マインドマップで選んだ区分に、複数の用語をまとめて登録・解除する（カテゴリ分け作業の簡略化用）
+// ・子に登録すると、親の区分にも入っているものとして扱う（親での表示・件数にも含まれる）
+// ・1つの用語を複数の区分に登録できる（登録しても他の区分からは外れない）
 function BulkAssignPanel({ terms, path }) {
-  const [scope, setScope] = useState('unassigned'); // 'unassigned'（未分類のみ）| 'all'（すべて）
+  const [scope, setScope] = useState('unassigned'); // 'unassigned' | 'here' | 'overlap' | 'all'
+  const [overlapWith, setOverlapWith] = useState(null); // 重複先で絞り込むとき、その区分の表示名
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState(() => new Set());
   const [saving, setSaving] = useState(false);
   const pathKey = path.join('/');
 
-  // 区分を切り替えたら選択をリセット
-  React.useEffect(() => { setSelected(new Set()); }, [pathKey]);
+  useEffect(() => { setSelected(new Set()); }, [pathKey, scope, overlapWith]);
+  useEffect(() => { setOverlapWith(null); }, [pathKey]);
 
-  const isHere = (t) => getTermPath(t).join('/') === pathKey;
+  const ov = useMemo(() => overlapInfo(terms, path), [terms, pathKey]);
+
+  // この区分（または配下）に登録済みか
+  const isHere = (t) => termMatchesPath(t, path);
+
+  const counts = useMemo(() => {
+    const all = Object.values(terms);
+    return {
+      unassigned: all.filter((t) => getTermPaths(t).length === 0).length,
+      here: all.filter((t) => termMatchesPath(t, path)).length,
+    };
+  }, [terms, pathKey]);
 
   const list = useMemo(() => {
     return Object.entries(terms)
-      .filter(([, t]) => (scope === 'all' ? true : getTermPath(t).length === 0))
+      .filter(([, t]) => {
+        if (scope === 'unassigned') return getTermPaths(t).length === 0;
+        if (scope === 'here') return termMatchesPath(t, path);
+        return true;
+      })
+      .filter(([id]) => {
+        if (scope !== 'overlap') return true;
+        if (!overlapWith) return ov.ids.includes(id);
+        return (ov.others.find((o) => o.path.join(' / ') === overlapWith)?.ids || []).includes(id);
+      })
       .filter(([, t]) => !q || (t.name || '').includes(q))
       .sort((a, b) => {
-        // この区分に登録済みの用語は下に回す
         const ha = isHere(a[1]) ? 1 : 0, hb = isHere(b[1]) ? 1 : 0;
-        if (ha !== hb) return ha - hb;
+        if (scope === 'all' && ha !== hb) return ha - hb;
         return (a[1].name || '').localeCompare(b[1].name || '', 'ja');
       });
-  }, [terms, scope, q, pathKey]);
+  }, [terms, scope, q, pathKey, ov, overlapWith]);
 
-  const unassignedCount = useMemo(() => Object.values(terms).filter((t) => getTermPath(t).length === 0).length, [terms]);
-  const selectable = list.filter(([, t]) => !isHere(t)).map(([id]) => id);
-  const allSelected = selectable.length > 0 && selectable.every((id) => selected.has(id));
-  const selectedHere = [...selected].filter((id) => terms[id] && isHere(terms[id]));
-  const selectedToAssign = [...selected].filter((id) => terms[id] && !isHere(terms[id]));
+  const visibleIds = list.map(([id]) => id);
+  const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+  const selIds = [...selected].filter((id) => terms[id]);
+  const toAssign = selIds.filter((id) => !isHere(terms[id]));
+  const toUnassign = selIds.filter((id) => isHere(terms[id]));
 
   const toggle = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleAll = () => setSelected((s) => {
     const n = new Set(s);
-    if (allSelected) selectable.forEach((id) => n.delete(id)); else selectable.forEach((id) => n.add(id));
+    if (allSelected) visibleIds.forEach((id) => n.delete(id)); else visibleIds.forEach((id) => n.add(id));
     return n;
   });
 
+  const writePaths = async (ids, makePaths) => {
+    const updates = {};
+    ids.forEach((id) => {
+      const f = pathsToDbFields(makePaths(getTermPaths(terms[id])));
+      Object.entries(f).forEach(([k, v]) => { updates[`terms/${id}/${k}`] = v; });
+    });
+    await dbUpdateMany(updates);
+  };
+
   const assign = async () => {
-    if (!selectedToAssign.length) return;
+    if (!toAssign.length) return;
     setSaving(true);
     try {
-      const updates = {};
-      selectedToAssign.forEach((id) => {
-        updates[`terms/${id}/knowledgePath`] = path;
-        // 旧形式のフィールドは新形式と食い違わないよう消しておく
-        updates[`terms/${id}/knowledgeType`] = null;
-        updates[`terms/${id}/knowledgeSubType`] = null;
-      });
-      await dbUpdateMany(updates);
-      showToast(`${selectedToAssign.length}件を「${path.join(' / ')}」に登録しました`);
+      // 既存の区分は残したまま、この区分を追加（親区分に入っていた場合はより詳しいこちらに置き換わる）
+      await writePaths(toAssign, (cur) => [...cur, path]);
+      showToast(`${toAssign.length}件を「${path.join(' / ')}」に登録しました`);
       setSelected(new Set());
     } catch (e) { showToast('エラー:' + e.message); }
     setSaving(false);
   };
 
   const unassign = async () => {
-    if (!selectedHere.length) return;
+    if (!toUnassign.length) return;
     setSaving(true);
     try {
-      const updates = {};
-      selectedHere.forEach((id) => {
-        updates[`terms/${id}/knowledgePath`] = null;
-        updates[`terms/${id}/knowledgeType`] = null;
-        updates[`terms/${id}/knowledgeSubType`] = null;
-      });
-      await dbUpdateMany(updates);
-      showToast(`${selectedHere.length}件を区分から外しました`);
+      // この区分とその配下への登録だけを外す（他の区分への登録は残る）
+      await writePaths(toUnassign, (cur) => cur.filter((p) => !pathStartsWith(p, path)));
+      showToast(`${toUnassign.length}件を「${path.join(' / ')}」から外しました`);
       setSelected(new Set());
     } catch (e) { showToast('エラー:' + e.message); }
     setSaving(false);
@@ -293,25 +315,45 @@ function BulkAssignPanel({ terms, path }) {
     border: active ? 'none' : '1.5px solid var(--border)', background: active ? 'var(--pd)' : '#fff', color: active ? '#fff' : 'var(--sub)',
   });
 
+  const emptyMsg = { unassigned: '未分類の用語はありません', here: 'この区分に登録されている用語はありません', overlap: 'ほかの区分と重複している用語はありません', all: '該当する用語がありません' }[scope];
+
   return (
     <div className="ba-panel">
       <div className="ba-head">
-        <div className="ba-title">用語をまとめて登録</div>
-        <div className="ba-target">登録先：<b>{path.join(' / ')}</b></div>
+        <div className="ba-title">用語の登録・解除</div>
+        <div className="ba-target">対象の区分：<b>{path.join(' / ')}</b></div>
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-        <button style={pill(scope === 'unassigned')} onClick={() => setScope('unassigned')}>未分類のみ（{unassignedCount}）</button>
+        <button style={pill(scope === 'unassigned')} onClick={() => setScope('unassigned')}>未分類のみ（{counts.unassigned}）</button>
+        <button style={pill(scope === 'here')} onClick={() => setScope('here')}>この区分に登録済み（{counts.here}）</button>
+        <button style={pill(scope === 'overlap')} onClick={() => { setScope('overlap'); setOverlapWith(null); }}>重複あり（{ov.count}）</button>
         <button style={pill(scope === 'all')} onClick={() => setScope('all')}>すべての用語</button>
       </div>
-      <input
-        value={q} onChange={(e) => setQ(e.target.value)} placeholder="用語名で絞り込み"
-        className="ba-search"
-      />
+
+      {scope === 'overlap' && (
+        ov.count ? (
+          <div className="ov-break">
+            <div className="ov-break-title">重複先の内訳（タップで絞り込み）</div>
+            <div className="ov-break-chips">
+              <button className={`ov-chip ${!overlapWith ? 'on' : ''}`} onClick={() => setOverlapWith(null)}>すべて {ov.count}件</button>
+              {ov.others.map((o) => {
+                const k = o.path.join(' / ');
+                return (
+                  <button key={k} className={`ov-chip ${overlapWith === k ? 'on' : ''}`} onClick={() => setOverlapWith(overlapWith === k ? null : k)}>
+                    {k}<b>{o.count}件</b>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null
+      )}
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="用語名で絞り込み" className="ba-search" />
 
       <div className="ba-listbar">
         <label className="ba-check">
-          <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={!selectable.length} />
+          <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={!visibleIds.length} />
           <span>表示中をすべて選択</span>
         </label>
         <span className="ba-count">{selected.size}件選択中</span>
@@ -319,16 +361,18 @@ function BulkAssignPanel({ terms, path }) {
 
       <div className="ba-list">
         {list.length === 0 ? (
-          <div className="ba-empty">{scope === 'unassigned' ? '未分類の用語はありません' : '該当する用語がありません'}</div>
+          <div className="ba-empty">{emptyMsg}</div>
         ) : list.map(([id, t]) => {
-          const cur = getTermPath(t);
+          const paths = getTermPaths(t);
           const here = isHere(t);
           return (
             <label key={id} className={`ba-row ${selected.has(id) ? 'on' : ''}`}>
               <input type="checkbox" checked={selected.has(id)} onChange={() => toggle(id)} />
               <span className="ba-row-name">{t.name}</span>
-              <span className={`ba-row-path ${here ? 'here' : ''}`}>
-                {here ? '登録済み' : cur.length ? cur.join(' / ') : '未分類'}
+              <span className="ba-row-paths">
+                {paths.length ? paths.map((p) => (
+                  <span key={p.join('/')} className={`ba-tag ${pathStartsWith(p, path) ? 'here' : ''}`}>{p.join(' / ')}</span>
+                )) : <span className="ba-tag none">未分類</span>}
               </span>
             </label>
           );
@@ -336,17 +380,61 @@ function BulkAssignPanel({ terms, path }) {
       </div>
 
       <div className="ba-actions">
-        {selectedHere.length > 0 && (
-          <button className="ba-btn ba-btn-sub" disabled={saving} onClick={unassign}>
-            {selectedHere.length}件を区分から外す
-          </button>
-        )}
-        <button className="ba-btn" disabled={saving || !selectedToAssign.length} onClick={assign}>
-          {saving ? '保存中…' : `${selectedToAssign.length}件をこの区分に登録`}
+        <button className="ba-btn ba-btn-sub" disabled={saving || !toUnassign.length} onClick={unassign}>
+          {toUnassign.length}件を解除
+        </button>
+        <button className="ba-btn" disabled={saving || !toAssign.length} onClick={assign}>
+          {saving ? '保存中…' : `${toAssign.length}件をこの区分に登録`}
         </button>
       </div>
-      {scope === 'all' && selectedToAssign.some((id) => getTermPath(terms[id]).length) && (
-        <div className="ba-note">別の区分に入っている用語は、この区分へ移動します</div>
+      <div className="ba-note">登録しても、ほかの区分への登録はそのまま残ります。解除はこの区分（とその配下）への登録だけを外します。</div>
+    </div>
+  );
+}
+
+
+// 全体の重複一覧：区分の組み合わせごとに件数を表示し、開くと用語名が見える
+function OverlapSummary({ terms, onPick }) {
+  const groups = useMemo(() => overlapGroups(terms), [terms]);
+  const [open, setOpen] = useState(false);
+  const [openKey, setOpenKey] = useState(null);
+  const total = groups.reduce((s, g) => s + g.ids.length, 0);
+  if (!groups.length) return null;
+  return (
+    <div className="ov-sum">
+      <div className="ov-sum-head" onClick={() => setOpen((o) => !o)}>
+        <span>複数の区分に登録されている用語：<b>{total}件</b>（{groups.length}通りの組み合わせ）</span>
+        <span style={{ color: 'var(--sub)' }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div className="ov-sum-list">
+          {groups.map((g) => {
+            const k = g.labels.join('|');
+            const isOpen = openKey === k;
+            return (
+              <div key={k} className="ov-sum-row">
+                <div className="ov-sum-combo" onClick={() => setOpenKey(isOpen ? null : k)}>
+                  <span className="ov-sum-paths">
+                    {g.labels.map((l, i) => (
+                      <React.Fragment key={l}>
+                        {i > 0 && <span className="ov-sum-amp">＋</span>}
+                        <span className="ba-tag">{l}</span>
+                      </React.Fragment>
+                    ))}
+                  </span>
+                  <b className="ov-sum-count">{g.ids.length}件</b>
+                </div>
+                {isOpen && (
+                  <div className="ov-sum-terms">
+                    {g.ids.map((id) => terms[id] && (
+                      <span key={id} className="ov-sum-term">{terms[id].name}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -421,7 +509,7 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
       )}
 
       {mapEditMode && editingPath && (
-        <MindMapNodeEditor knowledgeTypes={kTypes} path={editingPath} onClose={() => setEditingPath(null)} />
+        <MindMapNodeEditor knowledgeTypes={kTypes} path={editingPath} onClose={() => setEditingPath(null)} onRenamed={setEditingPath} />
       )}
 
       {!mapEditMode && mapFilter && (
@@ -434,6 +522,8 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
       )}
 
       {!mapEditMode && mapFilter && <BulkAssignPanel terms={terms} path={mapFilter} />}
+
+      {!mapEditMode && !mapFilter && <OverlapSummary terms={terms} />}
 
       {!mapEditMode && !mapFilter && (
         <div className="ba-hint">マインドマップで区分を1つ選ぶと、その区分に用語をまとめて登録できます</div>

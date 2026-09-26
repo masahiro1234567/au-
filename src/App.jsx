@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDbCollection } from './useFirebase.js';
-import { resolveKnowledgeTypes } from './utils.js';
+import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
 import Home from './components/Home.jsx';
 import Glossary from './components/Glossary.jsx';
 import Login from './components/Login.jsx';
@@ -12,6 +12,11 @@ import Admin from './components/Admin.jsx';
 
 export default function App() {
   const [terms, termsLoaded] = useDbCollection('terms');
+  // 説明が未入力の用語は、ユーザー側（ホーム・用語一覧・テスト）には出さない
+  const publicTerms = useMemo(
+    () => Object.fromEntries(Object.entries(terms || {}).filter(([, t]) => !isDescMissing(t))),
+    [terms]
+  );
   const [results] = useDbCollection('test_results');
   const [profiles] = useDbCollection('user_profiles');
   const [knowledgeTypesDb] = useDbCollection('knowledge_types');
@@ -57,7 +62,7 @@ export default function App() {
 
   const homeEl = (
     <Home
-      terms={terms}
+      terms={publicTerms}
       testUser={testUser}
       onOpenFiltered={({ category, q }) => {
         setGlossaryCat(category || 'all');
@@ -77,7 +82,7 @@ export default function App() {
     case 'glossary':
       content = (
         <Glossary
-          terms={terms}
+          terms={publicTerms}
           knowledgeTypes={knowledgeTypes}
           isAdmin={isAdmin}
           initialCat={glossaryCat}
@@ -95,7 +100,7 @@ export default function App() {
       content = (
         <TestHome
           user={testUser}
-          terms={terms}
+          terms={publicTerms}
           results={results}
           onBack={() => setPage('home')}
           onStartQuiz={startQuiz}
@@ -105,7 +110,7 @@ export default function App() {
     case 'quiz':
       content = (
         <Quiz
-          terms={terms}
+          terms={publicTerms}
           mode={quizConfig.mode}
           qtype={quizConfig.qtype}
           selRank={quizConfig.selRank}
