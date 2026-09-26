@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { CATEGORIES_BASE, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms, getTermPaths, normalizePaths, pathsToDbFields } from '../utils.js';
+import { CATEGORIES_BASE, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms, suggestByCategory, getTermPaths, normalizePaths, pathsToDbFields } from '../utils.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
 // 知識区分の階層セレクタ。選んだ項目がさらに子を持ってたら、その下に次の選択欄が自動で増える（何段でも）
@@ -87,7 +87,7 @@ function RankSelect({ name, value, onChange }) {
 
 // 関連用語のタグ付け入力。手入力での追加（用語名検索＋Enter）と、
 // 説明文・カテゴリから即時に計算する候補（APIは使わず文字の重なりだけで判定）の両方に対応する
-export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, name, category, description }) {
+export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, name, category, description, paths, focusPath }) {
   const [text, setText] = useState('');
 
   const matches = useMemo(() => {
@@ -98,9 +98,15 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
       .slice(0, 6);
   }, [allTerms, excludeId, selected, text]);
 
+  // 知識区分が同じ・近い用語を優先して最大5件。区分が未設定なら、説明文・カテゴリの重なりで提案する
+  const pathsKey = JSON.stringify(paths || []) + '|' + (focusPath || []).join('/');
+  const byCategory = (paths || []).length > 0;
   const suggestions = useMemo(() => {
-    return suggestRelatedTerms({ allTerms, excludeId, name, category, description, alreadySelected: selected, limit: 6 });
-  }, [allTerms, excludeId, name, category, description, selected]);
+    if (byCategory) {
+      return suggestByCategory({ allTerms, excludeId, paths, focusPath, alreadySelected: selected, name, description, limit: 5 });
+    }
+    return suggestRelatedTerms({ allTerms, excludeId, name, category, description, alreadySelected: selected, limit: 5 });
+  }, [allTerms, excludeId, name, category, description, selected, pathsKey]);
 
   const add = (id) => {
     onChange([...selected, id]);
@@ -140,12 +146,24 @@ export function RelatedTermsTagInput({ allTerms, excludeId, selected, onChange, 
           ))}
         </div>
       )}
-      <div className="related-tag-suggest-lbl">説明文・カテゴリから即時に抽出した候補</div>
+      <div className="related-tag-suggest-head">
+        <span className="related-tag-suggest-lbl">
+          {byCategory ? '同じ知識区分の用語から自動で提案（最大5件）' : '説明文・カテゴリから自動で提案（最大5件）'}
+        </span>
+        {suggestions.length > 1 && (
+          <button type="button" className="related-tag-addall" onClick={() => { onChange([...selected, ...suggestions.map((x) => x.id)]); setText(''); }}>
+            まとめて追加
+          </button>
+        )}
+      </div>
       <div className="related-tag-suggest-list">
-        {suggestions.length === 0 && <span className="related-picker-empty">該当する候補がありません</span>}
-        {suggestions.map(({ id, term }) => (
+        {suggestions.length === 0 && (
+          <span className="related-picker-empty">{byCategory ? '同じ区分の用語はほかにありません' : '該当する候補がありません（知識区分を設定すると精度が上がります）'}</span>
+        )}
+        {suggestions.map(({ id, term, reason }) => (
           <button type="button" key={id} className="related-tag-suggest-chip" onClick={() => add(id)}>
             + {term.name}
+            {reason && <span className="related-tag-reason">{reason}</span>}
           </button>
         ))}
       </div>
@@ -227,6 +245,7 @@ export function TermFormModal({ open, mode, initial, allTerms, currentId, knowle
               name={form.name}
               category={form.category}
               description={form.description}
+              paths={form.knowledgePaths}
             />
           </div>
         </div>
@@ -312,6 +331,32 @@ function RelatedSection({ relatedIds, allTerms, currentTermId, onSelectRelated }
   );
 }
 
+// 詳細表示で「同じ知識区分の用語」を自動で最大5件出す（手動で関連付けた用語は除く）
+function AutoRelatedSection({ term, currentId, allTerms, excludeIds, onSelectRelated }) {
+  const list = useMemo(() => suggestByCategory({
+    allTerms, excludeId: currentId, paths: getTermPaths(term), alreadySelected: excludeIds,
+    name: term.name, description: term.description, limit: 5,
+  }), [allTerms, currentId, term, excludeIds.join(',')]);
+  if (!list.length) return null;
+  return (
+    <div className="detail-sec">
+      <span className="lbl">同じ区分の用語</span>
+      <div className="auto-related-list">
+        {list.map(({ id, term: t, reason }) => (
+          <div key={id} className="related-thread-row" onClick={() => onSelectRelated(id)}>
+            <div className="related-thread-bar" style={{ background: CATEGORY_COLORS[t.category] || '#888780' }} />
+            <div className="related-thread-body">
+              <div className="related-thread-name">{t.name}</div>
+              <div className="related-thread-desc">{t.description}</div>
+            </div>
+            <span className="related-tag-reason">{reason}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // 詳細表示モーダル
 export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onClose, onBack, onEdit, onSelectRelated }) {
   if (!open || !term) return null;
@@ -341,6 +386,7 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
               <p>{term.note}</p>
             </div>
           )}
+          <AutoRelatedSection term={term} currentId={currentId} allTerms={allTerms} excludeIds={relatedIds} onSelectRelated={onSelectRelated} />
           {relatedIds.length > 0 && (
             <RelatedSection
               key={currentId}

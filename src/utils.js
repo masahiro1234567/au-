@@ -202,3 +202,47 @@ export function overlapGroups(terms) {
   });
   return [...groups.values()].sort((a, b) => b.ids.length - a.ids.length);
 }
+
+// ===== 知識区分にもとづく関連用語の自動提案 =====
+function commonPrefixLen(a, b) {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i;
+}
+
+// 用語の区分（paths）と「同じ区分・近い区分」に入っている用語を、関連が強い順に最大 limit 件返す。
+// 優先順位：
+//   1. 同じ区分に一緒に入っている数が多い（＝複数の区分で重複している）用語
+//   2. 管理画面で選択中の区分（focusPath）に入っている用語
+//   3. 区分の階層が近い用語（同じ親の下など。最上位だけ一致は対象外）
+//   4. 同点なら、名前・説明文の文字の重なり
+// 戻り値：[{ id, term, score, reason }]  reason＝提案の理由（一致した区分名など）
+export function suggestByCategory({ allTerms, excludeId, paths, focusPath, alreadySelected = [], name = '', description = '', limit = 5 }) {
+  const mine = normalizePaths(paths || []);
+  if (!mine.length) return [];
+  const mineKeys = new Set(mine.map((p) => p.join('\u0001')));
+  const results = [];
+  Object.entries(allTerms || {}).forEach(([id, t]) => {
+    if (id === excludeId || alreadySelected.includes(id) || !t || !t.name) return;
+    const theirs = getTermPaths(t);
+    if (!theirs.length) return;
+    const shared = theirs.filter((p) => mineKeys.has(p.join('\u0001')));
+    let best = 0, bestPath = null;
+    mine.forEach((a) => theirs.forEach((b) => {
+      const n = commonPrefixLen(a, b);
+      if (n > best) { best = n; bestPath = a.slice(0, n); }
+    }));
+    // 最上位（自社知識・他社知識など）だけの一致は広すぎるので提案しない。ただし自分の区分が最上位そのものなら可
+    const minDepth = Math.min(2, Math.max(...mine.map((p) => p.length)));
+    if (!shared.length && best < minDepth) return;
+    let score = shared.length * 100 + best * 10;
+    if (focusPath && focusPath.length && theirs.some((p) => pathStartsWith(p, focusPath))) score += 50;
+    score += overlapScore(description, t.description || '') * 0.5 + overlapScore(name, t.name || '');
+    const reason = shared.length > 1
+      ? `${shared.length}つの区分が共通`
+      : shared.length === 1 ? shared[0][shared[0].length - 1]
+      : `${bestPath[bestPath.length - 1]}の中`;
+    results.push({ id, term: t, score, reason });
+  });
+  return results.sort((a, b) => b.score - a.score).slice(0, limit);
+}

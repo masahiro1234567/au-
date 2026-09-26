@@ -453,3 +453,13 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .ba-chg{font-size:.62rem;font-weight:800;border-radius:5px;padding:2px 6px;flex-shrink:0;}
 .ba-chg.add{background:#dbeafe;color:#1d4ed8;}
 .ba-chg.del{background:#fee2e2;color:#b91c1c;}
+
+/* ===== 関連用語の自動提案 ===== */
+.related-tag-suggest-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;}
+.related-tag-suggest-head .related-tag-suggest-lbl{margin:0;}
+.related-tag-addall{flex-shrink:0;background:none;border:1px solid var(--primary);color:var(--pd);border-radius:6px;padding:3px 9px;font-size:.68rem;font-weight:800;cursor:pointer;font-family:inherit;}
+.related-tag-reason{display:inline-block;margin-left:6px;font-size:.6rem;font-weight:700;color:var(--sub);background:#f5efe9;border-radius:4px;padding:1px 5px;vertical-align:1px;flex-shrink:0;}
+.auto-related-list{border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+.auto-related-list .related-thread-row{border-bottom:0.5px solid var(--border);align-items:center;}
+.auto-related-list .related-thread-row:last-child{border-bottom:none;}
+.auto-related-list .related-tag-reason{margin-right:8px;}

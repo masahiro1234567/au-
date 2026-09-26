@@ -216,6 +216,7 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
             <RelatedTermsTagInput
               allTerms={allTerms} excludeId={id} selected={related} onChange={setRelated}
               name={name} category={category} description={description}
+              paths={knowledgePaths}
             />
           </div>
           <div className="admin-action-row">

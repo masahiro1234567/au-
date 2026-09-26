@@ -186,7 +186,7 @@ function MindMapNodeEditor({ knowledgeTypes, path, onClose, onRenamed }) {
 }
 
 // 用語1件分の「関連付けだけ」を編集する軽量な行（他のフィールドはここでは触らない）
-function RelationRow({ id, term, allTerms }) {
+function RelationRow({ id, term, allTerms, focusPath }) {
   const [open, setOpen] = useState(false);
   const [related, setRelated] = useState(Object.keys(term.related || {}));
 
@@ -209,6 +209,7 @@ function RelationRow({ id, term, allTerms }) {
           <RelatedTermsTagInput
             allTerms={allTerms} excludeId={id} selected={related} onChange={setRelated}
             name={term.name} category={term.category} description={term.description}
+            paths={getTermPaths(term)} focusPath={focusPath}
           />
           <button
             onClick={save}
@@ -566,7 +567,7 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
       {filtered.length === 0 ? (
         <div className="tc ts" style={{ padding: 20 }}>該当する用語がありません</div>
       ) : (
-        filtered.map(([id, t]) => <RelationRow key={id} id={id} term={t} allTerms={terms} />)
+        filtered.map(([id, t]) => <RelationRow key={id} id={id} term={t} allTerms={terms} focusPath={mapFilter} />)
       )}
     </div>
   );
