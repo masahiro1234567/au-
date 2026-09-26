@@ -43,7 +43,10 @@ export async function saveTermRelations(termId, oldIds = [], newIds = []) {
   const ownRelated = {};
   newIds.forEach((id) => { ownRelated[id] = true; });
   updates[`terms/${termId}/related`] = Object.keys(ownRelated).length ? ownRelated : null;
-  newIds.filter((id) => !oldSet.has(id)).forEach((id) => { updates[`terms/${id}/related/${termId}`] = true; });
+  // 相手側への書き込みは、相手の用語が実在するときだけ（削除済みの用語に書くと名前の無い「抜け殻」ができてしまうため）
+  const added = newIds.filter((id) => !oldSet.has(id));
+  const exists = await Promise.all(added.map((id) => get(ref(db, `terms/${id}/name`)).then((s) => s.exists())));
+  added.forEach((id, i) => { if (exists[i]) updates[`terms/${id}/related/${termId}`] = true; });
   oldIds.filter((id) => !newSet.has(id)).forEach((id) => { updates[`terms/${id}/related/${termId}`] = null; });
   if (Object.keys(updates).length) await update(ref(db), updates);
 }
@@ -51,7 +54,12 @@ export async function saveTermRelations(termId, oldIds = [], newIds = []) {
 // 用語を削除する際、他の用語側からの関連付けも消す
 export async function removeTermWithRelations(termId, relatedIds = []) {
   const updates = { [`terms/${termId}`]: null };
-  relatedIds.forEach((id) => { updates[`terms/${id}/related/${termId}`] = null; });
+  // 片方向だけ残っている関連付けも含めて、この用語を参照している全用語から外す
+  const all = (await get(ref(db, 'terms'))).val() || {};
+  const ids = new Set(relatedIds);
+  Object.entries(all).forEach(([id, t]) => { if (t && t.related && t.related[termId]) ids.add(id); });
+  ids.delete(termId);
+  ids.forEach((id) => { if (all[id]) updates[`terms/${id}/related/${termId}`] = null; });
   await update(ref(db), updates);
 }
 

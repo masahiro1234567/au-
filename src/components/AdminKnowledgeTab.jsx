@@ -221,7 +221,7 @@ function RelationRow({ id, term, allTerms }) {
 // ・子に登録すると、親の区分にも入っているものとして扱う（親での表示・件数にも含まれる）
 // ・1つの用語を複数の区分に登録できる（登録しても他の区分からは外れない）
 function BulkAssignPanel({ terms, path }) {
-  const [scope, setScope] = useState('unassigned'); // 'unassigned' | 'here' | 'overlap' | 'all'
+  const [scope, setScope] = useState('unassigned'); // 'unassigned' | 'parent' | 'here' | 'overlap' | 'all'
   const [overlapWith, setOverlapWith] = useState(null); // 重複先で絞り込むとき、その区分の表示名
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState(() => new Set());
@@ -236,10 +236,15 @@ function BulkAssignPanel({ terms, path }) {
   // この区分（または配下）に登録済みか
   const isHere = (t) => termMatchesPath(t, path);
 
+  // 上の区分（親・祖父…）に直接登録されていて、まだこの区分には入っていない用語
+  const inParent = (t) => !termMatchesPath(t, path) &&
+    getTermPaths(t).some((p) => p.length < path.length && pathStartsWith(path, p));
+
   const counts = useMemo(() => {
     const all = Object.values(terms);
     return {
       unassigned: all.filter((t) => getTermPaths(t).length === 0).length,
+      parent: all.filter(inParent).length,
       here: all.filter((t) => termMatchesPath(t, path)).length,
     };
   }, [terms, pathKey]);
@@ -249,6 +254,7 @@ function BulkAssignPanel({ terms, path }) {
       .filter(([, t]) => {
         if (scope === 'unassigned') return getTermPaths(t).length === 0;
         if (scope === 'here') return termMatchesPath(t, path);
+        if (scope === 'parent') return inParent(t);
         return true;
       })
       .filter(([id]) => {
@@ -315,7 +321,7 @@ function BulkAssignPanel({ terms, path }) {
     border: active ? 'none' : '1.5px solid var(--border)', background: active ? 'var(--pd)' : '#fff', color: active ? '#fff' : 'var(--sub)',
   });
 
-  const emptyMsg = { unassigned: '未分類の用語はありません', here: 'この区分に登録されている用語はありません', overlap: 'ほかの区分と重複している用語はありません', all: '該当する用語がありません' }[scope];
+  const emptyMsg = { unassigned: '未分類の用語はありません', parent: '上の区分に直接登録されている用語はありません', here: 'この区分に登録されている用語はありません', overlap: 'ほかの区分と重複している用語はありません', all: '該当する用語がありません' }[scope];
 
   return (
     <div className="ba-panel">
@@ -326,6 +332,9 @@ function BulkAssignPanel({ terms, path }) {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
         <button style={pill(scope === 'unassigned')} onClick={() => setScope('unassigned')}>未分類のみ（{counts.unassigned}）</button>
+        {path.length > 1 && (
+          <button style={pill(scope === 'parent')} onClick={() => setScope('parent')}>上の区分に登録済み（{counts.parent}）</button>
+        )}
         <button style={pill(scope === 'here')} onClick={() => setScope('here')}>この区分に登録済み（{counts.here}）</button>
         <button style={pill(scope === 'overlap')} onClick={() => { setScope('overlap'); setOverlapWith(null); }}>重複あり（{ov.count}）</button>
         <button style={pill(scope === 'all')} onClick={() => setScope('all')}>すべての用語</button>
@@ -387,7 +396,11 @@ function BulkAssignPanel({ terms, path }) {
           {saving ? '保存中…' : `${toAssign.length}件をこの区分に登録`}
         </button>
       </div>
-      <div className="ba-note">登録しても、ほかの区分への登録はそのまま残ります。解除はこの区分（とその配下）への登録だけを外します。</div>
+      <div className="ba-note">
+        {scope === 'parent'
+          ? '上の区分に入っている用語をここに登録すると、上の区分からこの区分へ移動します（上の区分の件数にはそのまま含まれます）。'
+          : '登録しても、ほかの区分への登録はそのまま残ります。解除はこの区分（とその配下）への登録だけを外します。'}
+      </div>
     </div>
   );
 }

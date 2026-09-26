@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CATEGORIES_BASE, DEFAULT_KNOWLEDGE_TYPES, RANKS, showToast, getTermPaths, pathsToDbFields, isDescMissing } from '../utils.js';
-import { dbPush, dbSet, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
+import { dbPush, dbSet, dbUpdateMany, saveTermRelations, removeTermWithRelations } from '../useFirebase.js';
 import { RelatedTermsTagInput, MultiPathSelector } from './TermModals.jsx';
 import { ConfirmButton } from './ConfirmButton.jsx';
 
@@ -228,7 +228,7 @@ function TermItem({ id, term, allTerms, knowledgeTypes, expanded, onToggle, onSa
   );
 }
 
-export default function AdminTermsTab({ terms, knowledgeTypes }) {
+export default function AdminTermsTab({ terms, ghostIds = [], knowledgeTypes }) {
   const kTypes = knowledgeTypes || DEFAULT_KNOWLEDGE_TYPES.map((t) => ({
     id: null, name: t.name, children: (t.children || []).map((c) => ({ id: null, name: c.name, children: [] })),
   }));
@@ -374,6 +374,29 @@ export default function AdminTermsTab({ terms, knowledgeTypes }) {
         duplicateIndices={duplicateIndices}
         knowledgeTypes={kTypes}
       />
+
+      {ghostIds.length > 0 && (
+        <div className="missing-box" style={{ background: '#fef2f2', borderColor: '#fca5a5' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <div>
+              <div className="missing-title" style={{ color: '#991b1b' }}>名前のない壊れたデータが{ghostIds.length}件あります</div>
+              <div className="missing-sub" style={{ color: '#b91c1c' }}>削除した用語の関連付けだけが残ったものです。画面には表示されませんが、削除しておくのがおすすめです</div>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  const u = {}; ghostIds.forEach((id) => { u['terms/' + id] = null; });
+                  await dbUpdateMany(u);
+                  showToast(ghostIds.length + '件の壊れたデータを削除しました');
+                } catch (e) { showToast('エラー:' + e.message); }
+              }}
+              style={{ flexShrink: 0, background: '#dc2626', border: 'none', borderRadius: 7, padding: '8px 12px', color: '#fff', fontSize: '.76rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              削除する
+            </button>
+          </div>
+        </div>
+      )}
 
       {!sorted.length ? (
         <div className="tc ts" style={{ padding: 30 }}>{search ? '該当する用語がありません' : '用語データなし'}</div>

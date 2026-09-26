@@ -13,9 +13,17 @@ import Admin from './components/Admin.jsx';
 export default function App() {
   const [terms, termsLoaded] = useDbCollection('terms');
   // 説明が未入力の用語は、ユーザー側（ホーム・用語一覧・テスト）には出さない
+  // 名前の無いデータ（削除済みの用語に関連付けだけが書き込まれて残った「抜け殻」）は、どこにも表示しない
+  const { validTerms, ghostIds } = useMemo(() => {
+    const valid = {}; const ghosts = [];
+    Object.entries(terms || {}).forEach(([id, t]) => {
+      if (t && typeof t.name === 'string' && t.name.trim()) valid[id] = t; else ghosts.push(id);
+    });
+    return { validTerms: valid, ghostIds: ghosts };
+  }, [terms]);
   const publicTerms = useMemo(
-    () => Object.fromEntries(Object.entries(terms || {}).filter(([, t]) => !isDescMissing(t))),
-    [terms]
+    () => Object.fromEntries(Object.entries(validTerms).filter(([, t]) => !isDescMissing(t))),
+    [validTerms]
   );
   const [results] = useDbCollection('test_results');
   const [profiles] = useDbCollection('user_profiles');
@@ -143,7 +151,8 @@ export default function App() {
     case 'admin':
       content = (
         <Admin
-          terms={terms}
+          terms={validTerms}
+          ghostIds={ghostIds}
           knowledgeTypes={knowledgeTypes}
           results={results}
           profiles={profiles}
