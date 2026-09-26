@@ -227,7 +227,7 @@ function RelationRow({ id, term, allTerms }) {
 // ・子に登録すると、親の区分にも入っているものとして扱う（親での表示・件数にも含まれる）
 // ・1つの用語を複数の区分に登録できる（登録しても他の区分からは外れない）
 function BulkAssignPanel({ terms, path }) {
-  const [scope, setScope] = useState('unassigned'); // 'unassigned' | 'parent' | 'here' | 'overlap' | 'all'
+  const [scope, setScope] = useState('unassigned'); // 'unassigned' | 'anc:<深さ>'（上の区分） | 'here' | 'overlap' | 'all'
   const [overlapWith, setOverlapWith] = useState(null); // 重複先で絞り込むとき、その区分の表示名
   const [q, setQ] = useState('');
   // チェック＝「この区分に入っている」。変更したものだけを changes に持ち、保存でまとめて反映する
@@ -235,22 +235,29 @@ function BulkAssignPanel({ terms, path }) {
   const [saving, setSaving] = useState(false);
   const pathKey = path.join('/');
 
-  useEffect(() => { setChanges(new Map()); setOverlapWith(null); }, [pathKey]);
+  useEffect(() => {
+    setChanges(new Map()); setOverlapWith(null);
+    // 上の区分の絞り込みは区分ごとに中身が変わるので、区分を切り替えたら未分類に戻す
+    setScope((sc) => (sc.startsWith('anc:') ? 'unassigned' : sc));
+  }, [pathKey]);
 
   const ov = useMemo(() => overlapInfo(terms, path), [terms, pathKey]);
 
   // この区分（または配下）に登録済みか
   const isHere = (t) => termMatchesPath(t, path);
 
-  // 上の区分（親・祖父…）に直接登録されていて、まだこの区分には入っていない用語
-  const inParent = (t) => !termMatchesPath(t, path) &&
-    getTermPaths(t).some((p) => p.length < path.length && pathStartsWith(path, p));
+  // 上の区分（親・祖父…）それぞれに「直接」登録されていて、まだこの区分には入っていない用語
+  // depth＝上の区分の階層の深さ（例：他社知識/Softbank/Ymobile を選択中なら、Softbank=2・他社知識=1）
+  const inAncestor = (t, depth) => !termMatchesPath(t, path) &&
+    getTermPaths(t).some((p) => p.length === depth && pathStartsWith(path, p));
+  const ancestors = [];
+  for (let d = path.length - 1; d >= 1; d--) ancestors.push({ depth: d, name: path[d - 1] });
 
   const counts = useMemo(() => {
     const all = Object.values(terms);
     return {
       unassigned: all.filter((t) => getTermPaths(t).length === 0).length,
-      parent: all.filter(inParent).length,
+      anc: Object.fromEntries(ancestors.map((a) => [a.depth, all.filter((t) => inAncestor(t, a.depth)).length])),
       here: all.filter((t) => termMatchesPath(t, path)).length,
     };
   }, [terms, pathKey]);
@@ -260,7 +267,7 @@ function BulkAssignPanel({ terms, path }) {
       .filter(([, t]) => {
         if (scope === 'unassigned') return getTermPaths(t).length === 0;
         if (scope === 'here') return termMatchesPath(t, path);
-        if (scope === 'parent') return inParent(t);
+        if (scope.startsWith('anc:')) return inAncestor(t, Number(scope.slice(4)));
         return true;
       })
       .filter(([id]) => {
@@ -322,7 +329,8 @@ function BulkAssignPanel({ terms, path }) {
     border: active ? 'none' : '1.5px solid var(--border)', background: active ? 'var(--pd)' : '#fff', color: active ? '#fff' : 'var(--sub)',
   });
 
-  const emptyMsg = { unassigned: '未分類の用語はありません', parent: '上の区分に直接登録されている用語はありません', here: 'この区分に登録されている用語はありません', overlap: 'ほかの区分と重複している用語はありません', all: '該当する用語がありません' }[scope];
+  const ancName = scope.startsWith('anc:') ? path[Number(scope.slice(4)) - 1] : '';
+  const emptyMsg = { unassigned: '未分類の用語はありません', here: 'この区分に登録されている用語はありません', overlap: 'ほかの区分と重複している用語はありません', all: '該当する用語がありません' }[scope] || `${ancName}に直接登録されている用語はありません`;
 
   return (
     <div className="ba-panel">
@@ -333,9 +341,11 @@ function BulkAssignPanel({ terms, path }) {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
         <button style={pill(scope === 'unassigned')} onClick={() => setScope('unassigned')}>未分類のみ（{counts.unassigned}）</button>
-        {path.length > 1 && (
-          <button style={pill(scope === 'parent')} onClick={() => setScope('parent')}>上の区分に登録済み（{counts.parent}）</button>
-        )}
+        {ancestors.filter((a) => counts.anc[a.depth] > 0 || scope === `anc:${a.depth}`).map((a) => (
+          <button key={a.depth} style={pill(scope === `anc:${a.depth}`)} onClick={() => setScope(`anc:${a.depth}`)}>
+            {a.name}に登録済み（{counts.anc[a.depth]}）
+          </button>
+        ))}
         <button style={pill(scope === 'here')} onClick={() => setScope('here')}>この区分に登録済み（{counts.here}）</button>
         <button style={pill(scope === 'overlap')} onClick={() => { setScope('overlap'); setOverlapWith(null); }}>重複あり（{ov.count}）</button>
         <button style={pill(scope === 'all')} onClick={() => setScope('all')}>すべての用語</button>
@@ -401,8 +411,8 @@ function BulkAssignPanel({ terms, path }) {
         </button>
       </div>
       <div className="ba-note">
-        {scope === 'parent'
-          ? '上の区分に入っている用語をここにチェックすると、上の区分からこの区分へ移動します（上の区分の件数にはそのまま含まれます）。'
+        {scope.startsWith('anc:')
+          ? `「${ancName}」に直接登録されている（${ancName}の下の区分にはまだ入っていない）用語です。チェックして保存すると「${ancName}」から「${path[path.length - 1]}」へ移動します（${ancName}の件数にはそのまま含まれます）。`
           : 'チェックを付けると登録、外すと解除です。ほかの区分への登録はそのまま残ります。絞り込みを切り替えても、保存前の変更は残ります。'}
       </div>
     </div>
