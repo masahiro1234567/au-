@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { OS_LIST, MARK_O, MARK_X, getDeviceData, seriesOf } from '../devices.js';
 
 // ○×の見た目（○＝青、×＝グレー、未設定＝「－」）
@@ -19,6 +19,32 @@ function BackBar({ title, onBack }) {
       <div className="kc-subbar-title">{title}</div>
     </div>
   );
+}
+
+// 表の枠内スクロールを「縦か横の片方だけ」に固定する（指が斜めに動いても、最初に動かした向きだけ動く）
+function useAxisLock() {
+  const ref = useRef(null);
+  const st = useRef({ x: 0, y: 0, left: 0, top: 0, axis: null });
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    const el = ref.current;
+    st.current = { x: t.clientX, y: t.clientY, left: el.scrollLeft, top: el.scrollTop, axis: null };
+  };
+  const onTouchMove = (e) => {
+    const s = st.current;
+    if (s.axis) return;
+    const t = e.touches[0];
+    const dx = Math.abs(t.clientX - s.x), dy = Math.abs(t.clientY - s.y);
+    if (dx + dy < 6) return;
+    s.axis = dx > dy ? 'x' : 'y';
+  };
+  // 指を離したあとの惰性スクロール中も、固定した向き以外は動かさない（次に触るまで有効）
+  const onScroll = () => {
+    const el = ref.current, s = st.current;
+    if (s.axis === 'x' && el.scrollTop !== s.top) el.scrollTop = s.top;
+    if (s.axis === 'y' && el.scrollLeft !== s.left) el.scrollLeft = s.left;
+  };
+  return { ref, onTouchStart, onTouchMove, onScroll };
 }
 
 // 機種比較画面：一覧表をベースに、「2機種を比較」「条件で絞り込み」を切り替えて表示する
@@ -62,6 +88,7 @@ export default function DeviceCompare({ devices, onBack }) {
   const diffCount = cmpRows.filter((r) => r.diff).length;
 
   const empty = !features.length || !models.length;
+  const axisLock = useAxisLock();
 
   return (
     <div className="page">
@@ -128,7 +155,7 @@ export default function DeviceCompare({ devices, onBack }) {
           {empty ? (
             <div className="kc-empty">この機種のデータはまだ登録されていません。管理画面の「機種比較」タブから追加できます。</div>
           ) : (
-            <div className="kc-table-wrap">
+            <div className="kc-table-wrap" {...axisLock}>
               <table className="kc-table">
                 <thead>
                   <tr>

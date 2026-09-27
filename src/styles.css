@@ -602,3 +602,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 /* 長い文字（カメラ構成など）は表のマスの中で折り返す */
 .kc-td .kc-text{display:inline-block;max-width:150px;white-space:normal;line-height:1.4;text-align:center;}
 .kc-cmp .kc-text{white-space:normal;line-height:1.45;}
+
+/* ===== 機種比較：スマホで表が枠からはみ出して動かないようにする ===== */
+html,body{overscroll-behavior:none;}
+.kc-table-wrap{overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:pan-x pan-y;}
+.kc-scroll{overscroll-behavior:contain;}
