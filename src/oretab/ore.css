@@ -171,3 +171,19 @@
 .ot-multi-label button{width:30px;height:26px;border:none;border-radius:6px;background:#f3ede7;color:#4a3528;font-size:14px;cursor:pointer;}
 .ot-multi-au{width:18px;height:18px;border-radius:4px;background:#ff6600;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;}
 .ot-multi-pick{position:absolute;z-index:45;border:2px solid #e0d6cc;border-radius:8px;background:transparent;cursor:pointer;}
+
+/* お支払い目安額：自動表示の金額・注意書き・プラン詳細 */
+.ot-pay-auto{min-width:170px;height:32px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;border:1.5px solid #c9dbe7;border-radius:7px;background:#f5f9fc;font-size:13px;font-weight:800;color:#1a0f08;}
+.ot-pay-note{font-size:10.5px;color:#9c3d3d;line-height:1.45;margin-top:2px;}
+.ot-sel:disabled{background:#f3efeb;color:#b8aca2;}
+.ot-onoff:disabled{opacity:.45;cursor:default;}
+.ot-plan-sec{font-size:12px;font-weight:800;color:#6b5a4e;margin-top:2px;}
+.ot-plan-opts{display:flex;flex-wrap:wrap;gap:6px;}
+.ot-plan-opt{flex:1 1 120px;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1.5px solid #e6d8cc;border-radius:9px;background:#fff;font-size:12px;color:#4a3528;cursor:pointer;}
+.ot-plan-opt b{font-size:14px;color:#1a0f08;}
+.ot-plan-opt.on{border-color:#cc4f00;background:#fff2ea;}
+.ot-plan-opt.on b{color:#cc4f00;}
+.ot-plan-list{border:1.5px solid #ebe2d9;border-radius:9px;overflow:hidden;}
+.ot-plan-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f1e9e2;font-size:13px;cursor:pointer;}
+.ot-plan-row:last-child{border-bottom:none;}
+.ot-plan-row input{width:18px;height:18px;accent-color:#cc4f00;margin:0;}

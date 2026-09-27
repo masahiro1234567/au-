@@ -1,40 +1,82 @@
 import React, { useState } from 'react';
 import { TopBar, KpField, Keypad, Toast, useForm, useToast, yen, Icons } from './common.jsx';
+import { KINDS, kindOf, DEVICE_GROUPS, SIM_ONLY, findDevice, PLANS, findPlan, DISCOUNTS, discountAmount, CARD_DISCOUNT } from './payData.js';
 
 // ===== お支払い目安額 =====
 // 上の5つのタブがそれぞれ別の見積もり。プルダウンも含め、すべての入力をタブごとに持つ（コピーでまるごと複製）
-// 契約事務手数料・Pontaポイント還元・プラン一覧などは、今後データを入れて機能を足していく
+// 端末・プランの金額は payData.js。契約事務手数料・Pontaポイント還元・キャンペーンは今後追加
 
-const KINDS = ['auスマホ・ケータイ 機変', 'auスマホ・ケータイ 新規', 'auスマホ・ケータイ MNP'];
-const TIMES = [['', ''], ['1', '一括'], ['12', '12回'], ['24', '24回'], ['36', '36回'], ['48', '48回']];
 const LATER = '[後で追加]';
+const PAY_TYPES = [['smatoku', 'スマトク'], ['kappu', '通常割賦'], ['ikkatsu', '一括']];
+const TIMES = [['24', '24回'], ['36', '36回'], ['48', '48回']];
+const tri = (v) => (v ? '▲' + v.toLocaleString('ja-JP') + '円' : '- 円'); // 値引きの表記（▲44,000円）
 
-// 自動計算（金額はすべて税込の円）
+// ===== 自動計算（金額はすべて税込の円）=====
 export function calcEstimate(e) {
   const n = (k) => Number(String(e[k] || '').replace(/[^0-9]/g, '')) || 0;
-  const price = n('price'), sd = n('shopDisc'), pd = n('ptDisc');
-  const base = Math.max(price - sd, 0); // 分割支払金（販売価格−店頭値引き）
-  const times = Number(e.times || 0);
-  let monthly = 0, first = 0, store = 0;
-  if (times === 1) store = base; // 一括：店頭で全額
-  else if (times > 1) {
-    monthly = Math.floor(base / times); // 月々（端数は初回に上乗せ）
-    first = base - monthly * (times - 1);
+  const kind = kindOf(e.kind);
+  const brand = kind.brand || '';
+  const sim = e.device === SIM_ONLY;
+  const dev = !sim && e.device ? findDevice(e.device) : null;
+  // 販売価格：auは端末データから自動、UQ・データなしは手入力
+  const autoPrice = brand === 'au' && dev ? dev.price : null;
+  const price = sim ? 0 : autoPrice != null ? autoPrice : n('price');
+  // 残価：auの登録済み端末は自動、それ以外は手入力
+  const autoResidual = brand === 'au' && dev ? (kind.group === 'kihen' ? dev.rKihen : dev.rNew) : null;
+  const residual = autoResidual != null ? autoResidual : n('residual');
+  const sd = n('shopDisc'), pd = n('ptDisc');
+  const payType = sim || !e.device ? '' : e.payType || 'smatoku';
+
+  let financed = 0, monthly = 0, first = 0, store = 0, real = 0, count = 0;
+  let last = 0, extFirst = 0, extMonthly = 0;
+  if (payType === 'smatoku') {
+    // スマトク：残価を除いた前半を23回（初回＋22回）で支払い。値引きは前半から引く
+    financed = Math.max(price - residual - sd - pd, 0);
+    monthly = Math.floor(financed / 23);
+    first = financed - monthly * 22;
+    count = 24;
+    last = residual;
+    // 返却しない場合は残価を24回で再分割。端数は延長後の初回に上乗せ
+    extMonthly = Math.floor(residual / 24);
+    extFirst = residual - extMonthly * 23;
+    real = financed;
+  } else if (payType === 'kappu') {
+    const t = Number(e.times || 24);
+    financed = Math.max(price - sd - pd, 0);
+    monthly = Math.floor(financed / t);
+    first = financed - monthly * (t - 1);
+    count = t;
+    real = financed;
+  } else if (payType === 'ikkatsu') {
+    store = Math.max(price - sd - pd, 0); // 一括：値引き後の機種代を店頭で
+    real = store;
   }
-  const real = Math.max(price - sd - pd, 0); // 実質負担金（ポイント値引き含む）
-  const disc = e.discOn ? n('disc') : 0;
-  const sub = n('plan') + n('net') + n('option'); // 月々のご利用料金 小計
-  const planMonthly = Math.max(sub - disc, 0);
-  const total = monthly + planMonthly + n('plus1');
-  return { sd, pd, base, monthly, first, store, real, otoku: sd + pd, sub, disc, planMonthly, total, plan: n('plan'), net: n('net'), option: n('option'), plus1: n('plus1') };
+
+  // 料金プラン（プランのみ：基本料＋通話オプション − 割引）
+  const plan = brand ? findPlan(brand, e.plan) : null;
+  const tier = plan ? plan.tiers.find((t) => t.id === e.tier) || plan.tiers[0] : null;
+  const call = plan ? plan.calls.find((c) => c.id === (e.call || '')) || plan.calls[0] : null;
+  const planBase = (tier ? tier.price : 0) + (call ? call.price : 0);
+  const disc = e.discOn ? discountAmount(brand, e.discSvc, plan) : { total: 0, parts: [] };
+  const card = e.card === 'card' && plan && plan.card ? CARD_DISCOUNT : 0;
+  const planDisc = disc.total + card;
+  const planMonthly = Math.max(planBase - planDisc, 0);
+
+  return {
+    kind, brand, sim, dev, price, autoPrice, residual, autoResidual, sd, pd, payType,
+    financed, monthly, first, store, real, count, last, extFirst, extMonthly, otoku: sd + pd,
+    plan, tier, call, planBase, disc, card, planDisc, planMonthly,
+    net: n('net'), option: n('option'), plus1: n('plus1'),
+    total: monthly + planMonthly, // 月々のお支払い目安額＝端末＋プラン
+    showFee: brand === 'au' && payType === 'smatoku' && dev && dev.fee > 0,
+    fee: dev ? dev.fee : 0,
+  };
 }
 
 const DIALOGS = {
   disc: { title: '割引内訳入力', note: '店頭値引き・ポイント値引きの金額を入力します', fields: [['shopDisc', '店頭値引き'], ['ptDisc', 'ポイント値引き']] },
-  plan: { title: '料金プラン', note: '練習用：プランの一覧は後で追加します。いまは月額を入力してください', fields: [['plan', '月額']] },
   net: { title: 'インターネット接続サービス', note: '練習用：月額を入力してください', fields: [['net', '月額']] },
   option: { title: 'オプション変更', note: '練習用：オプションの一覧は後で追加します。いまは月額の合計を入力してください', fields: [['option', '月額（合計）']] },
-  discAmt: { title: '割引サービス', note: '練習用：割引の月額を入力してください', fields: [['disc', '割引額（月額）']] },
   plus1: { title: 'au +1collection', note: '練習用：月額を入力してください', fields: [['plus1', '月額']] },
 };
 
@@ -44,26 +86,38 @@ export default function Payment({ onClose, onMultitask }) {
   const [ests, setEsts] = useState([{}, {}, {}, {}, {}]);
   const [cur, setCur] = useState(0);
   const [dlg, setDlg] = useState(null);
+  const [planDlg, setPlanDlg] = useState(false);
   const [askDelete, setAskDelete] = useState(false);
   const [layout, setLayout] = useState(false);
   const [printCode, setPrintCode] = useState('');
   const toast = useToast();
   const noop = () => toast.say('練習用では操作できません');
   const e = ests[cur];
-  const setE = (name, v) => setEsts((es) => es.map((x, i) => (i === cur ? { ...x, [name]: v } : x)));
+  const patchE = (p) => setEsts((es) => es.map((x, i) => (i === cur ? { ...x, ...p } : x)));
+  const setE = (name, v) => patchE({ [name]: v });
 
   const form = useForm({
     values: e, setValue: setE,
-    maxLen: { price: 7, shopDisc: 7, ptDisc: 7, plan: 6, net: 6, option: 6, disc: 6, plus1: 6 },
-    labels: { price: '販売価格', shopDisc: '店頭値引き', ptDisc: 'ポイント値引き', plan: '料金プラン（月額）', net: 'インターネット接続サービス（月額）', option: 'オプション（月額合計）', disc: '割引額（月額）', plus1: 'au +1collection（月額）' },
+    maxLen: { price: 7, shopDisc: 7, ptDisc: 7, residual: 7, net: 6, option: 6, plus1: 6 },
+    labels: { price: '販売価格', shopDisc: '店頭値引き', ptDisc: 'ポイント値引き', residual: '残価（最終回分）', net: 'インターネット接続サービス（月額）', option: 'オプション（月額合計）', plus1: 'au +1collection（月額）' },
   });
   const r = calcEstimate(e);
-  const sel = (name, options, props = {}) => (
-    <select className="ot-sel" value={form.get(name) || props.fallback || ''} onChange={form.onChange(name)} aria-label={props.label} style={props.style}>
-      {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-    </select>
-  );
+  const brand = r.brand;
   const pickBtn = (label, onClick, style) => <button className="ot-btn sm" onClick={onClick} style={style}>{Icons.pick}{label}</button>;
+
+  // 契約種別を変えたとき：ブランドが変わるならプラン・割引を選び直し
+  const changeKind = (ev) => {
+    const next = kindOf(ev.target.value);
+    const p = { kind: ev.target.value };
+    if ((next.brand || '') !== brand) Object.assign(p, { plan: '', tier: '', call: '', discSvc: '', discOn: '', card: '' });
+    patchE(p);
+  };
+  const changeDevice = (ev) => {
+    const v = ev.target.value;
+    patchE({ device: v, payType: v && v !== SIM_ONLY ? e.payType || 'smatoku' : '', price: '', residual: '' });
+  };
+  const changePlan = (ev) => patchE({ plan: ev.target.value, tier: '', call: '' });
+  const changeDiscSvc = (ev) => patchE({ discSvc: ev.target.value, discOn: ev.target.value ? '1' : '' });
 
   // コピー：開いているタブの内容を、空いているタブのうち一番左へ
   const copyEst = () => {
@@ -72,12 +126,10 @@ export default function Payment({ onClose, onMultitask }) {
     setEsts((es) => es.map((x, i) => (i === to ? { ...es[cur] } : x)));
     toast.say(`${cur + 1}のタブを${to + 1}にコピーしました`);
   };
-  const toggleDisc = () => {
-    if (e.discOn) setE('discOn', '');
-    else { setE('discOn', '1'); setDlg('discAmt'); }
-  };
   const d = dlg ? DIALOGS[dlg] : null;
   const Y = { fontSize: 12, color: '#4a3528' };
+  const plans = brand ? PLANS[brand] : [];
+  const discounts = brand ? DISCOUNTS[brand] : [{ id: '', label: '' }];
 
   return (
     <div className="ot-screen" style={{ background: layout ? '#cfc8c1' : undefined }}>
@@ -97,7 +149,7 @@ export default function Payment({ onClose, onMultitask }) {
             {ests.map((x, i) => {
               const t = calcEstimate(x).total;
               return (
-                <button key={i} className={`ot-est ${i === cur ? 'on' : ''}`} onClick={() => { setCur(i); form.closeKp(); setDlg(null); }}>
+                <button key={i} className={`ot-est ${i === cur ? 'on' : ''}`} onClick={() => { setCur(i); form.closeKp(); setDlg(null); setPlanDlg(false); }}>
                   <span className="ot-est-check">{i === cur ? '✓' : ''}</span>
                   <span className="ot-est-total">{t ? t.toLocaleString('ja-JP') + '円' : '-円'}</span>
                 </button>
@@ -107,7 +159,7 @@ export default function Payment({ onClose, onMultitask }) {
               <button className="ot-btn sm" onClick={copyEst}><Tool d="copy" />コピー</button>
               <button className="ot-btn icon" onClick={noop} aria-label="保存"><Tool d="up" /></button>
               <button className="ot-btn icon" onClick={noop} aria-label="読込"><Tool d="down" /></button>
-              <button className="ot-btn icon" onClick={() => { setLayout(true); form.closeKp(); setDlg(null); }} aria-label="レイアウト"><Tool d="pen" /></button>
+              <button className="ot-btn icon" onClick={() => { setLayout(true); form.closeKp(); setDlg(null); setPlanDlg(false); }} aria-label="レイアウト"><Tool d="pen" /></button>
               <button className="ot-btn icon" onClick={noop} aria-label="グラフ"><Tool d="chart" /></button>
               <button className="ot-btn icon" onClick={noop} aria-label="ヘルプ"><Tool d="q" /></button>
               <button className="ot-btn icon" onClick={() => setAskDelete(true)} aria-label="このタブを削除"><Tool d="re" /></button>
@@ -115,51 +167,101 @@ export default function Payment({ onClose, onMultitask }) {
           </div>
 
           <div className="ot-pay-grid">
-            {/* 端末料金 */}
+            {/* ===== 端末料金 ===== */}
             <section className="ot-col blue">
               <div className="ot-col-head">
                 <b>端末料金</b>
-                {sel('kind', KINDS.map((k) => [k, k]), { fallback: KINDS[0], label: '契約種別', style: { flex: 1, height: 30, fontSize: 12 } })}
+                <select className="ot-sel" aria-label="契約種別" value={e.kind || ''} onChange={changeKind} style={{ flex: 1, height: 30, fontSize: 12 }}>
+                  {KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+                </select>
                 {pickBtn('機種比較', noop)}
               </div>
-              <div className="ot-col-body">
-                <div style={{ display: 'flex', gap: 10 }}><div style={{ width: 90 }} /><div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
-                  {sel('model', [['', '－選択してください－'], [LATER, '[機種は後で追加]']], { label: '機種', style: { height: 32 } })}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ marginLeft: 'auto' }}>販売価格</span><KpField form={form} name="price" label="販売価格" left align="right" placeholder="- 円" style={{ width: 170, height: 32 }} /></div>
-                </div></div>
+              <div className="ot-col-body" style={{ gap: 6 }}>
+                <select className="ot-sel" aria-label="機種" value={e.device || ''} onChange={changeDevice} style={{ height: 32 }}>
+                  <option value="">－選択してください－</option>
+                  {DEVICE_GROUPS.map((g) => (
+                    <React.Fragment key={g.maker}>
+                      <option disabled value={`__${g.maker}`}>【{g.maker}】</option>
+                      {g.items.map((dv) => <option key={dv.name} value={dv.name}>{dv.name}</option>)}
+                    </React.Fragment>
+                  ))}
+                  <option disabled value="__sim">――――――</option>
+                  <option value={SIM_ONLY}>{SIM_ONLY}</option>
+                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}>
+                  <span style={{ marginLeft: 'auto' }}>販売価格</span>
+                  {r.sim ? <span className="ot-pay-auto">0 円</span>
+                    : r.autoPrice != null ? <span className="ot-pay-auto">{r.autoPrice.toLocaleString('ja-JP')} 円</span>
+                    : <KpField form={form} name="price" label="販売価格" left align="right" placeholder="- 円" style={{ width: 170, height: 32 }} />}
+                </div>
                 <div className="ot-sep" />
                 <b className="ot-col-sub">割引内訳</b>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   {pickBtn('割引内訳入力', () => setDlg('disc'))}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div className="ot-kv" style={Y}><span>店頭値引き</span><span>{yen(r.sd)}</span></div>
-                    <div className="ot-kv" style={Y}><span>ポイント値引き</span><span>{yen(r.pd)}</span></div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <div className="ot-kv" style={Y}><span>店頭値引き</span><span>{tri(r.sd)}</span></div>
+                    <div className="ot-kv" style={Y}><span>ポイント値引き</span><span>{tri(r.pd)}</span></div>
                   </div>
                 </div>
                 <div className="ot-sep" />
-                <div className="ot-kv"><b className="ot-col-sub">分割支払金</b><span style={Y}>{yen(r.base)}</span></div>
-                {pickBtn('分割支払金入力', noop, { alignSelf: 'flex-start', color: '#b8aca2' })}
-                {sel('times', TIMES, { label: '支払回数', style: { width: 110, height: 30 } })}
-                <div style={{ ...Y, textAlign: 'right', lineHeight: 1.7 }}>初回 {yen(r.first)}　月々 {yen(r.monthly)}<br />最終回支払金額 -円　延長回数 -回<br />延長後初回 -円　延長後月々 -円</div>
+                <div className="ot-kv"><b className="ot-col-sub">分割支払金</b><span style={Y}>{yen(r.financed)}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <select className="ot-sel" aria-label="支払方法" value={r.payType} disabled={!e.device || r.sim}
+                    onChange={(ev) => patchE({ payType: ev.target.value, times: ev.target.value === 'kappu' ? e.times || '24' : e.times })} style={{ width: 120, height: 30 }}>
+                    {!e.device || r.sim ? <option value="">－</option> : null}
+                    {PAY_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  {r.payType === 'smatoku' && <b style={{ fontSize: 13, color: '#2f5f7e' }}>24回</b>}
+                  {r.payType === 'kappu' && (
+                    <select className="ot-sel" aria-label="支払回数" value={e.times || '24'} onChange={form.onChange('times')} style={{ width: 90, height: 30 }}>
+                      {TIMES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                  )}
+                  {r.payType === 'smatoku' && r.autoResidual == null && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', ...Y }}>残価<KpField form={form} name="residual" label="残価（最終回分）" align="right" placeholder="手入力" style={{ width: 120, height: 30 }} /></span>
+                  )}
+                </div>
+                <div style={{ ...Y, textAlign: 'right', lineHeight: 1.65 }}>
+                  初回 {yen(r.first)}　月々 {yen(r.monthly)}<br />
+                  最終回支払金額 {r.payType === 'smatoku' ? yen(r.last) : '-円'}　延長回数 {r.payType === 'smatoku' ? '24回' : '-回'}<br />
+                  延長後初回 {r.payType === 'smatoku' ? yen(r.extFirst) : '-円'}　延長後月々 {r.payType === 'smatoku' ? yen(r.extMonthly) : '-円'}
+                </div>
+                {r.showFee && <div className="ot-pay-note">端末返却時に{r.fee.toLocaleString('ja-JP')}円の特典利用料が発生する可能性がございます。</div>}
                 <div className="ot-sep" />
                 <div className="ot-kv" style={{ alignItems: 'flex-start' }}>
                   <div><b className="ot-col-sub">実質負担金</b><div style={{ fontSize: 11, color: '#4a3528' }}>(ポイント値引き含む)</div></div>
-                  <div style={{ textAlign: 'right' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{yen(r.real)}</div><div style={{ fontSize: 12, color: '#cc4f00' }}>{yen(r.otoku)} お得</div></div>
+                  <div style={{ textAlign: 'right' }}><div style={{ fontSize: 14, fontWeight: 800 }}>{yen(r.real)}</div><div style={{ fontSize: 12, color: '#cc4f00' }}>{r.otoku ? tri(r.otoku) + ' お得' : '- 円 お得'}</div></div>
                 </div>
               </div>
               <div className="ot-col-foot blue">
-                <div><b>店頭お支払い額</b><div className="ot-big">{yen(r.store)}</div><div className="ot-mini">(初回のみ -円)</div></div>
-                <div><b>月々のお支払い額</b><div className="ot-big">{yen(r.monthly)}</div></div>
+                <div><b>店頭お支払い額</b><div className="ot-big">{r.store.toLocaleString('ja-JP')} 円</div><div className="ot-mini">(初回のみ -円)</div></div>
+                <div><b>月々のお支払い額</b><div className="ot-big">{r.monthly.toLocaleString('ja-JP')} 円</div></div>
               </div>
             </section>
 
-            {/* 月々のご利用料金 */}
+            {/* ===== 月々のご利用料金 ===== */}
             <section className="ot-col pink">
               <div className="ot-col-head"><b>月々のご利用料金</b></div>
-              <div className="ot-col-body" style={{ flexGrow: 0, gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ width: 84 }}>基本パック</span>{sel('pack', [['', ''], [LATER, LATER]], { label: '基本パック', style: { flex: 1, height: 32 } })}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><b style={{ width: 84 }}>料金プラン</b><PickField onClick={() => setDlg('plan')} value={r.plan ? '月額 ' + yen(r.plan) : ''} /></div>
+              <div className="ot-col-body" style={{ flexGrow: 0, gap: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ width: 84 }}>基本パック</span>
+                  <select className="ot-sel" aria-label="基本パック" value={e.plan || ''} onChange={changePlan} disabled={!brand} style={{ flex: 1, height: 32 }}>
+                    <option value="">{brand ? '' : '契約種別を選んでください'}</option>
+                    {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><b style={{ width: 84 }}>料金プラン</b>
+                  <PickField onClick={() => (r.plan ? setPlanDlg(true) : toast.say('先に基本パックを選んでください'))}
+                    value={r.plan ? `${r.tier.label}${r.call && r.call.price ? '・' + r.call.label.replace(/（.*）/, '') : ''}　${yen(r.planBase)}` : ''} />
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ width: 84 }}>インターネット<br />接続サービス</span><PickField onClick={() => setDlg('net')} value={r.net ? '月額 ' + yen(r.net) : ''} /></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ width: 84 }} />
+                  <select className="ot-sel" aria-label="au PAYカードお支払い割" value={e.card || ''} onChange={form.onChange('card')} disabled={!brand} style={{ flex: 1, height: 30 }}>
+                    <option value="" />
+                    <option value="card">au PAYカードお支払い割</option>
+                    <option value="none">ー</option>
+                  </select>
+                </div>
+                {r.plan && r.plan.note && <div className="ot-pay-note" style={{ marginTop: 0 }}>{r.plan.note}</div>}
               </div>
               <div className="ot-col-body" style={{ flexGrow: 1, gap: 6, borderTop: '1px solid #ecd2d2' }}>
                 <div className="ot-kv"><b className="ot-col-sub">オプションサービス</b>{pickBtn('オプション変更', () => setDlg('option'), { height: 28, fontSize: 11 })}</div>
@@ -168,10 +270,11 @@ export default function Payment({ onClose, onMultitask }) {
               <div className="ot-col-body" style={{ flexGrow: 0, borderTop: '1px solid #ecd2d2' }}>
                 <b className="ot-col-sub">割引サービス</b>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {sel('discSvc', [['', ''], [LATER, LATER]], { label: '割引サービス', style: { flex: 1, height: 30 } })}
-                  <button className={`ot-onoff ${e.discOn ? 'on' : ''}`} onClick={toggleDisc}>{e.discOn ? 'ON' : 'OFF'}</button>
+                  <select className="ot-sel" aria-label="割引サービス" value={e.discSvc || ''} onChange={changeDiscSvc} disabled={!brand} style={{ flex: 1, minWidth: 0, height: 30, fontSize: 11 }}>
+                    {discounts.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+                  </select>
+                  <button className={`ot-onoff ${e.discOn ? 'on' : ''}`} disabled={!e.discSvc} onClick={() => setE('discOn', e.discOn ? '' : '1')}>{e.discOn ? 'ON' : 'OFF'}</button>
                 </div>
-                {e.discOn && <div className="ot-kv" style={Y}><span>割引額</span><span>－{yen(r.disc)}</span></div>}
               </div>
               <div className="ot-pink-foot">
                 <div className="ot-pink-left">
@@ -180,29 +283,67 @@ export default function Payment({ onClose, onMultitask }) {
                   <div className="ot-mini">(初回のご利用料金と併<br />せてのご請求)</div>
                 </div>
                 <div className="ot-pink-right">
-                  <div className="ot-pink-pay"><b>月々のお支払い額</b><div style={{ fontSize: 11, marginTop: 2 }}>小計 {yen(r.sub)} {yen(r.disc)} お得</div><div className="ot-big" style={{ marginTop: 10 }}>{yen(r.planMonthly)}</div></div>
+                  <div className="ot-pink-pay">
+                    <b>月々のお支払い額</b>
+                    <div style={{ fontSize: 11, marginTop: 2 }}>小計 {yen(r.planBase)}</div>
+                    <div style={{ fontSize: 11 }}>{r.planDisc ? tri(r.planDisc) + ' お得' : '- 円 お得'}</div>
+                    <div className="ot-big" style={{ marginTop: 4 }}>{r.plan ? r.planMonthly.toLocaleString('ja-JP') + ' 円' : '- 円'}</div>
+                  </div>
                   <div className="ot-ponta">Pontaポイント還元 -Pt</div>
                 </div>
               </div>
             </section>
 
-            {/* キャンペーン・+1collection */}
+            {/* ===== キャンペーン・+1collection（今回は変更なし）===== */}
             <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div className="ot-box green"><div className="ot-kv"><b>キャンペーン関連</b>{pickBtn('追加/変更', noop, { height: 28, fontSize: 11, color: '#b8aca2' })}</div></div>
               <div className="ot-box yellow">
                 <div className="ot-kv"><b>au +1collection</b>{pickBtn('追加/変更', () => setDlg('plus1'), { height: 28, fontSize: 11 })}</div>
                 <div style={{ flex: 1 }} />
-                {sel('plus1Sel', [['', ''], [LATER, LATER]], { label: 'au +1collection', style: { width: 110, height: 30 } })}
+                <select className="ot-sel" aria-label="au +1collection" value={e.plus1Sel || ''} onChange={form.onChange('plus1Sel')} style={{ width: 110, height: 30 }}>
+                  <option value="" /><option value={LATER}>{LATER}</option>
+                </select>
                 <div className="ot-kv" style={Y}><span>月々のお支払い額</span><b style={{ color: '#cc4f00' }}>{yen(r.plus1)}</b></div>
                 <div className="ot-mini" style={{ textAlign: 'right' }}>(初回のみ -円)</div>
               </div>
-              <div className="ot-box total"><b>月々のお支払い目安額</b><div className="ot-big" style={{ fontSize: 20, fontWeight: 900 }}>{r.total ? r.total.toLocaleString('ja-JP') + ' 円' : '- 円'}～</div></div>
+              <div className="ot-box total"><b>月々のお支払い目安額</b><div className="ot-big" style={{ fontSize: 20, fontWeight: 900 }}>{r.total ? r.total.toLocaleString('ja-JP') + ' 円' : '- 円'}～</div><div className="ot-mini" style={{ textAlign: 'right' }}>端末＋料金プラン</div></div>
               <button className="ot-orange" onClick={noop}>ポイントシミュレーターに連携</button>
             </section>
           </div>
           <div className="ot-mini" style={{ paddingTop: 5, lineHeight: 1.5 }}>※見積りは作成時の情報です。料金や提供条件は変更の可能性があります。<br />※税込価格です。※ポイント数は試算値で、実際と異なることがあります。</div>
         </main>
       </div>
+
+      {/* 料金プランの詳細（利用データ量・通話オプション）*/}
+      {planDlg && r.plan && (
+        <div className="ot-ov center" style={{ zIndex: 45 }}>
+          <div className="ot-dialog" role="dialog" aria-label="料金プランの詳細" style={{ width: 480 }}>
+            <div className="ot-dialog-title">{r.plan.name}</div>
+            <div className="ot-plan-sec">ご利用データ量</div>
+            <div className="ot-plan-opts">
+              {r.plan.tiers.map((t) => (
+                <button key={t.id} className={`ot-plan-opt ${r.tier.id === t.id ? 'on' : ''}`} onClick={() => setE('tier', t.id)}>
+                  <span>{t.label}</span><b>{t.price.toLocaleString('ja-JP')}円</b>
+                </button>
+              ))}
+            </div>
+            <div className="ot-plan-sec">通話オプション</div>
+            <div className="ot-plan-list">
+              {r.plan.calls.map((c) => (
+                <label key={c.id} className="ot-plan-row">
+                  <input type="radio" name="call" checked={r.call.id === c.id} onChange={() => setE('call', c.id)} />
+                  <span style={{ flex: 1 }}>{c.label}</span>
+                  <b>{c.price ? '+' + c.price.toLocaleString('ja-JP') + '円' : '0円'}</b>
+                </label>
+              ))}
+            </div>
+            <div className="ot-kv" style={{ fontSize: 13, fontWeight: 800, borderTop: '1px solid #ebe2d9', paddingTop: 10 }}>
+              <span>プラン料金（割引前）</span><span style={{ color: '#cc4f00', fontSize: 16 }}>{r.planBase.toLocaleString('ja-JP')}円</span>
+            </div>
+            <div className="ot-dialog-foot"><button className="ot-ok" onClick={() => setPlanDlg(false)}>OK</button></div>
+          </div>
+        </div>
+      )}
 
       {/* 入力ダイアログ */}
       {d && (
