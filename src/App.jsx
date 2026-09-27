@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useDbCollection } from './useFirebase.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
 import DeviceCompare from './components/DeviceCompare.jsx';
+// オレタブ練習は開いたときだけ読み込む（アプリ全体の読み込みを軽くするため）
+const OreTab = lazy(() => import('./oretab/OreTab.jsx'));
 import Home from './components/Home.jsx';
 import Glossary from './components/Glossary.jsx';
 import Login from './components/Login.jsx';
@@ -81,6 +83,7 @@ export default function App() {
       }}
       onGoTest={goTest}
       onGoDevices={() => setPage('devices')}
+      onGoOreTab={() => setPage('oretab')}
       onAdminLogin={() => setPage('admin-login')}
     />
   );
@@ -89,6 +92,13 @@ export default function App() {
   switch (page) {
     case 'home':
       content = homeEl;
+      break;
+    case 'oretab':
+      content = (
+        <Suspense fallback={<div className="loading"><div className="spinner" /></div>}>
+          <OreTab onExit={() => setPage('home')} />
+        </Suspense>
+      );
       break;
     case 'devices':
       content = <DeviceCompare devices={devices} onBack={() => setPage('home')} />;

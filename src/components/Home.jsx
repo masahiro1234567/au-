@@ -10,7 +10,7 @@ function Arrow() {
 
 // ホーム画面：用語一覧・テスト・機種比較・管理者ログイン。
 // スマホは縦積み、PC（900px以上）は左にタイトル、右にメニューの2カラム。
-export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onAdminLogin }) {
+export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onAdminLogin }) {
   const count = Object.keys(terms || {}).length;
 
   return (
@@ -54,6 +54,13 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
               <div className="hm-card-text">
                 <div className="hm-card-title">機種比較</div>
                 <div className="hm-card-desc">iPhone・Androidのできる／できないを一覧表で比べる</div>
+              </div>
+              <Arrow />
+            </button>
+            <button className="hm-card" onClick={onGoOreTab}>
+              <div className="hm-card-text">
+                <div className="hm-card-title">オレタブ</div>
+                <div className="hm-card-desc">本番前にオレタブの操作を練習する（横画面）</div>
               </div>
               <Arrow />
             </button>

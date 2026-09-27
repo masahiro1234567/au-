@@ -1,0 +1,173 @@
+/* ===== オレタブ練習（1024×768の横画面を端末に合わせて縮小・回転） ===== */
+.ot-viewport{position:fixed;inset:0;background:#1a0f08;overflow:hidden;touch-action:manipulation;overscroll-behavior:none;}
+.ot-stage{position:absolute;left:50%;top:50%;transform-origin:50% 50%;background:#f4efea;overflow:hidden;font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;color:#1a0f08;-webkit-text-size-adjust:100%;}
+.ot-stage *{box-sizing:border-box;}
+.ot-stage button{font-family:inherit;}
+.ot-layer-screen{position:absolute;width:1024px;height:768px;transform-origin:0 0;transition:transform .22s ease,left .22s ease,top .22s ease;}
+.ot-screen{position:relative;width:1024px;height:768px;display:flex;flex-direction:column;background:#f4efea;overflow:hidden;}
+.ot-main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative;}
+.ot-h1{margin:0;font-size:20px;font-weight:900;}
+.ot-ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+
+/* 上部バー */
+.ot-tb{height:52px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 10px;background:#fff;border-bottom:2px solid #ff6600;}
+.ot-tb-btn{height:36px;padding:0 12px;border:1.5px solid #e6d8cc;border-radius:7px;background:#faf6f2;font-size:13px;font-weight:700;color:#4a3528;display:flex;align-items:center;gap:6px;cursor:pointer;}
+.ot-tb-practice{margin-left:6px;font-size:12px;font-weight:800;color:#cc4f00;background:#fff2ea;border:1.5px solid #ffd9c0;border-radius:999px;padding:4px 12px;}
+.ot-tb-right{margin-left:auto;display:flex;align-items:center;gap:2px;}
+.ot-tb-ev{height:30px;padding:0 10px;border:1px solid #e6d8cc;border-radius:6px;background:#fff;font-size:11px;color:#8a5d45;margin-right:6px;cursor:pointer;}
+.ot-tb-ico{width:62px;height:46px;border:none;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;font-weight:700;color:#4a3528;cursor:pointer;}
+
+/* ボタン類 */
+.ot-btn{height:36px;padding:0 14px;border:1.5px solid #e6d8cc;border-radius:7px;background:#fff;font-size:13px;font-weight:700;color:#4a3528;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;flex-shrink:0;}
+.ot-btn.sm{height:32px;padding:0 10px;font-size:12px;}
+.ot-btn.icon{height:32px;width:38px;padding:0;}
+.ot-btn:disabled{opacity:.5;}
+.ot-primary{height:48px;min-width:220px;border:none;border-radius:9px;background:#cc4f00;color:#fff;font-size:16px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;}
+.ot-gray{height:48px;min-width:220px;border:1.5px solid #d9cfc6;border-radius:9px;background:#ece6e0;color:#4a3528;font-size:16px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;}
+.ot-ok{height:40px;min-width:120px;border:none;border-radius:8px;background:#cc4f00;color:#fff;font-size:14px;font-weight:800;cursor:pointer;}
+.ot-ok:disabled{background:#d9cfc6;cursor:default;}
+.ot-orange{height:40px;border:none;border-radius:8px;background:#cc4f00;color:#fff;font-size:13px;font-weight:800;cursor:pointer;}
+.ot-pill-blue{height:34px;padding:0 16px;border:none;border-radius:999px;background:#2f5f9e;color:#fff;font-size:13px;font-weight:800;cursor:pointer;}
+.ot-badge{background:#e8590c;color:#fff;border-radius:9px;padding:0 6px;}
+
+/* 入力 */
+.ot-inp{height:36px;border:1.5px solid #d9cfc6;border-radius:7px;background:#fff;font-family:inherit;font-size:13px;padding:0 10px;min-width:0;}
+.ot-sel{height:36px;border:1.5px solid #d9cfc6;border-radius:7px;background:#fff;font-family:inherit;font-size:13px;padding:0 8px;color:#4a3528;min-width:0;}
+.ot-kp{display:flex;align-items:stretch;border:1.5px solid #d9cfc6;border-radius:7px;overflow:hidden;background:#fff;height:36px;}
+.ot-kp input{flex:1;min-width:0;border:none;font-family:inherit;font-size:13px;padding:0 10px;outline:none;background:transparent;}
+.ot-kpb{width:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#ece6e0;border:none;border-left:1.5px solid #d9cfc6;cursor:pointer;padding:0;}
+.ot-kpb.left{border-left:none;border-right:1.5px solid #d9cfc6;}
+.ot-kpb:active{background:#ffd9c0;}
+.ot-radio{display:inline-flex;align-items:center;gap:6px;font-size:14px;margin-right:22px;}
+.ot-chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;}
+.ot-radio input,.ot-chk input{width:18px;height:18px;accent-color:#cc4f00;margin:0;}
+.ot-req{font-size:11px;font-weight:700;color:#c2410c;border:1.5px solid #fdba8c;border-radius:4px;padding:1px 6px;background:#fff;}
+.ot-link{color:#cc4f00;text-decoration:underline;}
+.ot-field{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;}
+.ot-kv{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+
+/* ポータル */
+.ot-memo{height:50px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 16px;background:#ece6e0;border-bottom:1px solid #e0d6cc;}
+.ot-memo span{font-size:12px;font-weight:700;color:#6b5a4e;margin-right:4px;}
+.ot-memo i{width:1px;height:26px;background:#d4c8bd;margin:0 6px;}
+.ot-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}
+.ot-tile{height:138px;background:#fff;border:1.5px solid #eadfd5;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:700;color:#4a3528;cursor:pointer;}
+.ot-tile:active{background:#fff2ea;}
+.ot-dots{margin-top:auto;display:flex;justify-content:center;gap:4px;}
+.ot-dots button{width:32px;height:32px;border:none;background:none;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.ot-dots span{width:10px;height:10px;border-radius:50%;}
+
+/* お客様照会 */
+.ot-steps{display:flex;flex-shrink:0;background:#fff;border-bottom:1px solid #e0d6cc;}
+.ot-step{flex:1;min-width:0;height:46px;display:flex;align-items:center;gap:8px;padding:0 12px;border:none;border-right:1px solid #e0d6cc;border-bottom:3px solid transparent;background:#fff;font-size:13px;font-weight:700;color:#6b5a4e;cursor:pointer;text-align:left;}
+.ot-step.on{background:#fff2ea;color:#cc4f00;border-bottom-color:#cc4f00;}
+.ot-step-no{min-width:20px;height:20px;border-radius:4px;background:#e8590c;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ot-steps-end{width:170px;display:flex;align-items:center;justify-content:center;}
+.ot-tab{flex:1;height:42px;border:none;border-radius:8px 8px 0 0;font-size:14px;font-weight:700;cursor:pointer;background:#e3dbd3;color:#6b5a4e;}
+.ot-tab.on{background:#e8590c;color:#fff;}
+.ot-card{background:#fff;border:1.5px solid #eadfd5;}
+.ot-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #ebe2d9;}
+.ot-half{flex:1;display:flex;align-items:center;gap:12px;min-width:0;}
+.ot-hl{padding:6px 8px;margin:-6px -8px;border-radius:8px;}
+.ot-alert{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;background:#dc2626;color:#fff;font-size:15px;font-weight:800;border-radius:9px;padding:10px 22px;box-shadow:0 4px 14px rgba(220,38,38,.35);white-space:nowrap;}
+
+/* 表形式（エリア検索・でんき） */
+.ot-crumb{font-size:16px;font-weight:900;padding-bottom:8px;border-bottom:2px solid #d4c8bd;}
+.ot-crumb span{color:#b8aca2;font-weight:400;}
+.ot-tbl{background:#fff;border:1.5px solid #d4c8bd;}
+.ot-band{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#e8590c;color:#fff;font-size:14px;font-weight:800;}
+.ot-q{width:20px;height:20px;border-radius:5px;background:#fff;color:#cc4f00;font-size:13px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;}
+.ot-q.blue{background:#2f5f9e;color:#fff;}
+.ot-tr{display:flex;border-bottom:1px solid #e0d6cc;}
+.ot-th{width:250px;flex-shrink:0;padding:10px 12px;background:#f3ede7;border-right:1px solid #e0d6cc;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:space-between;}
+.ot-td{flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:6px;min-width:0;}
+.ot-td.row{flex-direction:row;justify-content:flex-start;align-items:center;}
+
+/* お支払い目安額 */
+.ot-pay-wrap{position:absolute;inset:0;display:flex;flex-direction:column;background:#f4efea;transform-origin:50% 50%;transition:transform .2s ease;}
+.ot-pay-wrap.layout{transform:translateY(26px) scale(.86);pointer-events:none;box-shadow:0 12px 36px rgba(0,0,0,.25);border-radius:6px;overflow:hidden;}
+.ot-side-tab{position:absolute;left:0;top:330px;width:22px;height:150px;border:1.5px solid #d9cfc6;border-left:none;border-radius:0 8px 8px 0;background:#ece6e0;font-size:11px;font-weight:700;color:#4a3528;writing-mode:vertical-rl;cursor:pointer;padding:0;}
+.ot-est-bar{display:flex;align-items:flex-end;gap:6px;border-bottom:2px solid #e8590c;}
+.ot-est{width:150px;height:40px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#ece6e0;border:1.5px solid #e0d6cc;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;}
+.ot-est.on{background:#fff;border-color:#e8590c;}
+.ot-est-check{width:18px;height:18px;border-radius:4px;border:1.5px solid #cc4f00;background:#fff;color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;}
+.ot-est.on .ot-est-check{background:#cc4f00;}
+.ot-est-total{font-size:13px;font-weight:700;color:#8a5d45;margin-left:auto;}
+.ot-est-tools{margin-left:auto;display:flex;gap:4px;padding-bottom:4px;}
+.ot-pay-grid{flex:1;min-height:0;display:grid;grid-template-columns:1.1fr 1fr .95fr;gap:8px;padding-top:8px;}
+.ot-col{border-radius:8px;display:flex;flex-direction:column;overflow:hidden;}
+.ot-col.blue{background:#eef4f8;border:1.5px solid #c9dbe7;}
+.ot-col.pink{background:#fbf1f1;border:1.5px solid #ecd2d2;}
+.ot-col-head{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid #c9dbe7;}
+.ot-col.pink .ot-col-head{border-bottom-color:#ecd2d2;}
+.ot-col-head b{font-size:14px;color:#2f5f7e;}
+.ot-col.pink .ot-col-head b,.ot-col.pink .ot-col-sub{color:#9c3d3d;}
+.ot-col-body{padding:8px 12px;display:flex;flex-direction:column;gap:7px;flex-grow:1;}
+.ot-col-sub{font-size:13px;color:#2f5f7e;}
+.ot-sep{height:1px;background:#c9dbe7;}
+.ot-col-foot{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #c9dbe7;}
+.ot-col-foot.blue{background:#dce9f1;}
+.ot-col-foot>div{padding:7px 10px;}
+.ot-col-foot>div:first-child{border-right:1px solid #c9dbe7;}
+.ot-col-foot b{font-size:12px;color:#2f5f7e;}
+.ot-big{text-align:right;font-size:16px;font-weight:800;color:#cc4f00;}
+.ot-mini{font-size:10px;color:#6b5a4e;}
+.ot-r{text-align:right;font-size:12px;color:#4a3528;}
+.ot-pickfield{flex:1;height:32px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1.5px solid #e6cfcf;border-radius:7px;background:#f6ecec;font-size:12px;color:#4a3528;cursor:pointer;text-align:left;}
+.ot-onoff{height:30px;min-width:52px;border-radius:7px;border:1.5px solid #e6d8cc;background:#fff;color:#b8aca2;font-size:11px;font-weight:800;cursor:pointer;}
+.ot-onoff.on{background:#cc4f00;border-color:#cc4f00;color:#fff;}
+.ot-pink-foot{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #ecd2d2;}
+.ot-pink-left{padding:7px 10px;border-right:1px solid #ecd2d2;display:flex;flex-direction:column;gap:6px;font-size:12px;}
+.ot-pink-left b{color:#9c3d3d;}
+.ot-pink-right{display:flex;flex-direction:column;}
+.ot-pink-pay{flex:1;padding:7px 10px;background:#f6e3e3;}
+.ot-pink-pay b{font-size:12px;color:#9c3d3d;}
+.ot-ponta{height:30px;display:flex;align-items:center;justify-content:center;border-top:1.5px solid #fff;background:#f3dada;font-size:12px;font-weight:800;color:#9c3d3d;}
+.ot-box{border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:8px;}
+.ot-box.green{flex:1;background:#f1f6ea;border:1.5px solid #d5e3c3;}
+.ot-box.green b{font-size:14px;color:#4d6b2c;}
+.ot-box.yellow{flex:1;background:#fbf8e6;border:1.5px solid #ebe2b3;}
+.ot-box.yellow b{font-size:14px;color:#6e5f1c;}
+.ot-box.total{background:#f7ebe3;border:1.5px solid #ead3c4;gap:2px;}
+.ot-box.total>b{font-size:13px;color:#9c4a1c;}
+.ot-layer{position:absolute;inset:0;z-index:30;pointer-events:none;}
+.ot-layer button{pointer-events:auto;}
+.ot-layout-back{position:absolute;left:14px;top:12px;width:64px;height:52px;border:none;background:none;cursor:pointer;padding:0;}
+.ot-layout-print{position:absolute;left:92px;top:18px;height:40px;padding:0 22px;border:none;border-radius:8px;background:#cc4f00;color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.18);}
+.ot-print{position:absolute;inset:0;z-index:55;background:#dbeafe;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;}
+.ot-print-card{width:460px;height:260px;background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(30,64,120,.15);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
+.ot-print-label{font-size:14px;font-weight:700;color:#4a5a70;}
+.ot-print-code{font-size:72px;font-weight:900;letter-spacing:.12em;}
+.ot-print-ok{height:48px;min-width:180px;border:none;border-radius:10px;background:#2f5f9e;color:#fff;font-size:16px;font-weight:800;cursor:pointer;}
+.ot-dim{position:absolute;inset:0;z-index:55;background:rgba(140,140,140,.45);display:flex;align-items:center;justify-content:center;}
+
+/* ダイアログ・キーパッド・お知らせ */
+.ot-ov{position:absolute;inset:0;background:rgba(26,15,8,.38);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
+.ot-ov.center{align-items:center;}
+.ot-dialog{width:420px;background:#fff;border-radius:14px;padding:18px 20px;box-shadow:0 10px 30px rgba(0,0,0,.2);display:flex;flex-direction:column;gap:12px;}
+.ot-dialog-title{font-size:16px;font-weight:900;}
+.ot-dialog-note{font-size:12px;color:#6b5a4e;}
+.ot-dialog-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;}
+.ot-kpanel{width:380px;background:#fff;border-radius:16px 16px 0 0;padding:14px 16px 18px;box-shadow:0 -6px 24px rgba(0,0,0,.18);}
+.ot-kpanel-head{display:flex;justify-content:space-between;align-items:center;font-size:14px;}
+.ot-kdisp{height:52px;border:1.5px solid #d9cfc6;border-radius:9px;display:flex;align-items:center;justify-content:flex-end;padding:0 14px;font-size:24px;font-weight:800;letter-spacing:.06em;margin:8px 0 12px;background:#faf6f2;}
+.ot-kgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.ot-kkey{height:54px;border:1.5px solid #e6d8cc;border-radius:10px;background:#fff;font-size:22px;font-weight:700;color:#1a0f08;cursor:pointer;}
+.ot-kkey:active{background:#fff2ea;}
+.ot-kkey.fn{font-size:14px;background:#f3ede7;color:#4a3528;}
+.ot-kkey.ok{background:#cc4f00;border-color:#cc4f00;color:#fff;font-size:15px;grid-column:1 / -1;}
+.ot-toast{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);background:#1a0f08;color:#fff;font-size:13px;font-weight:700;border-radius:999px;padding:10px 18px;z-index:80;white-space:nowrap;pointer-events:none;}
+.ot-success{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:70;background:#fff;border:2px solid #16a34a;border-radius:14px;padding:16px 24px;box-shadow:0 10px 30px rgba(0,0,0,.18);display:flex;align-items:center;gap:14px;}
+.ot-success-title{font-size:17px;font-weight:900;color:#14532d;}
+.ot-success-sub{font-size:12px;color:#4a3528;margin-top:2px;}
+.ot-success-sub2{font-size:12px;color:#6b5a4e;margin-top:2px;}
+
+/* マルチタスク（白背景・縦2つずつ右詰め） */
+.ot-multi{position:absolute;inset:0;z-index:30;background:#fff;}
+.ot-multi-bg{position:absolute;inset:0;border:none;background:transparent;cursor:default;}
+.ot-multi-title{position:absolute;left:32px;top:26px;font-size:18px;font-weight:900;}
+.ot-multi-sub{position:absolute;left:32px;top:54px;font-size:12px;color:#6b5a4e;}
+.ot-multi-label{position:absolute;height:26px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;}
+.ot-multi-label button{width:30px;height:26px;border:none;border-radius:6px;background:#f3ede7;color:#4a3528;font-size:14px;cursor:pointer;}
+.ot-multi-au{width:18px;height:18px;border-radius:4px;background:#ff6600;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;}
+.ot-multi-pick{position:absolute;z-index:45;border:2px solid #e0d6cc;border-radius:8px;background:transparent;cursor:pointer;}
