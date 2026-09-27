@@ -21,30 +21,34 @@ function BackBar({ title, onBack }) {
   );
 }
 
-// 表の枠内スクロールを「縦か横の片方だけ」に固定する（指が斜めに動いても、最初に動かした向きだけ動く）
+// 表の枠内スクロール：かなりまっすぐ縦か横に動かしたときだけ、その向きに固定する（斜めは自由）。
+// 固定するのは指が触れている間だけで、指を離したあとの惰性スクロールは自由に滑らせる
 function useAxisLock() {
   const ref = useRef(null);
-  const st = useRef({ x: 0, y: 0, left: 0, top: 0, axis: null });
+  const st = useRef({ x: 0, y: 0, left: 0, top: 0, axis: null, touching: false });
   const onTouchStart = (e) => {
     const t = e.touches[0];
     const el = ref.current;
-    st.current = { x: t.clientX, y: t.clientY, left: el.scrollLeft, top: el.scrollTop, axis: null };
+    st.current = { x: t.clientX, y: t.clientY, left: el.scrollLeft, top: el.scrollTop, axis: null, touching: true };
   };
   const onTouchMove = (e) => {
     const s = st.current;
     if (s.axis) return;
     const t = e.touches[0];
     const dx = Math.abs(t.clientX - s.x), dy = Math.abs(t.clientY - s.y);
-    if (dx + dy < 6) return;
-    s.axis = dx > dy ? 'x' : 'y';
+    if (dx + dy < 12) return;
+    if (dx > dy * 3) s.axis = 'x';
+    else if (dy > dx * 3) s.axis = 'y';
+    else s.axis = 'free';
   };
-  // 指を離したあとの惰性スクロール中も、固定した向き以外は動かさない（次に触るまで有効）
+  const onTouchEnd = () => { st.current.touching = false; };
   const onScroll = () => {
     const el = ref.current, s = st.current;
+    if (!s.touching) return;
     if (s.axis === 'x' && el.scrollTop !== s.top) el.scrollTop = s.top;
     if (s.axis === 'y' && el.scrollLeft !== s.left) el.scrollLeft = s.left;
   };
-  return { ref, onTouchStart, onTouchMove, onScroll };
+  return { ref, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel: onTouchEnd, onScroll };
 }
 
 // 機種比較画面：一覧表をベースに、「2機種を比較」「条件で絞り込み」を切り替えて表示する
