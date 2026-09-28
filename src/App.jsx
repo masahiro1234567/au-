@@ -32,6 +32,7 @@ export default function App() {
   const [profiles] = useDbCollection('user_profiles');
   const [knowledgeTypesDb] = useDbCollection('knowledge_types');
   const [devices] = useDbCollection('devices');
+  const [payConfig] = useDbCollection('oretab_pay'); // オレタブ：お支払い目安額の設定（管理画面で編集）
   const knowledgeTypes = resolveKnowledgeTypes(knowledgeTypesDb);
 
   const [testUser, setTestUser] = useState(() => {
@@ -96,7 +97,7 @@ export default function App() {
     case 'oretab':
       content = (
         <Suspense fallback={<div className="loading"><div className="spinner" /></div>}>
-          <OreTab onExit={() => setPage('home')} />
+          <OreTab onExit={() => setPage('home')} payConfig={payConfig} />
         </Suspense>
       );
       break;
@@ -171,6 +172,7 @@ export default function App() {
           ghostIds={ghostIds}
           knowledgeTypes={knowledgeTypes}
           devices={devices}
+          payConfig={payConfig}
           results={results}
           profiles={profiles}
           onBack={() => setPage('home')}

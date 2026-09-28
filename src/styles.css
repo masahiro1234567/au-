@@ -607,3 +607,49 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 html,body{overscroll-behavior:none;}
 .kc-table-wrap{overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:pan-x pan-y;}
 .kc-scroll{overscroll-behavior:contain;}
+
+/* ===== 管理画面：オレタブ設定 ===== */
+.ota{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
+.ota-left{flex:0 0 auto;display:flex;flex-direction:column;gap:10px;max-width:100%;}
+.ota-left-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.ota-left-head b{font-size:1rem;}
+.ota-left-head span{font-size:.75rem;color:var(--sub);}
+.ota-map{width:552px;max-width:100%;aspect-ratio:1024/768;position:relative;background:#d9d2cb;border-radius:10px;overflow:hidden;box-shadow:0 6px 20px rgba(74,53,40,.15);}
+.ota-map-inner{position:absolute;left:0;top:0;width:1024px;height:768px;transform:scale(.539);transform-origin:0 0;background:#f4efea;font-family:inherit;}
+.ota-hot{position:absolute;border:3px dashed #ff6600;border-radius:8px;background:rgba(255,255,255,0);cursor:pointer;padding:0;}
+.ota-hot:hover{background:rgba(255,102,0,.08);}
+.ota-hot.on{border-style:solid;background:rgba(255,102,0,.16);}
+.ota-chips,.ota-filter{display:flex;flex-wrap:wrap;gap:6px;}
+.ota-chip{min-height:34px;padding:0 12px;border-radius:999px;border:1.5px solid var(--border);background:#fff;color:var(--sub);font-family:inherit;font-size:.75rem;font-weight:700;cursor:pointer;}
+.ota-chip.on{background:var(--pd,#cc4f00);border-color:var(--pd,#cc4f00);color:#fff;}
+.ota-right{flex:1 1 420px;min-width:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;}
+.ota-right-head{display:flex;gap:10px;align-items:flex-start;padding:14px 16px 10px;border-bottom:1px solid #f1e9e2;}
+.ota-title{font-size:1.05rem;font-weight:900;}
+.ota-desc{font-size:.74rem;color:var(--sub);margin-top:3px;line-height:1.55;}
+.ota-state{font-size:.68rem;font-weight:700;color:#0f766e;margin-top:4px;}
+.ota-filter{padding:10px 16px 0;}
+.ota .btn-primary{min-height:38px;padding:0 16px;border:none;border-radius:8px;background:var(--pd,#cc4f00);color:#fff;font-family:inherit;font-size:.8rem;font-weight:800;cursor:pointer;flex-shrink:0;}
+.ota .input{width:100%;min-height:36px;border:1.5px solid var(--border);border-radius:7px;padding:0 10px;font-family:inherit;font-size:.8rem;background:#fff;box-sizing:border-box;}
+.ota-table-wrap{max-height:380px;overflow:auto;margin-top:8px;}
+.ota-table{width:100%;border-collapse:collapse;font-size:.76rem;}
+.ota-table th{position:sticky;top:0;background:#faf6f2;text-align:left;padding:8px 10px;color:var(--sub);font-weight:800;border-bottom:1px solid #f1e9e2;white-space:nowrap;z-index:1;}
+.ota-table td{padding:9px 10px;border-bottom:1px solid #f6efe9;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ota-table tr{cursor:pointer;}
+.ota-table tbody tr:hover td{background:#fffaf6;}
+.ota-table tr.on td{background:#fff2ea;}
+.ota-empty{text-align:center;color:var(--sub);padding:20px!important;}
+.ota-mini-btn{min-width:28px;min-height:28px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--sub);font-family:inherit;font-size:.7rem;cursor:pointer;margin-right:2px;}
+.ota-mini-btn.add{padding:0 10px;align-self:flex-start;}
+.ota-form{border-top:2px solid var(--primary,#ff6600);background:#fffaf6;padding:12px 16px;display:flex;flex-direction:column;gap:10px;}
+.ota-form-title{font-size:.85rem;font-weight:900;}
+.ota-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;}
+.ota-field{display:flex;flex-direction:column;gap:4px;font-size:.7rem;font-weight:700;color:var(--sub);}
+.ota-field.wide{grid-column:1 / -1;}
+.ota-check{display:flex;align-items:center;gap:6px;min-height:36px;font-size:.8rem;color:var(--text,#1a0f08);}
+.ota-check input{width:18px;height:18px;accent-color:#cc4f00;}
+.ota-list{display:flex;flex-direction:column;gap:6px;}
+.ota-list-row{display:flex;gap:6px;align-items:center;}
+.ota-form-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.ota-msg{margin:10px 16px;padding:8px 12px;border-radius:8px;background:#ecfdf5;color:#047857;font-size:.75rem;font-weight:800;}
+.ota-reset{padding:8px 16px 14px;}
+@media (max-width:640px){.ota-grid{grid-template-columns:1fr;}}

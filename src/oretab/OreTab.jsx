@@ -94,7 +94,7 @@ function Portal({ onOpen, onMultitask, onLogout, say }) {
 // ===== オレタブ練習の本体 =====
 // 開いた画面は閉じるまで入力を保持。閉じる（×・一括終了）と画面ごと消えて入力はリセットされる
 // オレタブ自体を出る（ログアウト）と、すべてリセット
-export default function OreTab({ onExit }) {
+export default function OreTab({ onExit, payConfig }) {
   const stage = useStage();
   const [open, setOpen] = useState([]); // 開いている画面（開いた順）
   const [active, setActive] = useState('portal');
@@ -140,7 +140,7 @@ export default function OreTab({ onExit }) {
           const C = SCREENS[k];
           return (
             <div key={k} className="ot-layer-screen" style={layerStyle(k)}>
-              <C onClose={() => closeScreen(k)} onMultitask={() => setMulti(true)} />
+              <C onClose={() => closeScreen(k)} onMultitask={() => setMulti(true)} config={payConfig} />
             </div>
           );
         })}

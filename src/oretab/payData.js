@@ -101,9 +101,36 @@ export const DEVICE_GROUPS = [
     A('TORQUE G06', 98000),
   ] },
 ];
+// ---- UQ mobile の取扱端末（2026年9月時点の販売中端末）----
+// 販売価格はauと同じ（auで扱いのある機種はauの価格を使う）。残価はUQの値
+// 残価が確認できた機種だけスマトク可。残価が未登録の機種は、通常割賦・一括のみ選べる
+// price が null の機種は価格も未確認（手入力欄が出る）
+const U = (name, price, r = null) => ({ name, price, rNew: r, rKihen: r, fee: r ? 22000 : 0 });
+export const UQ_DEVICE_GROUPS = [
+  { maker: 'iPhone', items: [
+    U('iPhone 17e 256GB', 127900, 83853),
+    U('iPhone 17e 512GB', 169900),
+  ] },
+  { maker: 'au Certified（認定中古品）', items: [
+    U('au Certified iPhone 15 Pro', null),
+    U('au Certified iPhone 15', null),
+    U('au Certified iPhone 14 Pro 128GB', 119000, 64000),
+    U('au Certified iPhone 14 Pro 256GB', 131000, 70500),
+    U('au Certified iPhone 14 128GB', 95700, 51653),
+    U('au Certified iPhone 14 256GB', 109000, 58400),
+  ] },
+  { maker: 'Google Pixel', items: [U('Google Pixel 10a', 89800, 45753)] },
+  { maker: 'AQUOS', items: [U('AQUOS sense10', 71800)] },
+  { maker: 'Xperia', items: [U('Xperia 10 VII', 82800)] },
+  { maker: 'OPPO', items: [U('OPPO Reno15 A', null), U('OPPO Reno13 A', 31900), U('OPPO A5 5G', 22001)] },
+  { maker: 'motorola', items: [U('motorola edge 60', null)] },
+  { maker: 'arrows', items: [U('arrows We3', 33000)] },
+  { maker: 'Galaxy', items: [U('Galaxy A25 5G', 22001)] },
+];
+export const deviceGroupsFor = (brand) => (brand === 'uq' ? UQ_DEVICE_GROUPS : DEVICE_GROUPS);
 export const SIM_ONLY = 'SIM単体契約';
-export const findDevice = (name) => {
-  for (const g of DEVICE_GROUPS) {
+export const findDevice = (name, brand = 'au') => {
+  for (const g of deviceGroupsFor(brand)) {
     const d = g.items.find((x) => x.name === name);
     if (d) return d;
   }
@@ -152,8 +179,10 @@ export const PLANS = {
       { id: 'full', label: '通話放題（24時間かけ放題）', price: 1980 },
     ], fam: true, sv: true, card: true },
     { id: 'komikomi-value', name: 'コミコミプランバリュー', tiers: [{ id: '35', label: '35GB（10分以内かけ放題込み）', price: 3828 }],
-      calls: [{ id: '', label: 'なし（10分以内かけ放題込み）', price: 0 }], fam: false, sv: false, card: false,
-      note: '自宅セット割・家族セット割の対象外。新規加入から最大13か月はUQコミコミおトク割（-660円）があります' },
+      calls: [
+        { id: '', label: 'なし（1回10分以内かけ放題はプランに込み）', price: 0 },
+        { id: 'full', label: '通話放題（24時間かけ放題）', price: 1100 },
+      ], fam: false, sv: false, card: false, noDiscount: true },
   ],
 };
 export const findPlan = (brand, id) => (PLANS[brand] || []).find((p) => p.id === id) || null;
@@ -191,3 +220,22 @@ export function discountAmount(brand, discId, plan) {
 }
 
 export const CARD_DISCOUNT = 220; // au PAY カードお支払い割
+
+// プルダウンの表示名を、選んでいるプランの実際の割引額に合わせて作る
+// 例：U18なら「スマートバリュー -550円」、マネ活なら「家族割3回線（対象外）」
+export function discountLabel(brand, disc, plan) {
+  if (!disc.id) return '';
+  if (!plan) return disc.label;
+  const yenStr = (v) => '-' + v.toLocaleString('ja-JP') + '円';
+  const bits = [];
+  if (disc.sv) {
+    const name = brand === 'au' ? 'スマートバリュー' : disc.label.replace(/ -.*$/, '');
+    bits.push(plan.sv ? `${name} ${yenStr(plan.u18 ? 550 : disc.sv)}` : `${name}（対象外）`);
+  }
+  if (disc.fam) {
+    const amt = plan.u18 ? (disc.fam === 2 ? 220 : 550) : (disc.fam === 2 ? 660 : 1210);
+    bits.push(plan.fam ? `家族割${disc.fam}回線 ${yenStr(amt)}` : `家族割${disc.fam}回線（対象外）`);
+  }
+  if (disc.uqFam) bits.push(plan.fam ? `家族割 ${yenStr(disc.uqFam)}` : '家族割（対象外）');
+  return bits.join(' ＋ ');
+}
