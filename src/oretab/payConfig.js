@@ -29,16 +29,18 @@ export const DEFAULTS = {
     calls: p.calls.map((c) => ({ label: c.label, price: c.price })),
     fam: !!p.fam, sv: !!p.sv, card: !!p.card, u18: !!p.u18, noDiscount: !!p.noDiscount, note: p.note || '',
     ponta: p.id === 'valuelink' || p.id === 'valuelink-money2', // Pontaパスがプランに含まれる
+    zouryou: !!p.zouryou, // 増量オプション付き
   })),
   discounts: [...discFrom('au'), ...discFrom('uq')],
   card: { label: 'au PAYカードお支払い割', amount: 220 },
   pay: { smatoku: true, kappu: true, ikkatsu: true, kappuTimes: '24,36,48' },
   // キャンペーン関連の枠に出す案内（「表示のみ」は金額の計算には入らない）
   campaigns: [
-    { name: 'Pontaパス', detail: '30日間無料', type: '表示のみ', amount: '', target: '', brand: 'both', kinds: '', start: '', end: '' },
-    { name: '増量オプション', detail: '翌月より7か月間無料', type: '表示のみ', amount: '', target: '', brand: 'uq', kinds: '', start: '', end: '' },
-    { name: 'UQコミコミおトク割', detail: '翌月以降13か月間-660円', type: '表示のみ', amount: '', target: '', brand: 'uq', kinds: '', start: '', end: '' },
-    { name: '番号移行プログラム', detail: '翌月より13か月間-2,640円', type: '表示のみ', amount: '', target: '', brand: 'au', kinds: '', start: '', end: '' },
+    // autoWhen：自動で表示する条件（zouryou＝増量オプション付きプラン、ponta＝Pontaパス込みプランまたはPontaパス追加時）
+    { name: 'Pontaパス', detail: '30日間無料', type: '表示のみ', amount: '', target: '', brand: 'both', kinds: '', start: '', end: '', autoWhen: 'ponta' },
+    { name: '増量オプション', detail: '翌月より7か月間無料', type: '表示のみ', amount: '', target: '', brand: 'uq', kinds: '', start: '', end: '', autoWhen: 'zouryou' },
+    { name: 'UQコミコミおトク割', detail: '翌月以降13か月間-660円', type: '表示のみ', amount: '', target: '', brand: 'uq', kinds: '', start: '', end: '', autoWhen: '' },
+    { name: '番号移行プログラム', detail: '翌月より13か月間-2,640円', type: '表示のみ', amount: '', target: '', brand: 'au', kinds: '番号移行', start: '', end: '', autoWhen: '' },
   ],
   // オプションサービス（「追加」ボタンからチェックで選ぶ）
   // device：iPhone / Android / すべて、byDevice：機種名に含む言葉ごとの金額（上から順に最初に当てはまったもの）
@@ -162,7 +164,7 @@ const today = () => {
 const normDate = (s) => String(s || '').trim().replace(/\//g, '-');
 export function activeCampaigns(cfg, { brand, kind, deviceName, planName }) {
   const t = today();
-  return cfg.campaigns.filter((c) => {
+  return cfg.campaigns.map((c, i) => ({ ...c, id: `c${i}` })).filter((c) => {
     if (!c.name) return false;
     if (normDate(c.start) && normDate(c.start) > t) return false;
     if (normDate(c.end) && normDate(c.end) < t) return false;
@@ -179,18 +181,10 @@ export function activeCampaigns(cfg, { brand, kind, deviceName, planName }) {
 
 // ---- オプションサービス ----
 // 端末に合わせて選べるオプションと、その金額（機種別の金額があればそちらを使う）
-export function optionsFor(cfg, { brand, deviceName }) {
-  const isIphone = /iPhone/.test(deviceName || '');
-  const hasDevice = !!deviceName && deviceName !== SIM_ONLY;
-  return cfg.options.map((o, i) => ({ ...o, id: `o${i}` })).filter((o) => {
-    if (!o.name) return false;
-    if (o.brand && o.brand !== 'both' && o.brand !== brand) return false;
-    if (o.device === 'iPhone') return hasDevice && isIphone;
-    if (o.device === 'Android') return hasDevice && !isIphone;
-    return true;
-  }).map((o) => {
+export function optionsFor(cfg, { deviceName }) {
+  return cfg.options.map((o, i) => ({ ...o, id: `o${i}` })).filter((o) => o.name).map((o) => {
     const rule = (o.byDevice || []).find((b) => b.label && (deviceName || '').includes(b.label));
     const price = rule ? Number(rule.price) : o.price === '' || o.price == null ? null : Number(o.price);
-    return { ...o, price }; // price が null ＝ 金額未登録
+    return { ...o, price }; // price が null ＝ 金額未登録（機種を選ぶと機種別の金額になる）
   });
 }

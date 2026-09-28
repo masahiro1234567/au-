@@ -185,21 +185,43 @@ function flattenOptions(children, out = []) {
   return out;
 }
 
+// 要素の位置を、舞台（1024×768）の中の座標で求める（回転・縮小の影響を受けないレイアウト上の位置）
+function posInStage(el, stage) {
+  let x = 0, y = 0, n = el;
+  while (n && n !== stage) { x += n.offsetLeft - (n.scrollLeft || 0); y += n.offsetTop - (n.scrollTop || 0); n = n.offsetParent; }
+  return { x: x + (el.scrollLeft || 0), y: y + (el.scrollTop || 0), w: el.offsetWidth, h: el.offsetHeight };
+}
+
 export function OtSelect({ value, onChange, disabled, style, children, className, ...rest }) {
   const stage = React.useContext(StageContext);
-  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null); // 開いているときの一覧の位置
+  const btnRef = useRef(null);
+  const listRef = useRef(null);
   const opts = flattenOptions(children);
   const cur = opts.find((o) => o.value === String(value ?? '')) || opts.find((o) => !o.disabled) || { label: '' };
-  const pick = (v) => { setOpen(false); if (onChange) onChange({ target: { value: v } }); };
-  const listRef = useRef(null);
+  const pick = (v) => { setPos(null); if (onChange) onChange({ target: { value: v } }); };
+  const open = () => {
+    const b = btnRef.current;
+    if (!b) return;
+    if (!stage) return setPos({ left: 0, top: b.offsetHeight + 2, width: Math.max(b.offsetWidth, 240), maxH: 320, local: true });
+    const p = posInStage(b, stage);
+    const H = stage.offsetHeight || 768, W = stage.offsetWidth || 1024;
+    const width = Math.min(Math.max(p.w, 240), W - 16);
+    const left = Math.min(Math.max(p.x, 8), W - width - 8);
+    const below = H - (p.y + p.h) - 10, above = p.y - 10;
+    // 下に余裕があれば下に、なければ上に開く（以前の標準プルダウンと同じ出方）
+    if (below >= 220 || below >= above) setPos({ left, top: p.y + p.h + 2, width, maxH: Math.min(360, below) });
+    else setPos({ left, bottom: H - p.y + 2, width, maxH: Math.min(360, above) });
+  };
   useEffect(() => {
-    if (!open || !listRef.current) return;
+    if (!pos || !listRef.current) return;
     const el = listRef.current.querySelector('.on');
-    if (el) el.scrollIntoView({ block: 'center' });
-  }, [open]);
-  const panel = open && (
-    <div className="ot-psel-ov" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-      <div className="ot-psel" role="listbox" aria-label={rest['aria-label']} ref={listRef}>
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  }, [pos]);
+  const listStyle = pos && { position: 'absolute', left: pos.left, width: pos.width, maxHeight: pos.maxH, ...(pos.bottom != null ? { bottom: pos.bottom } : { top: pos.top }) };
+  const panel = pos && (
+    <div className="ot-psel-ov" onClick={(e) => { if (e.target === e.currentTarget) setPos(null); }}>
+      <div className="ot-psel" role="listbox" aria-label={rest['aria-label']} ref={listRef} style={listStyle}>
         {opts.map((o, i) => (o.disabled ? (
           <div key={i} className="ot-psel-head">{o.label}</div>
         ) : (
@@ -212,7 +234,7 @@ export function OtSelect({ value, onChange, disabled, style, children, className
   );
   return (
     <>
-      <button type="button" className={`ot-sel ot-sel-btn ${className || ''}`} style={style} disabled={disabled} aria-label={rest['aria-label']} onClick={() => setOpen(true)}>
+      <button type="button" ref={btnRef} className={`ot-sel ot-sel-btn ${className || ''}`} style={style} disabled={disabled} aria-label={rest['aria-label']} onClick={open}>
         <span className="ot-ellipsis" style={{ flex: 1, textAlign: 'left' }}>{cur.label}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="#6b5a4e" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>

@@ -26,9 +26,28 @@ export function calcEstimate(e, cfg) {
   const residual = autoResidual != null ? autoResidual : n('residual');
   // 期間限定の端末値引き（管理画面の「キャンペーン・期間限定割引」）
   const plan = brand ? findPlan(cfg, brand, e.plan) : null;
-  const camps = brand ? activeCampaigns(cfg, { brand, kind, deviceName: sim ? '' : e.device, planName: plan ? plan.name : '' }) : [];
-  const campDev = camps.filter((c) => c.type !== '月額割引' && c.type !== 'ポイント還元').reduce((a, c) => a + c.amount, 0);
-  const campMon = camps.filter((c) => c.type === '月額割引').reduce((a, c) => a + c.amount, 0);
+  const list = (k) => String(e[k] || '').split(',').filter(Boolean);
+
+  // ---- オプションサービス ----
+  // 追加（チェック）したもの＋Pontaパス込みプランの自動表示。画面で枠を押すと「計算に入れない」に切り替わる
+  const optAvail = optionsFor(cfg, { deviceName: sim ? '' : e.device });
+  const picked = list('opts');
+  const pontaIncluded = !!(plan && plan.ponta);
+  const optShown = optAvail.filter((o) => picked.includes(o.id) && !(pontaIncluded && /^Pontaパス$/.test(o.name)));
+  if (pontaIncluded && !list('optHide').includes('ponta-in')) optShown.unshift({ id: 'ponta-in', name: 'Pontaパス（プランに含む）', price: 0, auto: true });
+  const optOff = list('optOff');
+  const optTotal = optShown.filter((o) => !optOff.includes(o.id)).reduce((a, o) => a + (o.price || 0), 0);
+
+  // ---- キャンペーン関連 ----
+  // 「追加/変更」で選んだもの＋自動表示（増量オプション付きプラン、Pontaパス込み／追加時、値引き・割引のキャンペーン）
+  const campAvail = brand ? activeCampaigns(cfg, { brand, kind, deviceName: sim ? '' : e.device, planName: plan ? plan.name : '' }) : [];
+  const pontaActive = optShown.some((o) => /Pontaパス/.test(o.name));
+  const campAuto = (c) => c.type !== '表示のみ' || (c.autoWhen === 'zouryou' && !!(plan && plan.zouryou)) || (c.autoWhen === 'ponta' && pontaActive);
+  const campPick = list('campOn'), campHide = list('campHide'), campOff = list('campOff');
+  const campShown = campAvail.filter((c) => campPick.includes(c.id) || (campAuto(c) && !campHide.includes(c.id)));
+  const campOn = campShown.filter((c) => !campOff.includes(c.id));
+  const campDev = campOn.filter((c) => c.type === '端末値引き').reduce((a, c) => a + c.amount, 0);
+  const campMon = campOn.filter((c) => c.type === '月額割引').reduce((a, c) => a + c.amount, 0);
   const sd = n('shopDisc'), pd = n('ptDisc');
   const allowed = PAY_TYPES.filter(([v]) => (v === 'smatoku' ? smatokuOk : cfg.pay[v])).map(([v]) => v);
   let payType = sim || !e.device ? '' : e.payType || allowed[0] || '';
@@ -71,19 +90,12 @@ export function calcEstimate(e, cfg) {
   const planDisc = discTotal + card + (plan ? campMon : 0);
   const planMonthly = Math.max(planBase - planDisc, 0);
 
-  // オプションサービス：チェックで選んだもの＋プランに含まれるPontaパス（自動）
-  const optAvail = brand ? optionsFor(cfg, { brand, deviceName: sim ? '' : e.device }) : [];
-  const picked = String(e.opts || '').split(',').filter(Boolean);
-  const pontaIncluded = !!(plan && plan.ponta);
-  const optSel = optAvail.filter((o) => picked.includes(o.id) && !(pontaIncluded && /^Pontaパス$/.test(o.name)));
-  if (pontaIncluded) optSel.unshift({ id: 'ponta-in', name: 'Pontaパス（プランに含む）', price: 0, auto: true });
-  const optTotal = optSel.reduce((a, o) => a + (o.price || 0), 0);
 
   return {
     kind, brand, sim, dev, price, autoPrice, residual, autoResidual, smatokuOk, allowed, sd, pd, payType,
     financed, monthly, first, store, real, count, last, extFirst, extMonthly, otoku: disc0,
-    plan, tier, call, planBase, card, planDisc, planMonthly, noDisc, camps, campDev,
-    net: n('net'), plus1: n('plus1'), optAvail, optSel, optTotal, pontaIncluded, picked,
+    plan, tier, call, planBase, card, planDisc, planMonthly, noDisc, campAvail, campShown, campAuto, campPick, campHide, campOff, campDev,
+    net: n('net'), plus1: n('plus1'), optAvail, optShown, optOff, optTotal, pontaIncluded, picked, optHide: list('optHide'),
     total: monthly + planMonthly + optTotal, // 月々のお支払い目安額＝端末＋プラン＋オプション
     showFee: brand === 'au' && payType === 'smatoku' && dev && dev.fee > 0,
     fee: dev ? dev.fee : 0,
@@ -106,6 +118,7 @@ export default function Payment({ onClose, onMultitask, config }) {
   const [dlg, setDlg] = useState(null);
   const [planDlg, setPlanDlg] = useState(false);
   const [optDlg, setOptDlg] = useState(false);
+  const [campDlg, setCampDlg] = useState(false);
   const [askDelete, setAskDelete] = useState(false);
   const [layout, setLayout] = useState(false);
   const [printCode, setPrintCode] = useState('');
@@ -114,6 +127,11 @@ export default function Payment({ onClose, onMultitask, config }) {
   const e = ests[cur];
   const patchE = (p) => setEsts((es) => es.map((x, i) => (i === cur ? { ...x, ...p } : x)));
   const setE = (name, v) => patchE({ [name]: v });
+  // カンマ区切りの一覧に出し入れする（計算に入れない一覧など）
+  const toggleIn = (key, id) => {
+    const l = String(e[key] || '').split(',').filter(Boolean);
+    setE(key, (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]).join(','));
+  };
 
   const form = useForm({
     values: e, setValue: setE,
@@ -292,13 +310,17 @@ export default function Payment({ onClose, onMultitask, config }) {
               </div>
               <div className="ot-col-body" style={{ flexGrow: 1, gap: 6, borderTop: '1px solid #ecd2d2' }}>
                 <div className="ot-kv"><b className="ot-col-sub">オプションサービス</b>{pickBtn('追加', () => (brand ? setOptDlg(true) : toast.say('先に契約種別を選んでください')), { height: 28, fontSize: 11 })}</div>
-                {r.optSel.map((o) => (
-                  <div key={o.id} className="ot-kv" style={Y}>
-                    <span className="ot-ellipsis">{o.name}</span>
-                    <span style={{ flexShrink: 0 }}>{o.auto ? 'プランに含む' : o.price == null ? '金額未登録' : yen(o.price)}</span>
-                  </div>
-                ))}
-                {r.optSel.length > 0 && <div className="ot-kv" style={{ ...Y, fontWeight: 800, borderTop: '1px dashed #ecd2d2', paddingTop: 4 }}><span>オプション合計</span><span>{yen(r.optTotal)}</span></div>}
+                {r.optShown.map((o) => {
+                  const off = r.optOff.includes(o.id);
+                  return (
+                    <button key={o.id} className={`ot-tg ${off ? 'off' : ''}`} onClick={() => toggleIn('optOff', o.id)} aria-pressed={!off}>
+                      <span className="ot-tg-box">{off ? '' : '✓'}</span>
+                      <span className="ot-ellipsis" style={{ flex: 1 }}>{o.name}</span>
+                      <span className="ot-tg-price">{o.auto ? 'プランに含む' : o.price == null ? '金額未登録' : yen(o.price)}</span>
+                    </button>
+                  );
+                })}
+                {r.optShown.length > 0 && <div className="ot-kv" style={{ ...Y, fontWeight: 800, borderTop: '1px dashed #ecd2d2', paddingTop: 4 }}><span>オプション合計</span><span>{yen(r.optTotal)}</span></div>}
               </div>
               <div className="ot-col-body" style={{ flexGrow: 0, borderTop: '1px solid #ecd2d2' }}>
                 <b className="ot-col-sub">割引サービス</b>
@@ -330,15 +352,19 @@ export default function Payment({ onClose, onMultitask, config }) {
             {/* ===== キャンペーン・+1collection（今回は変更なし）===== */}
             <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div className="ot-box green">
-                <div className="ot-kv"><b>キャンペーン関連</b>{pickBtn('追加/変更', noop, { height: 28, fontSize: 11, color: '#b8aca2' })}</div>
-                {r.camps.map((c, i) => (c.type === '表示のみ' ? (
-                  <div key={i} className="ot-camp-card"><b>{c.name}</b>{c.detail && <span>{c.detail}</span>}</div>
-                ) : (
-                  <div key={i} className="ot-kv" style={{ fontSize: 11, color: '#4a3528' }}>
-                    <span className="ot-ellipsis">{c.name}{c.detail ? `（${c.detail}）` : ''}</span>
-                    <span style={{ flexShrink: 0 }}>{c.type === 'ポイント還元' ? `${c.amount.toLocaleString('ja-JP')}pt還元` : `▲${c.amount.toLocaleString('ja-JP')}円${c.type === '月額割引' ? '/月' : ''}`}</span>
-                  </div>
-                )))}
+                <div className="ot-kv"><b>キャンペーン関連</b>{pickBtn('追加/変更', () => (brand ? setCampDlg(true) : toast.say('先に契約種別を選んでください')), { height: 28, fontSize: 11 })}</div>
+                {r.campShown.map((c) => {
+                  const off = r.campOff.includes(c.id);
+                  return (
+                    <button key={c.id} className={`ot-camp-card ${off ? 'off' : ''}`} onClick={() => toggleIn('campOff', c.id)} aria-pressed={!off}>
+                      <span className="ot-tg-box">{off ? '' : '✓'}</span>
+                      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'left' }}>
+                        <b>{c.name}</b>{c.detail && <span>{c.detail}</span>}
+                      </span>
+                      {c.type !== '表示のみ' && <span className="ot-tg-price">{c.type === 'ポイント還元' ? `${c.amount.toLocaleString('ja-JP')}pt` : `▲${c.amount.toLocaleString('ja-JP')}円${c.type === '月額割引' ? '/月' : ''}`}</span>}
+                    </button>
+                  );
+                })}
               </div>
               <div className="ot-box yellow">
                 <div className="ot-kv"><b>au +1collection</b>{pickBtn('追加/変更', () => setDlg('plus1'), { height: 28, fontSize: 11 })}</div>
@@ -393,11 +419,18 @@ export default function Payment({ onClose, onMultitask, config }) {
         <div className="ot-ov center" style={{ zIndex: 45 }}>
           <div className="ot-dialog" role="dialog" aria-label="オプションの追加" style={{ width: 760 }}>
             <div className="ot-dialog-title">オプションサービス</div>
-            <div className="ot-dialog-note">付けるオプションにチェックを入れてください（端末・プランに合わせて選べるものだけ出ます）</div>
+            <div className="ot-dialog-note">付けるオプションにチェックを入れてください。機種別の金額は、端末を選ぶと自動で入ります</div>
             <div className="ot-opt-grid">
-              {r.pontaIncluded && (
-                <label className="ot-opt on fixed"><input type="checkbox" checked disabled /><span className="ot-opt-name">Pontaパス（プランに含む）</span><b>プランに含む</b></label>
-              )}
+              {r.pontaIncluded && (() => {
+                const on = !r.optHide.includes('ponta-in');
+                return (
+                  <label className={`ot-opt ${on ? 'on' : ''}`}>
+                    <input type="checkbox" checked={on} onChange={() => toggleIn('optHide', 'ponta-in')} />
+                    <span className="ot-opt-name">Pontaパス（プランに含む）</span>
+                    <b>プランに含む</b>
+                  </label>
+                );
+              })()}
               {r.optAvail.filter((o) => !(r.pontaIncluded && /^Pontaパス$/.test(o.name))).map((o) => {
                 const on = r.picked.includes(o.id);
                 return (
@@ -411,9 +444,39 @@ export default function Payment({ onClose, onMultitask, config }) {
               })}
             </div>
             <div className="ot-kv" style={{ fontSize: 13, fontWeight: 800, borderTop: '1px solid #ebe2d9', paddingTop: 10 }}>
-              <span>オプション合計</span><span style={{ color: '#cc4f00', fontSize: 16 }}>{r.optTotal.toLocaleString('ja-JP')}円</span>
+              <span>オプション合計（計算に入れているもの）</span><span style={{ color: '#cc4f00', fontSize: 16 }}>{r.optTotal.toLocaleString('ja-JP')}円</span>
             </div>
             <div className="ot-dialog-foot"><button className="ot-ok" onClick={() => setOptDlg(false)}>OK</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* キャンペーン関連の追加/変更（チェックで表示する／しない）*/}
+      {campDlg && (
+        <div className="ot-ov center" style={{ zIndex: 45 }}>
+          <div className="ot-dialog" role="dialog" aria-label="キャンペーン関連" style={{ width: 760 }}>
+            <div className="ot-dialog-title">キャンペーン関連</div>
+            <div className="ot-dialog-note">画面に表示するキャンペーンにチェックを入れてください（契約種別・プランに合わせて選べるものだけ出ます）</div>
+            <div className="ot-opt-grid">
+              {r.campAvail.length === 0 && <div className="ot-dialog-note">選べるキャンペーンはありません</div>}
+              {r.campAvail.map((c) => {
+                const auto = r.campAuto(c);
+                const on = r.campPick.includes(c.id) || (auto && !r.campHide.includes(c.id));
+                const flip = () => {
+                  if (on) patchE({ campOn: r.campPick.filter((x) => x !== c.id).join(','), campHide: auto ? [...r.campHide, c.id].join(',') : r.campHide.join(',') });
+                  else patchE({ campOn: auto ? r.campPick.join(',') : [...r.campPick, c.id].join(','), campHide: r.campHide.filter((x) => x !== c.id).join(',') });
+                };
+                return (
+                  <label key={c.id} className={`ot-opt ${on ? 'on' : ''}`}>
+                    <input type="checkbox" checked={on} onChange={flip} />
+                    <span className="ot-opt-name">{c.name}</span>
+                    {c.detail && <span className="ot-opt-note">{c.detail}</span>}
+                    <b>{c.type === '表示のみ' ? (auto ? '自動で表示' : '') : c.type === 'ポイント還元' ? `${c.amount.toLocaleString('ja-JP')}pt還元` : `▲${c.amount.toLocaleString('ja-JP')}円${c.type === '月額割引' ? '/月' : ''}`}</b>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="ot-dialog-foot"><button className="ot-ok" onClick={() => setCampDlg(false)}>OK</button></div>
           </div>
         </div>
       )}

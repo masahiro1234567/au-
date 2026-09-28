@@ -12,6 +12,7 @@ const BRAND3 = [['both', 'au・UQ両方'], ['au', 'auのみ'], ['uq', 'UQのみ'
 const KIND_TYPES = ['新規', 'MNP', '番号移行', '機変'].map((v) => [v, v]);
 const CAMP_TYPES = ['表示のみ', '端末値引き', '月額割引', 'ポイント還元'].map((v) => [v, v]);
 const OPT_DEVICE = ['すべて', 'iPhone', 'Android'].map((v) => [v, v]);
+const AUTO_WHEN = [['', '自動では出さない（追加/変更で選ぶ）'], ['zouryou', '増量オプション付きプランのとき'], ['ponta', 'Pontaパス込み・追加のとき']];
 
 // 各部分の設定項目。type：text / yen / select / check / date / list（段階・通話オプションの一覧）
 const SECTIONS = {
@@ -30,7 +31,7 @@ const SECTIONS = {
     label: '料金プラン', desc: '基本パックのプルダウンと、料金プランの枠を押すと出るデータ量・通話オプション',
     fields: [['name', 'プラン名', 'text'], ['brand', 'ブランド', 'select', BRAND],
       ['fam', '家族割の対象', 'check'], ['sv', 'スマートバリュー／自宅セット割の対象', 'check'], ['card', 'au PAYカード割の対象', 'check'],
-      ['u18', 'U18の割引額を使う', 'check'], ['noDiscount', '割引をすべて空白にする（コミコミなど）', 'check'], ['ponta', 'Pontaパスがプランに含まれる', 'check'], ['note', '注意書き（空欄なら表示なし）', 'text'],
+      ['u18', 'U18の割引額を使う', 'check'], ['noDiscount', '割引をすべて空白にする（コミコミなど）', 'check'], ['ponta', 'Pontaパスがプランに含まれる', 'check'], ['zouryou', '増量オプション付き', 'check'], ['note', '注意書き（空欄なら表示なし）', 'text'],
       ['tiers', 'データ量の段階（上から順に選択肢）', 'list'], ['calls', '通話オプション（1つ目が「なし」）', 'list']],
     cols: ['name', 'brand', 'tiers'], filter: true,
   },
@@ -41,16 +42,16 @@ const SECTIONS = {
     cols: ['label', 'brand', 'sv', 'fam'], filter: true,
   },
   campaigns: {
-    label: 'キャンペーン・期間限定割引', desc: '「表示のみ」はキャンペーン関連の枠に案内を出すだけ（計算には入りません）。値引き・割引は期間中だけ自動で計算されます。対象は機種名（月額割引はプラン名）に含まれる言葉を「、」区切りで。空欄ならすべて対象',
+    label: 'キャンペーン・期間限定割引', desc: '「表示のみ」は、オレタブの「追加/変更」で選ぶと案内が出ます（計算には入りません）。自動で表示する条件も設定できます。契約種別に「番号移行」と入れると、番号移行のときだけ選択肢に出ます。値引き・割引は期間中だけ自動で計算されます。対象は機種名（月額割引はプラン名）に含まれる言葉を「、」区切りで。空欄ならすべて対象',
     fields: [['name', 'キャンペーン名（1行目）', 'text'], ['detail', '内容（2行目）', 'text'], ['type', '種類', 'select', CAMP_TYPES], ['amount', '金額（ポイント還元はpt／表示のみは空欄）', 'yen'],
       ['target', '対象（例：iPhone 17、Galaxy Z）', 'text'], ['brand', 'ブランド', 'select', BRAND3], ['kinds', '契約種別（例：MNP、新規　空欄はすべて）', 'text'],
-      ['start', '開始日', 'date'], ['end', '終了日（空欄は終了日未定）', 'date']],
+      ['start', '開始日', 'date'], ['end', '終了日（空欄は終了日未定）', 'date'], ['autoWhen', '自動で表示する条件（表示のみ）', 'select', AUTO_WHEN]],
     cols: ['name', 'detail', 'type', 'brand', 'end'],
   },
   options: {
     label: 'オプションサービス', desc: '「追加」ボタンで選べるオプション。機種で金額が変わるものは「機種別の金額」に、機種名に含まれる言葉と金額を入れます（上から順に最初に当てはまったもの）',
     fields: [['name', 'オプション名', 'text'], ['price', '月額（機種別に当てはまらないとき）', 'yen'], ['brand', 'ブランド', 'select', BRAND3],
-      ['device', '選べる端末', 'select', OPT_DEVICE], ['note', '適用条件など（選択画面に小さく表示）', 'text'], ['byDevice', '機種別の金額（例：「18 Pro」→ 2,450円）', 'list']],
+      ['device', '対象の端末（参考）', 'select', OPT_DEVICE], ['note', '適用条件など（選択画面に小さく表示）', 'text'], ['byDevice', '機種別の金額（例：「18 Pro」→ 2,450円）', 'list']],
     cols: ['name', 'price', 'device', 'brand'],
   },
   card: { label: 'au PAYカード割', single: true, desc: 'インターネット接続サービスの下のプルダウン', fields: [['label', '表示名', 'text'], ['amount', '割引額', 'yen']] },
