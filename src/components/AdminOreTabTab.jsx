@@ -32,7 +32,7 @@ const SECTIONS = {
     fields: [['name', 'プラン名', 'text'], ['brand', 'ブランド', 'select', BRAND],
       ['fam', '家族割の対象', 'check'], ['sv', 'スマートバリュー／自宅セット割の対象', 'check'], ['card', 'au PAYカード割の対象', 'check'],
       ['u18', 'U18の割引額を使う', 'check'], ['noDiscount', '割引をすべて空白にする（コミコミなど）', 'check'], ['ponta', 'Pontaパスがプランに含まれる', 'check'], ['zouryou', '増量オプション付き', 'check'], ['note', '注意書き（空欄なら表示なし）', 'text'],
-      ['tiers', 'データ量の段階（上から順に選択肢）', 'list'], ['calls', '通話オプション（1つ目が「なし」）', 'list']],
+      ['tiers', 'データ量の段階（上から順に選択肢）', 'list'], ['calls', '通話オプション（1つ目が「なし」）', 'list'], ['extra', 'プランに上乗せする料金（増量オプションⅡなど）', 'list']],
     cols: ['name', 'brand', 'tiers'], filter: true,
   },
   discounts: {
@@ -45,7 +45,7 @@ const SECTIONS = {
     label: 'キャンペーン・期間限定割引', desc: '「表示のみ」は、オレタブの「追加/変更」で選ぶと案内が出ます（計算には入りません）。自動で表示する条件も設定できます。契約種別に「番号移行」と入れると、番号移行のときだけ選択肢に出ます。値引き・割引は期間中だけ自動で計算されます。対象は機種名（月額割引はプラン名）に含まれる言葉を「、」区切りで。空欄ならすべて対象',
     fields: [['name', 'キャンペーン名（1行目）', 'text'], ['detail', '内容（2行目）', 'text'], ['type', '種類', 'select', CAMP_TYPES], ['amount', '金額（ポイント還元はpt／表示のみは空欄）', 'yen'],
       ['target', '対象（例：iPhone 17、Galaxy Z）', 'text'], ['brand', 'ブランド', 'select', BRAND3], ['kinds', '契約種別（例：MNP、新規　空欄はすべて）', 'text'],
-      ['start', '開始日', 'date'], ['end', '終了日（空欄は終了日未定）', 'date'], ['autoWhen', '自動で表示する条件（表示のみ）', 'select', AUTO_WHEN]],
+      ['start', '開始日', 'date'], ['end', '終了日（空欄は終了日未定）', 'date'], ['autoWhen', '自動で表示する条件（表示のみ）', 'select', AUTO_WHEN], ['frees', 'オンのとき無料にするもの（オプション名・上乗せ料金名に含む言葉）', 'text']],
     cols: ['name', 'detail', 'type', 'brand', 'end'],
   },
   options: {

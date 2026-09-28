@@ -36,7 +36,6 @@ export function calcEstimate(e, cfg) {
   const optShown = optAvail.filter((o) => picked.includes(o.id) && !(pontaIncluded && /^Pontaパス$/.test(o.name)));
   if (pontaIncluded && !list('optHide').includes('ponta-in')) optShown.unshift({ id: 'ponta-in', name: 'Pontaパス（プランに含む）', price: 0, auto: true });
   const optOff = list('optOff');
-  const optTotal = optShown.filter((o) => !optOff.includes(o.id)).reduce((a, o) => a + (o.price || 0), 0);
 
   // ---- キャンペーン関連 ----
   // 「追加/変更」で選んだもの＋自動表示（増量オプション付きプラン、Pontaパス込み／追加時、値引き・割引のキャンペーン）
@@ -48,6 +47,14 @@ export function calcEstimate(e, cfg) {
   const campOn = campShown.filter((c) => !campOff.includes(c.id));
   const campDev = campOn.filter((c) => c.type === '端末値引き').reduce((a, c) => a + c.amount, 0);
   const campMon = campOn.filter((c) => c.type === '月額割引').reduce((a, c) => a + c.amount, 0);
+  // 無料キャンペーン（Pontaパス30日無料・増量オプション7か月無料など）がオンなら、その料金は0円で計算
+  const freeWords = campOn.map((c) => String(c.frees || '').trim()).filter(Boolean);
+  const isFree = (name) => freeWords.some((w) => String(name || '').includes(w));
+  optShown.forEach((o) => { o.free = !o.auto && isFree(o.name); });
+  const optTotal = optShown.filter((o) => !optOff.includes(o.id) && !o.free).reduce((a, o) => a + (o.price || 0), 0);
+  // プランの追加料金（増量オプションⅡ 550円など）。無料キャンペーンをオフにすると上乗せされる
+  const extras = (plan && plan.extra ? plan.extra : []).map((x) => ({ ...x, price: Number(x.price) || 0, free: isFree(x.label) }));
+  const extraTotal = extras.filter((x) => !x.free).reduce((a, x) => a + x.price, 0);
   const sd = n('shopDisc'), pd = n('ptDisc');
   const allowed = PAY_TYPES.filter(([v]) => (v === 'smatoku' ? smatokuOk : cfg.pay[v])).map(([v]) => v);
   let payType = sim || !e.device ? '' : e.payType || allowed[0] || '';
@@ -82,7 +89,7 @@ export function calcEstimate(e, cfg) {
   // 料金プラン（プランのみ：基本料＋通話オプション − 割引）
   const tier = plan ? plan.tiers[Number(e.tier || 0)] || plan.tiers[0] : null;
   const call = plan ? plan.calls[Number(e.call || 0)] || plan.calls[0] : null;
-  const planBase = (tier ? Number(tier.price) || 0 : 0) + (call ? Number(call.price) || 0 : 0);
+  const planBase = (tier ? Number(tier.price) || 0 : 0) + (call ? Number(call.price) || 0 : 0) + extraTotal;
   // コミコミプランバリューなど割引対象外のプランは、割引をすべて0にする
   const noDisc = !!(plan && plan.noDiscount);
   const discTotal = e.discOn && !noDisc ? discountAmount(cfg, brand, e.discSvc, plan) : 0;
@@ -95,7 +102,7 @@ export function calcEstimate(e, cfg) {
     kind, brand, sim, dev, price, autoPrice, residual, autoResidual, smatokuOk, allowed, sd, pd, payType,
     financed, monthly, first, store, real, count, last, extFirst, extMonthly, otoku: disc0,
     plan, tier, call, planBase, card, planDisc, planMonthly, noDisc, campAvail, campShown, campAuto, campPick, campHide, campOff, campDev,
-    net: n('net'), plus1: n('plus1'), optAvail, optShown, optOff, optTotal, pontaIncluded, picked, optHide: list('optHide'),
+    net: n('net'), plus1: n('plus1'), optAvail, optShown, optOff, optTotal, pontaIncluded, picked, optHide: list('optHide'), extras,
     total: monthly + planMonthly + optTotal, // 月々のお支払い目安額＝端末＋プラン＋オプション
     showFee: brand === 'au' && payType === 'smatoku' && dev && dev.fee > 0,
     fee: dev ? dev.fee : 0,
@@ -296,7 +303,7 @@ export default function Payment({ onClose, onMultitask, config }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><b style={{ width: 84 }}>料金プラン</b>
                   <PickField onClick={() => (r.plan ? setPlanDlg(true) : toast.say('先に基本パックを選んでください'))}
-                    value={r.plan ? `${r.tier ? r.tier.label : ''}${r.call && Number(r.call.price) ? '・' + r.call.label.replace(/（.*）/, '') : ''}　${yen(r.planBase)}` : ''} />
+                    value={r.plan ? `${r.tier && r.plan.tiers.length > 1 ? r.tier.label : ''}${r.call && Number(r.call.price) ? (r.plan.tiers.length > 1 ? '・' : '') + r.call.label.replace(/（.*）/, '') : ''}${r.extras.length ? (r.plan.tiers.length > 1 || (r.call && Number(r.call.price)) ? '・' : '') + r.extras.map((x) => x.label + (x.free ? '（無料中）' : '')).join('・') : ''}　${yen(r.planBase)}` : ''} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ width: 84 }}>インターネット<br />接続サービス</span><PickField onClick={() => setDlg('net')} value={r.net ? '月額 ' + yen(r.net) : ''} /></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ width: 84 }} />
@@ -316,7 +323,7 @@ export default function Payment({ onClose, onMultitask, config }) {
                     <button key={o.id} className={`ot-tg ${off ? 'off' : ''}`} onClick={() => toggleIn('optOff', o.id)} aria-pressed={!off}>
                       <span className="ot-tg-box">{off ? '' : '✓'}</span>
                       <span className="ot-ellipsis" style={{ flex: 1 }}>{o.name}</span>
-                      <span className="ot-tg-price">{o.auto ? 'プランに含む' : o.price == null ? '金額未登録' : yen(o.price)}</span>
+                      <span className="ot-tg-price">{o.auto ? 'プランに含む' : o.price == null ? '金額未登録' : o.free ? `${yen(o.price)}→無料中` : yen(o.price)}</span>
                     </button>
                   );
                 })}
@@ -406,6 +413,11 @@ export default function Payment({ onClose, onMultitask, config }) {
                 </label>
               ))}
             </div>
+            {r.extras.map((x, i) => (
+              <div key={i} className="ot-kv" style={{ fontSize: 13 }}>
+                <span>{x.label}</span><b>{x.free ? `${x.price.toLocaleString('ja-JP')}円 → 無料中（キャンペーン）` : `+${x.price.toLocaleString('ja-JP')}円`}</b>
+              </div>
+            ))}
             <div className="ot-kv" style={{ fontSize: 13, fontWeight: 800, borderTop: '1px solid #ebe2d9', paddingTop: 10 }}>
               <span>プラン料金（割引前）</span><span style={{ color: '#cc4f00', fontSize: 16 }}>{r.planBase.toLocaleString('ja-JP')}円</span>
             </div>

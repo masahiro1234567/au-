@@ -172,15 +172,15 @@ export const PLANS = {
   ],
   uq: [
     // 増量オプションⅡ（＋5GB）付き。増量オプションⅡは翌月から7か月間無料のため、月額はプランのみで計算
-    { id: 'tokutoku2-zo', name: 'トクトクプラン2／増量オプション+5GB', zouryou: true, tiers: [
-      { id: '5', label: '〜5GB（1,100円割引）', price: 2948 }, { id: '35', label: '5GB超〜35GB（30GB＋増量5GB）', price: 4048 },
+    { id: 'tokutoku2-zo', name: 'トクトクプラン2／増量オプション+5GB', zouryou: true, extra: [{ label: '増量オプションⅡ', price: 550 }], tiers: [
+      { id: '5', label: '〜5GB（1,100円割引）', price: 2948 }, { id: '35', label: '5GB超〜35GB', price: 4048 },
     ], calls: [
       { id: '', label: 'なし', price: 0 },
       { id: 'pack', label: '通話パック（60分/月）', price: 660 },
       { id: 'light', label: '通話放題ライト（10分以内かけ放題）', price: 880 },
       { id: 'full', label: '通話放題（24時間かけ放題）', price: 1980 },
     ], fam: true, sv: true, card: true },
-    { id: 'komikomi-value-zo', name: 'コミコミプランバリュー／増量オプション+5GB', zouryou: true, tiers: [{ id: '40', label: '40GB（35GB＋増量5GB・10分以内かけ放題込み）', price: 3828 }],
+    { id: 'komikomi-value-zo', name: 'コミコミプランバリュー／増量オプション+5GB', zouryou: true, ponta: true, extra: [{ label: '増量オプションⅡ', price: 550 }], tiers: [{ id: '40', label: '40GB', price: 3828 }],
       calls: [
         { id: '', label: 'なし（1回10分以内かけ放題はプランに込み）', price: 0 },
         { id: 'full', label: '通話放題（24時間かけ放題）', price: 1100 },
@@ -193,7 +193,7 @@ export const PLANS = {
       { id: 'light', label: '通話放題ライト（10分以内かけ放題）', price: 880 },
       { id: 'full', label: '通話放題（24時間かけ放題）', price: 1980 },
     ], fam: true, sv: true, card: true },
-    { id: 'komikomi-value', name: 'コミコミプランバリュー', tiers: [{ id: '35', label: '35GB（10分以内かけ放題込み）', price: 3828 }],
+    { id: 'komikomi-value', name: 'コミコミプランバリュー', ponta: true, tiers: [{ id: '35', label: '35GB', price: 3828 }],
       calls: [
         { id: '', label: 'なし（1回10分以内かけ放題はプランに込み）', price: 0 },
         { id: 'full', label: '通話放題（24時間かけ放題）', price: 1100 },

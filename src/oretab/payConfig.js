@@ -28,7 +28,8 @@ export const DEFAULTS = {
     tiers: p.tiers.map((t) => ({ label: t.label, price: t.price })),
     calls: p.calls.map((c) => ({ label: c.label, price: c.price })),
     fam: !!p.fam, sv: !!p.sv, card: !!p.card, u18: !!p.u18, noDiscount: !!p.noDiscount, note: p.note || '',
-    ponta: p.id === 'valuelink' || p.id === 'valuelink-money2', // Pontaパスがプランに含まれる
+    ponta: !!p.ponta || p.id === 'valuelink' || p.id === 'valuelink-money2', // Pontaパスがプランに含まれる
+    extra: (p.extra || []).map((x) => ({ label: x.label, price: x.price })), // プランに上乗せする料金（増量オプションⅡなど）
     zouryou: !!p.zouryou, // 増量オプション付き
   })),
   discounts: [...discFrom('au'), ...discFrom('uq')],
@@ -36,10 +37,11 @@ export const DEFAULTS = {
   pay: { smatoku: true, kappu: true, ikkatsu: true, kappuTimes: '24,36,48' },
   // キャンペーン関連の枠に出す案内（「表示のみ」は金額の計算には入らない）
   campaigns: [
-    // autoWhen：自動で表示する条件（zouryou＝増量オプション付きプラン、ponta＝Pontaパス込みプランまたはPontaパス追加時）
-    { name: 'Pontaパス', detail: '30日間無料', type: '表示のみ', amount: '', target: '', brand: 'both', kinds: '', start: '', end: '', autoWhen: 'ponta' },
-    { name: '増量オプション', detail: '翌月より7か月間無料', type: '表示のみ', amount: '', target: '', brand: 'uq', kinds: '', start: '', end: '', autoWhen: 'zouryou' },
-    { name: 'UQコミコミおトク割', detail: '翌月以降13か月間-660円', type: '表示のみ', amount: '', target: '', brand: 'uq', kinds: '', start: '', end: '', autoWhen: '' },
+    // frees：オンのとき無料にするもの（オプション名・プランの追加料金名に含まれる言葉）
+  // autoWhen：自動で表示する条件（zouryou＝増量オプション付きプラン、ponta＝Pontaパス込みプランまたはPontaパス追加時）
+    { name: 'Pontaパス', detail: '30日間無料', type: '表示のみ', amount: '', target: '', brand: 'both', kinds: '', start: '', end: '', autoWhen: 'ponta', frees: 'Pontaパス' },
+    { name: '増量オプション', detail: '翌月より7か月間無料', type: '表示のみ', amount: '', target: '', brand: 'uq', kinds: '', start: '', end: '', autoWhen: 'zouryou', frees: '増量オプション' },
+    { name: 'UQコミコミおトク割', detail: '翌月以降13か月間-660円', type: '月額割引', amount: 660, target: 'コミコミ', brand: 'uq', kinds: '', start: '', end: '', autoWhen: '' },
     { name: '番号移行プログラム', detail: '翌月より13か月間-2,640円', type: '表示のみ', amount: '', target: '', brand: 'au', kinds: '番号移行', start: '', end: '', autoWhen: '' },
   ],
   // オプションサービス（「追加」ボタンからチェックで選ぶ）
@@ -102,7 +104,7 @@ export function buildConfig(raw) {
   const cfg = {
     kinds: pick('kinds'),
     devices: pick('devices'),
-    plans: pick('plans').map((p) => ({ ...p, tiers: toList(p.tiers) || [], calls: toList(p.calls) || [{ label: 'なし', price: 0 }] })),
+    plans: pick('plans').map((p) => ({ ...p, tiers: toList(p.tiers) || [], calls: toList(p.calls) || [{ label: 'なし', price: 0 }], extra: toList(p.extra) || [] })),
     discounts: pick('discounts'),
     card: r.card && typeof r.card === 'object' ? { ...DEFAULTS.card, ...r.card } : DEFAULTS.card,
     pay: r.pay && typeof r.pay === 'object' ? { ...DEFAULTS.pay, ...r.pay } : DEFAULTS.pay,
