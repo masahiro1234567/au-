@@ -2,6 +2,14 @@ import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useDbCollection } from './useFirebase.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
 import DeviceCompare from './components/DeviceCompare.jsx';
+// オレタブ：押した瞬間に全画面＋横向き固定を試す（Androidなど。iPhoneは回転表示で対応）
+function tryLandscape() {
+  try {
+    const el = document.documentElement;
+    const p = !document.fullscreenElement && el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : Promise.resolve();
+    p.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {});
+  } catch { /* 非対応 */ }
+}
 // オレタブ練習は開いたときだけ読み込む（アプリ全体の読み込みを軽くするため）
 const OreTab = lazy(() => import('./oretab/OreTab.jsx'));
 import Home from './components/Home.jsx';
@@ -84,7 +92,7 @@ export default function App() {
       }}
       onGoTest={goTest}
       onGoDevices={() => setPage('devices')}
-      onGoOreTab={() => setPage('oretab')}
+      onGoOreTab={() => { tryLandscape(); setPage('oretab'); }}
       onAdminLogin={() => setPage('admin-login')}
     />
   );
