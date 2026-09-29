@@ -303,7 +303,7 @@ export default function Payment({ onClose, onMultitask, config }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><b style={{ width: 84 }}>料金プラン</b>
                   <PickField onClick={() => (r.plan ? setPlanDlg(true) : toast.say('先に基本パックを選んでください'))}
-                    value={r.plan ? `${r.tier && r.plan.tiers.length > 1 ? r.tier.label : ''}${r.call && Number(r.call.price) ? (r.plan.tiers.length > 1 ? '・' : '') + r.call.label.replace(/（.*）/, '') : ''}${r.extras.length ? (r.plan.tiers.length > 1 || (r.call && Number(r.call.price)) ? '・' : '') + r.extras.map((x) => x.label + (x.free ? '（無料中）' : '')).join('・') : ''}　${yen(r.planBase)}` : ''} />
+                    value={r.plan ? yen(r.planBase) : ''} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ width: 84 }}>インターネット<br />接続サービス</span><PickField onClick={() => setDlg('net')} value={r.net ? '月額 ' + yen(r.net) : ''} /></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...Y }}><span style={{ width: 84 }} />
@@ -323,7 +323,7 @@ export default function Payment({ onClose, onMultitask, config }) {
                     <button key={o.id} className={`ot-tg ${off ? 'off' : ''}`} onClick={() => toggleIn('optOff', o.id)} aria-pressed={!off}>
                       <span className="ot-tg-box">{off ? '' : '✓'}</span>
                       <span className="ot-ellipsis" style={{ flex: 1 }}>{o.name}</span>
-                      <span className="ot-tg-price">{o.auto ? 'プランに含む' : o.price == null ? '金額未登録' : o.free ? `${yen(o.price)}→無料中` : yen(o.price)}</span>
+                      <span className="ot-tg-price">{o.auto ? 'プランに含む' : o.price == null ? '金額未登録' : yen(o.price)}</span>
                     </button>
                   );
                 })}
