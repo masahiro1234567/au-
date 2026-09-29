@@ -6,6 +6,8 @@ import AdminKnowledgeTab from './AdminKnowledgeTab.jsx';
 import { showToast } from '../utils.js';
 import { dbSet, dbRemove } from '../useFirebase.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
+// 日報管理（日報アプリの管理画面）は開いたときだけ読み込む
+const NippouAdmin = React.lazy(() => import('../nippou/NippouApp.jsx').then((m) => ({ default: m.NippouAdmin })));
 
 function SummaryTab({ results }) {
   const entries = useMemo(() => {
@@ -211,8 +213,10 @@ function ProfileTab({ profiles }) {
   );
 }
 
-export default function Admin({ terms, ghostIds, results, profiles, knowledgeTypes, devices, payConfig, onBack, onLogout }) {
+export default function Admin({ terms, ghostIds, results, profiles, knowledgeTypes, devices, payConfig, user, onBack, onLogout }) {
   const [tab, setTab] = useState('summary');
+  // 日報管理（日報アプリの管理画面）と用語集管理を切り替える。最初は日報管理
+  const [area, setArea] = useState('nippou');
 
   return (
     <div className="page">
@@ -220,10 +224,16 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
         <div className="logo"><div className="logo-mark">au</div><h1>管理者画面</h1></div>
         <div className="hdr-right">
           <button className="btn-ghost" onClick={onLogout}>ログアウト</button>
-          <button className="btn-back" onClick={onBack}>← 用語集</button>
+          <button className="btn-back" onClick={onBack}>← ホーム</button>
         </div>
       </div>
       <div className="t-body">
+        <div className="adm-area">
+          <button className={area === 'nippou' ? 'on' : ''} onClick={() => setArea('nippou')}>日報管理</button>
+          <button className={area === 'glossary' ? 'on' : ''} onClick={() => setArea('glossary')}>用語集管理</button>
+        </div>
+        {area === 'nippou' && <React.Suspense fallback={<div className="loading"><div className="spinner" /></div>}><NippouAdmin user={user} /></React.Suspense>}
+        {area === 'glossary' && <>
         <div className="tab-bar">
           <button className={`tab ${tab === 'summary' ? 'active' : ''}`} onClick={() => setTab('summary')}>サマリー</button>
           <button className={`tab ${tab === 'log' ? 'active' : ''}`} onClick={() => setTab('log')}>テストログ</button>
@@ -240,6 +250,7 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
         {tab === 'devices' && <AdminDevicesTab devices={devices} />}
         {tab === 'oretab' && <AdminOreTabTab payConfig={payConfig} />}
         {tab === 'profile' && <ProfileTab profiles={profiles} />}
+        </>}
       </div>
     </div>
   );

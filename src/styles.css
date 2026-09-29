@@ -653,3 +653,13 @@ html,body{overscroll-behavior:none;}
 .ota-msg{margin:10px 16px;padding:8px 12px;border-radius:8px;background:#ecfdf5;color:#047857;font-size:.75rem;font-weight:800;}
 .ota-reset{padding:8px 16px 14px;}
 @media (max-width:640px){.ota-grid{grid-template-columns:1fr;}}
+
+/* 管理画面：日報管理／用語集管理の切り替え */
+.adm-area{display:flex;gap:6px;padding:4px;background:#fff;border:1.5px solid var(--border);border-radius:12px;margin-bottom:12px;}
+.adm-area button{flex:1;min-height:42px;border:none;border-radius:9px;background:transparent;font-family:inherit;font-size:.86rem;font-weight:800;color:var(--sub);cursor:pointer;}
+.adm-area button.on{background:var(--pd);color:#fff;}
+/* ログイン */
+.au-login-note{font-size:.74rem;color:var(--sub);line-height:1.6;margin-top:10px;}
+.au-login-msg{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:.8rem;font-weight:700;line-height:1.5;}
+.au-login-msg.ok{background:#ecfdf5;color:#047857;}
+.au-login-msg.ng{background:#fee2e2;color:#b91c1c;}

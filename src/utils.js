@@ -121,9 +121,10 @@ export const CATEGORY_ICONS = {
   'ステークホルダー': '👥',
 };
 export const RANK_COLORS = { 秀: 'var(--shu)', 優: 'var(--yu)', 良: 'var(--ryo)', 可: 'var(--ka)' };
-export const ADMIN_PW = 'au2024admin';
-// テスト画面ログイン用の共通パスワード（全員共通・個人ごとの設定は無し）
-export const TEST_LOGIN_PW = 'orinavi.au';
+// 管理者パスワード（日報管理・用語集管理の両方に入れる）
+export const ADMIN_PW = 'master.26';
+// au navi の初回ログイン用パスワード（初回ログイン後に自分のパスワードを設定する）
+export const INITIAL_PW = 'aunavi.26';
 
 // カテゴリごとの色分け（関連用語スレッド表示などで使用）
 export const CATEGORY_COLORS = {

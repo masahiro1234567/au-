@@ -12,6 +12,8 @@ function tryLandscape() {
 }
 // オレタブ練習は開いたときだけ読み込む（アプリ全体の読み込みを軽くするため）
 const OreTab = lazy(() => import('./oretab/OreTab.jsx'));
+// 日報も開いたときだけ読み込む
+const NippouApp = lazy(() => import('./nippou/NippouApp.jsx'));
 import Home from './components/Home.jsx';
 import Glossary from './components/Glossary.jsx';
 import Login from './components/Login.jsx';
@@ -43,10 +45,12 @@ export default function App() {
   const [payConfig] = useDbCollection('oretab_pay'); // オレタブ：お支払い目安額の設定（管理画面で編集）
   const knowledgeTypes = resolveKnowledgeTypes(knowledgeTypesDb);
 
+  // au navi のログイン（名簿と照合した人だけ）。以前の共通パスワード方式のログイン情報（uid無し）は、ログインし直してもらう
   const [testUser, setTestUser] = useState(() => {
-    const s = localStorage.getItem('autest_user');
-    return s ? JSON.parse(s) : null;
+    try { const u = JSON.parse(localStorage.getItem('autest_user') || 'null'); return u && u.uid ? u : null; } catch { return null; }
   });
+  const [npStart, setNpStart] = useState('/');
+  const handleLogout = () => { localStorage.removeItem('autest_user'); setTestUser(null); setPage('login'); };
 
   const [page, setPage] = useState(testUser ? 'home' : 'login');
   const [glossaryCat, setGlossaryCat] = useState('all');
@@ -75,7 +79,7 @@ export default function App() {
   if (!termsLoaded) {
     return (
       <div id="loading">
-        <div className="loading-logo">au事業部 用語集</div>
+        <div className="loading-logo">au navi</div>
         <div className="spinner" />
       </div>
     );
@@ -93,12 +97,15 @@ export default function App() {
       onGoTest={goTest}
       onGoDevices={() => setPage('devices')}
       onGoOreTab={() => { tryLandscape(); setPage('oretab'); }}
+      onGoNippou={() => { setNpStart('/'); setPage('nippou'); }}
+      onGoKpi={() => { setNpStart('/kpi'); setPage('nippou'); }}
+      onLogout={handleLogout}
       onAdminLogin={() => setPage('admin-login')}
     />
   );
 
   let content;
-  switch (page) {
+  switch (testUser ? page : 'login') {
     case 'home':
       content = homeEl;
       break;
@@ -106,6 +113,14 @@ export default function App() {
       content = (
         <Suspense fallback={<div className="loading"><div className="spinner" /></div>}>
           <OreTab onExit={() => setPage('home')} payConfig={payConfig} />
+        </Suspense>
+      );
+      break;
+    case 'nippou':
+      content = (
+        <Suspense fallback={<div className="loading"><div className="spinner" /></div>}>
+          <NippouApp key={npStart} user={testUser} isAdmin={isAdmin} startPath={npStart}
+            onExit={() => setPage('home')} onAdmin={() => setPage(isAdmin ? 'admin' : 'admin-login')} />
         </Suspense>
       );
       break;
@@ -181,6 +196,7 @@ export default function App() {
           knowledgeTypes={knowledgeTypes}
           devices={devices}
           payConfig={payConfig}
+          user={testUser}
           results={results}
           profiles={profiles}
           onBack={() => setPage('home')}
