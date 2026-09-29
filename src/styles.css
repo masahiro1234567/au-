@@ -713,3 +713,34 @@ html,body{overscroll-behavior:none;}
 .hm2-draft{max-width:720px;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;background:#fef3c7;border:1.5px solid #fde68a;font-family:inherit;text-align:left;cursor:pointer;color:#92400e;}
 .hm2-draft .hm2-ico{background:#fff;color:#b45309;}
 .hm2-draft .hm2-tile-desc{color:#92400e;}
+
+/* 用語の通知の〇（緑：更新あり／赤：変更が必要） */
+.tn-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;vertical-align:middle;}
+.tn-dot.green{background:#16a34a;box-shadow:0 0 0 2px #dcfce7;margin-right:6px;}
+.tn-dot.red{background:#dc2626;box-shadow:0 0 0 2px #fee2e2;margin-left:6px;}
+.term-top .tn-dot.green{align-self:center;}
+.tn-flagbox{margin:10px 0;padding:10px 12px;border-radius:10px;background:#fef2f2;border:1.5px solid #fecaca;color:#b91c1c;font-size:.78rem;display:flex;flex-direction:column;gap:4px;}
+.tn-flagbox b{display:flex;align-items:center;gap:0;}
+.tn-flagbox b .tn-dot{margin:0 6px 0 0;}
+.tn-flagbox-r{color:#7f1d1d;font-size:.74rem;}
+.tn-report{padding:8px 16px 0;display:flex;flex-direction:column;gap:8px;}
+.tn-report textarea{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-family:inherit;font-size:16px;box-sizing:border-box;}
+.tn-report-open{align-self:flex-start;background:none;border:none;color:#b91c1c;font-family:inherit;font-size:.76rem;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px 0;}
+.tn-report-send{background:#dc2626!important;color:#fff!important;border:none!important;}
+/* ホームのタイルのバッジ（iPhoneの通知のような数字） */
+.hm2-ico{position:relative;}
+.tn-badge{position:absolute;top:-6px;right:-8px;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#16a34a;color:#fff;font-size:.68rem;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px #fff;box-sizing:border-box;}
+.tn-badge.red{background:#dc2626;}
+.tab .tn-badge,.adm-area .tn-badge{position:static;display:inline-flex;margin-left:6px;vertical-align:1px;box-shadow:none;}
+/* 管理画面：変更が必要な用語 */
+.tn-admin{background:#fff;border:1.5px solid #fecaca;border-radius:14px;padding:14px;margin-bottom:14px;}
+.tn-admin-h{display:flex;align-items:center;gap:8px;font-weight:900;color:#b91c1c;margin-bottom:8px;}
+.tn-admin-row{border-top:1px solid #fee2e2;padding:10px 0;display:flex;flex-direction:column;gap:6px;}
+.tn-admin-row:first-of-type{border-top:none;}
+.tn-admin-name{font-weight:900;font-size:.92rem;display:flex;align-items:center;gap:6px;}
+.tn-admin-meta{font-size:.72rem;color:var(--sub);}
+.tn-admin-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.tn-admin-btns button{min-height:36px;padding:0 12px;border-radius:8px;font-family:inherit;font-size:.76rem;font-weight:800;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:#4a3528;}
+.tn-admin-btns .primary{background:var(--pd);border-color:var(--pd);color:#fff;}
+.tn-admin-btns .danger{color:#b91c1c;border-color:#fecaca;}
+.tn-admin-alert{width:100%;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;margin-bottom:10px;border-radius:12px;border:1.5px solid #fecaca;background:#fef2f2;color:#b91c1c;font-family:inherit;font-size:.82rem;font-weight:800;cursor:pointer;text-align:left;}

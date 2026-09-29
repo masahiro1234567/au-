@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, push, set, remove, update } from 'firebase/database';
-import { useFrames, calcFrame, md, CHANNELS } from '../lib/frames';
+import { useFrames, calcFrame, md, CHANNELS, directorsOf } from '../lib/frames';
 import MonthNav, { useMonth, inMonth } from '../components/MonthNav';
 import { db } from '../lib/firebase';
 import { useFirebaseList } from '../lib/useFirebaseList';
@@ -142,9 +142,8 @@ function ReportManageTab() {
           return (
             <div className="card np-frame" key={f.id}>
               <div className="np-frame-top"><span className="badge b-blue">{md(f.start)}〜{md(f.end)}</span><span className="ts">{f.channel}・{f.days.length}日間</span>{f.legacy && <span className="badge b-gray">旧形式</span>}</div>
-              <div className="np-frame-store">{f.store}</div>
+              <div className="np-frame-store">{f.store}{directorsOf(f) && <span className="np-dir">{directorsOf(f)}</span>}</div>
               <div className="np-frame-sum">総販/リク抜き<b>{t.s}/{t.r}</b>目標 {f.ta || 0}/{f.tb || 0}</div>
-              <div className="ts">記入者：{[...new Set(f.days.map((d) => d.director).filter(Boolean))].join('・') || '－'}</div>
               <div className="np-frame-btns">
                 <button className="btn btn-gray" onClick={() => navigate(`/frames/${f.id}`)}>詳細</button>
                 <button className="btn btn-outline" onClick={() => navigate(`/report/frame/${f.id}`)}>編集</button>

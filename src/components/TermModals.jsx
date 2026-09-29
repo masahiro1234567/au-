@@ -365,8 +365,12 @@ function AutoRelatedSection({ term, currentId, allTerms, onSelectRelated }) {
 }
 
 // 詳細表示モーダル
-export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onClose, onBack, onEdit, onSelectRelated }) {
+export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onClose, onBack, onEdit, onSelectRelated, flag, onFlag }) {
+  const [reporting, setReporting] = React.useState(false);
+  const [reason, setReason] = React.useState('');
+  React.useEffect(() => { setReporting(false); setReason(''); }, [currentId]);
   if (!open || !term) return null;
+  const reports = flag && flag.active ? Object.values(flag.reports || {}) : [];
   return (
     <div className="modal-overlay open" onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}>
       <div className="modal">
@@ -378,6 +382,12 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
         </div>
         <div className="modal-body">
           <div className={`detail-rank-bar rank-${term.rank || ''}`} />
+          {reports.length > 0 && (
+            <div className="tn-flagbox">
+              <b><span className="tn-dot red" />変更が必要と報告されています</b>
+              {reports.filter((r) => r.text).map((r, i) => <div key={i} className="tn-flagbox-r">「{r.text}」{r.by ? `（${r.by}）` : ''}</div>)}
+            </div>
+          )}
           <div className="detail-badges">
             {term.rank && <span className={`badge badge-rank-${term.rank}`}>{term.rank}</span>}
             <span className="badge badge-cat">{term.category}</span>
@@ -394,6 +404,19 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
           )}
           <AutoRelatedSection key={currentId} term={term} currentId={currentId} allTerms={allTerms} onSelectRelated={onSelectRelated} />
         </div>
+        {onFlag && (
+          <div className="tn-report">
+            {reporting ? (<>
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="どこが違うか（任意）　例：料金が改定されている" rows={2} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="mbtn mbtn-cancel" onClick={() => setReporting(false)}>やめる</button>
+                <button className="mbtn tn-report-send" onClick={async () => { await onFlag(reason); setReporting(false); setReason(''); }}>変更が必要と報告する</button>
+              </div>
+            </>) : (
+              <button className="tn-report-open" onClick={() => setReporting(true)}>この用語は変更が必要（報告する）</button>
+            )}
+          </div>
+        )}
         <div className="modal-footer">
           <button className="mbtn mbtn-cancel" onClick={onClose}>閉じる</button>
           {isAdmin && <button className="mbtn mbtn-primary" onClick={onEdit}>編集</button>}

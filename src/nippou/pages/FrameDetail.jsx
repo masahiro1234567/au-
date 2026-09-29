@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { useFrames, buildText, md, dayFilled } from '../lib/frames';
+import { useFrames, buildText, md, dayFilled, directorsOf } from '../lib/frames';
 
 // 日報詳細：日ごとのテキスト（コピー・編集）
 export default function FrameDetail() {
@@ -31,9 +31,10 @@ export default function FrameDetail() {
   return (
     <Layout title="日報詳細" footer={<>
       <button className="btn btn-outline" onClick={() => { navigator.clipboard?.writeText(text); showToast('日報テキストをコピーしました'); }}>コピー</button>
+      {editable && <button className="btn btn-outline" style={{ marginTop: 0 }} onClick={() => navigate(`/results/${f.id}?date=${cur.date}`)}>メンバーの実績</button>}
       {editable && <button className="btn btn-p" style={{ marginTop: 0 }} onClick={() => navigate(`/report/frame/${f.id}?date=${cur.date}`)}>編集する</button>}</>}>
       <div className="np-wrap">
-        <div className="np-frame-store" style={{ marginBottom: 4 }}>{f.store}</div>
+        <div className="np-frame-store" style={{ marginBottom: 4 }}>{f.store}{directorsOf(f) && <span className="np-dir">{directorsOf(f)}</span>}</div>
         <div className="ts" style={{ marginBottom: 8 }}>{md(f.start)}〜{md(f.end)}・{f.channel}</div>
         <div className="filter-bar">
           {f.days.map((d) => <button key={d.date} className={`fchip ${d.date === cur.date ? 'active' : ''}`} onClick={() => setDate(d.date)}>{md(d.date)}{dayFilled(d) ? '' : '・未入力'}</button>)}

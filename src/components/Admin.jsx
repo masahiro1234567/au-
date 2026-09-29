@@ -213,7 +213,8 @@ function ProfileTab({ profiles }) {
   );
 }
 
-export default function Admin({ terms, ghostIds, results, profiles, knowledgeTypes, devices, payConfig, user, onBack, onLogout }) {
+export default function Admin({ terms, ghostIds, results, profiles, knowledgeTypes, devices, payConfig, user, flags, onBack, onLogout }) {
+  const flagCount = Object.entries(flags || {}).filter(([id, f]) => f && f.active && terms[id]).length;
   const [tab, setTab] = useState('summary');
   // 日報管理（日報アプリの管理画面）と用語集管理を切り替える。最初は日報管理
   const [area, setArea] = useState('nippou');
@@ -228,9 +229,14 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
         </div>
       </div>
       <div className="t-body">
+        {flagCount > 0 && (
+          <button className="tn-admin-alert" onClick={() => { setArea('glossary'); setTab('knowledge'); }}>
+            <span className="tn-dot red" style={{ margin: 0 }} />変更が必要と報告された用語が{flagCount}件あります<span style={{ marginLeft: 'auto' }}>確認する ›</span>
+          </button>
+        )}
         <div className="adm-area">
           <button className={area === 'nippou' ? 'on' : ''} onClick={() => setArea('nippou')}>日報管理</button>
-          <button className={area === 'glossary' ? 'on' : ''} onClick={() => setArea('glossary')}>用語集管理</button>
+          <button className={area === 'glossary' ? 'on' : ''} onClick={() => setArea('glossary')}>用語集管理{flagCount > 0 && <span className="tn-badge red">{flagCount}</span>}</button>
         </div>
         {area === 'nippou' && <React.Suspense fallback={<div className="loading"><div className="spinner" /></div>}><NippouAdmin user={user} /></React.Suspense>}
         {area === 'glossary' && <>
@@ -238,7 +244,7 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
           <button className={`tab ${tab === 'summary' ? 'active' : ''}`} onClick={() => setTab('summary')}>サマリー</button>
           <button className={`tab ${tab === 'log' ? 'active' : ''}`} onClick={() => setTab('log')}>テストログ</button>
           <button className={`tab ${tab === 'terms' ? 'active' : ''}`} onClick={() => setTab('terms')}>用語追加</button>
-          <button className={`tab ${tab === 'knowledge' ? 'active' : ''}`} onClick={() => setTab('knowledge')}>用語管理</button>
+          <button className={`tab ${tab === 'knowledge' ? 'active' : ''}`} onClick={() => setTab('knowledge')}>用語管理{flagCount > 0 && <span className="tn-badge red">{flagCount}</span>}</button>
           <button className={`tab ${tab === 'devices' ? 'active' : ''}`} onClick={() => setTab('devices')}>機種比較</button>
           <button className={`tab ${tab === 'oretab' ? 'active' : ''}`} onClick={() => setTab('oretab')}>オレタブ設定</button>
           <button className={`tab ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>プロフィール管理</button>
@@ -246,7 +252,7 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
         {tab === 'summary' && <SummaryTab results={results} />}
         {tab === 'log' && <LogTab results={results} />}
         {tab === 'terms' && <AdminTermsTab terms={terms} ghostIds={ghostIds} knowledgeTypes={knowledgeTypes} />}
-        {tab === 'knowledge' && <AdminKnowledgeTab terms={terms} knowledgeTypes={knowledgeTypes} />}
+        {tab === 'knowledge' && <AdminKnowledgeTab terms={terms} knowledgeTypes={knowledgeTypes} flags={flags} />}
         {tab === 'devices' && <AdminDevicesTab devices={devices} />}
         {tab === 'oretab' && <AdminOreTabTab payConfig={payConfig} />}
         {tab === 'profile' && <ProfileTab profiles={profiles} />}

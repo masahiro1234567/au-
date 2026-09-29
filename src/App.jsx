@@ -3,6 +3,7 @@ import { useDbCollection } from './useFirebase.js';
 import { ref as npRef, onValue as npOnValue } from 'firebase/database';
 import { db as npDb, ensureAnonAuth } from './nippou/lib/firebase.js';
 import { loadDraft, draftPath, draftLabel } from './nippou/lib/draft.js';
+import { useSeen, isUnread } from './termNotify.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
 import DeviceCompare from './components/DeviceCompare.jsx';
 // オレタブ：押した瞬間に全画面＋横向き固定を試す（Androidなど。iPhoneは回転表示で対応）
@@ -47,12 +48,16 @@ export default function App() {
   const [devices] = useDbCollection('devices');
   const [payConfig] = useDbCollection('oretab_pay'); // オレタブ：お支払い目安額の設定（管理画面で編集）
   const knowledgeTypes = resolveKnowledgeTypes(knowledgeTypesDb);
+  const [termFlags] = useDbCollection('term_flags'); // 変更が必要と報告された用語
 
   // au navi のログイン（名簿と照合した人だけ）。以前の共通パスワード方式のログイン情報（uid無し）は、ログインし直してもらう
   const [testUser, setTestUser] = useState(() => {
     try { const u = JSON.parse(localStorage.getItem('autest_user') || 'null'); return u && u.uid ? u : null; } catch { return null; }
   });
   const [npStart, setNpStart] = useState('/');
+  // 用語の更新通知：その人の「見た」記録と、未読の更新件数
+  const { seen, baseline } = useSeen(testUser, profiles);
+  const unreadCount = Object.entries(publicTerms).filter(([id, t]) => isUnread(id, t, seen, baseline)).length;
   const [loginNotice, setLoginNotice] = useState('');
   const handleLogout = (notice) => {
     localStorage.removeItem('autest_user'); setTestUser(null); setPage('login');
@@ -128,6 +133,7 @@ export default function App() {
       onGoDevices={() => setPage('devices')}
       onGoOreTab={() => { tryLandscape(); setPage('oretab'); }}
       onGoNippou={() => { setNpStart('/'); setPage('nippou'); }}
+      unreadCount={unreadCount}
       draft={loadDraft(testUser?.name)}
       draftText={(() => { const d = loadDraft(testUser?.name); return d ? draftLabel(d) : ''; })()}
       onResumeDraft={(d) => { setNpStart(draftPath(d)); setPage('nippou'); }}
@@ -171,6 +177,10 @@ export default function App() {
           onBackHome={() => setPage('home')}
           onGoTest={goTest}
           onAdminLogin={() => setPage('admin-login')}
+          user={testUser}
+          flags={termFlags}
+          seen={seen}
+          baseline={baseline}
         />
       );
       break;
@@ -230,6 +240,7 @@ export default function App() {
           devices={devices}
           payConfig={payConfig}
           user={testUser}
+          flags={termFlags}
           results={results}
           profiles={profiles}
           onBack={() => setPage('home')}

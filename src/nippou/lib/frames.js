@@ -20,6 +20,8 @@ export const todayStr = () => ymd(new Date());
 export const addDays = (s, n) => { const d = parseDate(s); d.setDate(d.getDate() + n); return ymd(d); };
 export const md = (s) => { const d = parseDate(s); return `${d.getMonth() + 1}/${d.getDate()}（${DOWS[d.getDay()]}）`; };
 export const dowLabel = (s) => DOWS[parseDate(s).getDay()] + '曜日';
+// 日報枠の記入者（ディレクター）の名前。途中で交代した場合は並べる
+export const directorsOf = (f) => [...new Set((f.days || []).map((d) => d.director).filter(Boolean))].join('・');
 export const detectChannel = (store) => CHANNELS.find((c) => c !== 'その他' && (store || '').includes(c)) || '';
 export function datesBetween(start, end) {
   const out = [];
@@ -76,7 +78,9 @@ function legacyDay(id, r) {
 export function normalizeFrame(id, f) {
   const daysObj = f.days || {};
   const days = Object.keys(daysObj).sort().map((date) => ({ ...emptyDay(date), ...daysObj[date], date }));
-  return { id, ...f, days, mikomi: f.mikomi || {}, legacy: false };
+  const mr = {};
+  Object.entries(f.memberResults || {}).forEach(([k, v]) => { mr[k] = Array.isArray(v) ? v.filter(Boolean) : Object.values(v || {}).filter(Boolean); });
+  return { id, ...f, days, mikomi: f.mikomi || {}, memberResults: mr, legacy: false };
 }
 
 // 旧データを「同じ店舗・日付が連続（1日以内の間隔）」でまとめる
@@ -126,7 +130,10 @@ export function toStored(frame, extra) {
   frame.days.forEach((d) => { const { legacyId, ...rest } = d; days[d.date] = rest; });
   const mikomi = {};
   frame.days.forEach((d) => { if (frame.mikomi && frame.mikomi[d.date]) mikomi[d.date] = frame.mikomi[d.date]; });
-  return { store: frame.store, channel: frame.channel, ta: frame.ta, tb: frame.tb, days, mikomi, ...extra };
+  // メンバーの実績記入（日付ごと）も消さずに持ち続ける
+  const memberResults = {};
+  frame.days.forEach((d) => { const r = frame.memberResults && frame.memberResults[d.date]; if (r) memberResults[d.date] = r; });
+  return { store: frame.store, channel: frame.channel, ta: frame.ta, tb: frame.tb, days, mikomi, memberResults, ...extra };
 }
 
 // ===== 日報テキスト =====

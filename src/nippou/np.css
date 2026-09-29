@@ -141,3 +141,9 @@
 .np-draft.big b{font-size:.9rem;}
 .np-draft.big .btn{margin-top:4px;}
 .np-draft .fchip{align-self:flex-start;}
+
+.np-dir{margin-left:8px;font-size:.72rem;font-weight:700;color:var(--sub);white-space:nowrap;}
+.np-mrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 64px 40px;gap:6px;}
+.np-mrow .inp{padding:8px;font-size:16px;}
+.np-fs{border:none;margin:0;padding:0;min-width:0;}
+.np-fs:disabled{opacity:.55;}

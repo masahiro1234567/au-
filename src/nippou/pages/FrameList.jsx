@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { useFrames, calcDay, calcFrame, dayFilled, md, CHANNELS } from '../lib/frames';
+import { useFrames, calcDay, calcFrame, dayFilled, md, CHANNELS, directorsOf } from '../lib/frames';
 import MonthNav, { useMonth, inMonth } from '../components/MonthNav';
 
 // 日報確認：日報枠ごとのカード（月で切り替え、販路で絞り込み）
@@ -38,7 +38,7 @@ export default function FrameList({ pick }) {
                   <span className="ts">{f.channel}・{f.days.length}日間</span>
                   <span className={`np-frame-state ${missing ? 'warn' : ''}`}>{missing ? `未入力 ${missing}日` : '入力済み'}</span>
                 </div>
-                <div className="np-frame-store">{f.store}</div>
+                <div className="np-frame-store">{f.store}{directorsOf(f) && <span className="np-dir">{directorsOf(f)}</span>}</div>
                 <div className="np-frame-sum">総販/リク抜き<b>{t.s}/{t.r}</b>目標 {f.ta || 0}/{f.tb || 0}{ta > 0 && <strong>達成率 {rate}%</strong>}</div>
                 <div className="np-bar"><i style={{ width: `${Math.min(rate, 100)}%` }} /></div>
                 <div className="np-frame-days">

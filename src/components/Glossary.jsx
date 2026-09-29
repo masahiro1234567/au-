@@ -1,3 +1,4 @@
+import { isUnread, isFlagged, markSeen, flagTerm } from '../termNotify.js';
 import React, { useMemo, useState } from 'react';
 import Sidebar from './Sidebar.jsx';
 import { TermFormModal, TermDetailModal } from './TermModals.jsx';
@@ -14,7 +15,7 @@ function highlight(text, q) {
   }
 }
 
-export default function Glossary({ terms, isAdmin, initialCat, initialQuery, initialKnowledgeType, initialKnowledgeSubType, knowledgeTypes, onBackHome, onGoTest, onAdminLogin }) {
+export default function Glossary({ terms, isAdmin, initialCat, initialQuery, initialKnowledgeType, initialKnowledgeSubType, knowledgeTypes, onBackHome, onGoTest, onAdminLogin, user, flags, seen, baseline }) {
   const [rank, setRank] = useState('all');
   const [cat, setCat] = useState(initialCat || 'all');
   const [knowledgeType, setKnowledgeType] = useState(initialKnowledgeType || 'all');
@@ -52,6 +53,8 @@ export default function Glossary({ terms, isAdmin, initialCat, initialQuery, ini
   const resetFilters = () => { setRank('all'); setCat('all'); setKnowledgeType('all'); setKnowledgeSubType('all'); };
 
   const detailTerm = detailId ? terms[detailId] : null;
+  // 用語を開いたら「見た」を記録（緑の〇が消える）
+  const openTerm = (id) => { setDetailId(id); markSeen(user, id); };
 
   const handleAdd = async (form) => {
     try {
@@ -140,11 +143,13 @@ export default function Glossary({ terms, isAdmin, initialCat, initialQuery, ini
           ) : (
             <div className="terms-grid">
               {filtered.map(([id, t]) => (
-                <div className="term-card" data-rank={t.rank || ''} key={id} onClick={() => { setDetailHistory([]); setDetailId(id); }}>
+                <div className="term-card" data-rank={t.rank || ''} key={id} onClick={() => { setDetailHistory([]); openTerm(id); }}>
                   <div className="term-stripe" />
                   <div className="term-body">
                     <div className="term-top">
+                      {isUnread(id, t, seen, baseline) && <span className="tn-dot green" title="内容が更新されました" aria-label="更新あり" />}
                       <div className="term-name" dangerouslySetInnerHTML={{ __html: highlight(t.name, q) }} />
+                      {isFlagged(flags, id) && <span className="tn-dot red" title="変更が必要と報告されています" aria-label="変更が必要" />}
                       <div className="term-badges">
                         {t.rank && <span className={`badge badge-rank-${t.rank}`}>{t.rank}</span>}
                         <span className="badge badge-cat">{t.category}</span>
@@ -182,7 +187,9 @@ export default function Glossary({ terms, isAdmin, initialCat, initialQuery, ini
           setDetailId(prev);
         } : null}
         onEdit={() => { setEditing({ id: detailId, term: detailTerm }); setDetailId(null); }}
-        onSelectRelated={(id) => { setDetailHistory([...detailHistory, detailId]); setDetailId(id); }}
+        onSelectRelated={(id) => { setDetailHistory([...detailHistory, detailId]); openTerm(id); }}
+        flag={flags && flags[detailId]}
+        onFlag={async (text) => { await flagTerm(detailId, user?.name, text); showToast('変更が必要と報告しました'); }}
       />
       <TermFormModal
         open={!!editing}

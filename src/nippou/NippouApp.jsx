@@ -13,6 +13,7 @@ import Personal from './pages/Personal';
 import Stores from './pages/Stores';
 import Kpi from './pages/Kpi';
 import Admin from './pages/Admin';
+import MemberResults from './pages/MemberResults';
 
 // au navi の中で日報の画面を動かす入れ物（画面の行き来は日報の中だけで完結させる）
 const ShellContext = createContext({ onExit: () => {}, exitLabel: 'ホーム', startPath: '/' });
@@ -26,6 +27,7 @@ const ROUTES = (
     <Route path="/report/frame/:id" element={<FrameForm />} />
     <Route path="/reports" element={<FrameList />} />
     <Route path="/frames/:id" element={<FrameDetail />} />
+    <Route path="/results/:id" element={<MemberResults />} />
     <Route path="/stats" element={<Stats />} />
     <Route path="/stores" element={<Stores />} />
     <Route path="/kpi" element={<Kpi />} />
@@ -63,6 +65,7 @@ export function NippouAdmin({ user }) {
               <Route path="/" element={<div className="np"><AdminHome /></div>} />
               <Route path="/report/frame/:id" element={<FrameForm />} />
               <Route path="/frames/:id" element={<FrameDetail />} />
+              <Route path="/results/:id" element={<MemberResults />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </MemoryRouter>

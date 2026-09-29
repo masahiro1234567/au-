@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { useFrames, calcDay, md } from '../lib/frames';
+import { useFrames, calcDay, md, directorsOf } from '../lib/frames';
 import MonthNav, { useMonth, inMonth } from '../components/MonthNav';
 
 // 実績確認（月）：月の中に日程がある日報枠を集計。月をまたぐ枠は、その月に入っている日の実績だけ数える
@@ -40,7 +40,7 @@ export default function Stats() {
         <div className="card-title" style={{ marginTop: 6 }}>現場ごと（日報枠）</div>
         {rows.map(({ f, t, ta }) => (
           <button key={f.id} className="card np-statrow" onClick={() => navigate(`/frames/${f.id}`)}>
-            <div className="np-statrow-top"><b>{f.store}</b><strong>{pct(t.s, ta)}</strong></div>
+            <div className="np-statrow-top"><b>{f.store}{directorsOf(f) && <span className="np-dir">{directorsOf(f)}</span>}</b><strong>{pct(t.s, ta)}</strong></div>
             <div className="ts">{md(f.start)}〜{md(f.end)}　総販 {t.s}／目標 {ta}</div>
             <div className="np-bar"><i style={{ width: `${Math.min(ta ? (t.s / ta) * 100 : 0, 100)}%` }} /></div>
           </button>

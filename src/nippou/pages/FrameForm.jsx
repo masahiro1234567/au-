@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { parseLineBrief } from '../lib/lineParser';
 import { loadDraft, saveDraft, clearDraft } from '../lib/draft';
+import { useFirebaseList } from '../lib/useFirebaseList';
+import { kpiDirectors, canWriteDay } from '../lib/kpiLink';
 import Layout from '../components/Layout';
 import {
   AU_L, UQ_L, FT_L, BR, AL_L, OT_L, useFrames, emptyDay, calcDay, dayFilled, datesBetween, addDays, md,
@@ -24,7 +26,8 @@ export default function FrameForm() {
   const { id } = useParams();
   const [sp] = useSearchParams();
   const navigate = useNavigate();
-  const { user, canEditReport } = useAuth();
+  const { user, canEditReport, isAdmin } = useAuth();
+  const { data: kpiData } = useFirebaseList('fp_kpi');
   const showToast = useToast();
   const { frames, loading } = useFrames();
   const me = user?.name || '';
@@ -174,6 +177,9 @@ export default function FrameForm() {
     return { ...f, days };
   });
   const getDay = (path) => path.reduce((o, k) => (o == null ? '' : o[k]), cur);
+  // 日報を書けるのは、その日のKPIでディレクターに割り当てられている人（KPIが無い日は誰でも）
+  const writable = canWriteDay(kpiData, frame.store, cur.date, me, isAdmin);
+  const dayDirectors = kpiDirectors(kpiData, frame.store, cur.date);
   const dc = calcDay(cur);
   const cum = frame.days.filter((d) => d.date <= cur.date).reduce((a, d) => { const c = calcDay(d); return { s: a.s + c.souhan, r: a.r + c.riku }; }, { s: 0, r: 0 });
   const rest = `${Math.max((+frame.ta || 0) - cum.s, 0)}/${Math.max((+frame.tb || 0) - cum.r, 0)}`;
@@ -199,7 +205,7 @@ export default function FrameForm() {
     try {
       const now = Date.now();
       // 入力のある日で記入者が空なら、保存する人の名前を入れる
-      const days = frame.days.map((d) => (dayFilled(d) && !d.director ? { ...d, director: me } : d));
+      const days = frame.days.map((d) => (dayFilled(d) && !d.director && canWriteDay(kpiData, frame.store, d.date, me, isAdmin) ? { ...d, director: me } : d));
       const data = toStored({ ...frame, days }, { createdBy: frame.createdBy || me, createdAt: frame.createdAt || now, updatedAt: now, updatedBy: me });
       let fid = frame.legacy || !frame.id ? null : frame.id;
       if (fid) await set(ref(db, `fp_frames/${fid}`), data);
@@ -215,8 +221,8 @@ export default function FrameForm() {
         }
       }
       clearDraft();
-      showToast('保存しました');
-      navigate(`/frames/${fid}?date=${cur.date}`, { replace: true });
+      showToast('保存しました。続けてメンバーの実績を入力してください');
+      navigate(`/results/${fid}?date=${cur.date}`, { replace: true });
     } catch (e) {
       showToast('保存できませんでした：' + e.message);
     }
@@ -355,16 +361,21 @@ export default function FrameForm() {
           <div><small>累計</small><b>{cum.s}/{cum.r}</b></div>
           <div><small>残数</small><b>{rest}</b></div>
         </div>
-        <label className="form-group np-director"><span>この日のディレクター（記入者）</span>
-          <input className="inp" value={cur.director || ''} placeholder={me} onChange={(e) => setFrame((f) => ({ ...f, days: f.days.map((d, i) => (i === idx ? { ...d, director: e.target.value } : d)) }))} />
+        <label className="form-group np-director"><span>この日のディレクター（記入者）{dayDirectors.length > 0 && `　KPIの割り当て：${dayDirectors.join('・')}`}</span>
+          <input className="inp" disabled={!writable} value={cur.director || ''} placeholder={dayDirectors[0] || me} onChange={(e) => setFrame((f) => ({ ...f, days: f.days.map((d, i) => (i === idx ? { ...d, director: e.target.value } : d)) }))} />
         </label>
 
+        {!writable && (
+          <div className="np-warn" style={{ marginBottom: 10 }}>
+            {md(cur.date)}のディレクターは {dayDirectors.join('・')} さんです（KPIの割り当て）。この日の日報は、ディレクターだけが記入できます。
+          </div>
+        )}
         {SECS.map(([k, title, sum, body]) => (
           <div className="np-box" key={k}>
             <button className="np-acc" onClick={() => setOpen({ ...open, [k]: !open[k] })} aria-expanded={!!open[k]}>
               <span>{title}</span>{sum && <small>{sum}</small>}<i>{open[k] ? '▲' : '▼'}</i>
             </button>
-            {open[k] && body}
+            {open[k] && <fieldset className="np-fs" disabled={!writable}>{body}</fieldset>}
           </div>
         ))}
       </div>

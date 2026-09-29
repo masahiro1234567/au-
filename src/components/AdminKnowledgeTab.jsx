@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_KNOWLEDGE_TYPES, termMatchesPath, getTermPaths, pathStartsWith, pathsToDbFields, showToast, overlapInfo, overlapGroups } from '../utils.js';
 import { saveTermRelations, dbUpdateMany } from '../useFirebase.js';
+import FlaggedTermsPanel from './FlaggedTermsPanel.jsx';
 import { RelatedTermsTagInput } from './TermModals.jsx';
 import { ConfirmButton } from './ConfirmButton.jsx';
 import {
@@ -468,7 +469,7 @@ function OverlapSummary({ terms, onPick }) {
   );
 }
 
-export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
+export default function AdminKnowledgeTab({ terms, knowledgeTypes, flags }) {
   const kTypes = knowledgeTypes || DEFAULT_KNOWLEDGE_TYPES.map((t) => ({
     id: null, name: t.name, children: (t.children || []).map((c) => ({ id: null, name: c.name, children: [] })),
   }));
@@ -487,6 +488,7 @@ export default function AdminKnowledgeTab({ terms, knowledgeTypes }) {
 
   return (
     <div>
+      <FlaggedTermsPanel terms={terms} flags={flags} knowledgeTypes={knowledgeTypes} />
       <div className="section-title">用語管理</div>
       <div style={{ fontSize: '.75rem', color: 'var(--sub)', marginBottom: 12 }}>
         知識区分（枝分かれ）の構成を編集したり、マインドマップから用語を絞り込んで関連付けを管理できます。

@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
-import { ref, push, set, remove } from 'firebase/database';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ref, push, set, remove, update } from 'firebase/database';
 import { db } from '../lib/firebase';
 import { useFirebaseList } from '../lib/useFirebaseList';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Layout from '../components/Layout';
 import MonthPicker from '../components/MonthPicker';
+import { useFrames } from '../lib/frames';
+import { resultKey, getSavedResult, resultFromFrames, kpiMembers } from '../lib/kpiLink';
 
 const CHANNELS = ['エディオン','イオン','ジョーシン','ケーズデンキ','ヤマダ','コジマ','その他'];
 const DOWS = ['日','月','火','水','木','金','土'];
@@ -59,6 +61,7 @@ export default function Kpi() {
   const { data: kpiData } = useFirebaseList('fp_kpi');
   const { data: kpiResults } = useFirebaseList('fp_kpi_results');
   const { data: fpUsers } = useFirebaseList('fp_users');
+  const { frames } = useFrames();
   const { isAdmin, user } = useAuth();
   const showToast = useToast();
   const [editing, setEditing] = useState(null);
@@ -71,6 +74,23 @@ export default function Kpi() {
 
   const registeredNames = useMemo(() =>
     new Set(Object.values(fpUsers).map(u => u.name).filter(Boolean)), [fpUsers]);
+
+  const autoSaved = useRef(new Set());
+  useEffect(() => {
+    if (!frames.length || !Object.keys(kpiData).length) return;
+    const up = {};
+    Object.entries(kpiData).forEach(([kid, k]) => (k.dates || []).forEach((dt) => kpiMembers(k, dt).forEach((m, mi) => {
+      const key = resultKey(kid, dt, mi);
+      if (autoSaved.current.has(key) || getSavedResult(kpiResults, kid, dt, mi, m.member, m.role)) return;
+      const fr = resultFromFrames(frames, k, dt, mi, registeredNames);
+      if (!fr) return;
+      const target = +m.target || 0, actual = +fr.actual || 0;
+      up[`fp_kpi_results/${key}`] = { kpiId: kid, date: dt, memberIndex: mi, memberName: m.member || '他社', role: m.role, target, actual,
+        ach: target > 0 ? Math.round((actual / target) * 100) : 0, store: k.store || '', channel: k.channel || '', fromReport: true, updatedAt: Date.now() };
+      autoSaved.current.add(key);
+    })));
+    if (Object.keys(up).length) update(ref(db), up).catch(() => {});
+  }, [frames, kpiData, kpiResults, registeredNames]);
 
   const cards = useMemo(() => {
     return Object.entries(kpiData)
@@ -105,12 +125,12 @@ export default function Kpi() {
     return out;
   }, [cards]);
 
-  // 実績保存（memberIndexで行を一意に特定。他社など同名メンバーが複数いても混線しない）
+  // 実績保存：「KPIのID_日付_行番号」で1件に決めて上書き保存（日報の実績記入と同じ保存先）
   async function saveResult(kpiId, date, memberIndex, memberName, target, role) {
     const key = `${kpiId}_${date}_${memberIndex}`;
     const actual = +actuals[key] || 0;
     const ach = +target > 0 ? Math.round((actual / +target) * 100) : 0;
-    await set(push(ref(db, 'fp_kpi_results')), {
+    await set(ref(db, `fp_kpi_results/${resultKey(kpiId, date, memberIndex)}`), {
       kpiId, date, memberIndex, memberName, target: +target || 0, actual, role, ach,
       store: kpiData[kpiId]?.store || '',
       channel: kpiData[kpiId]?.channel || '',
@@ -118,16 +138,12 @@ export default function Kpi() {
     });
   }
 
-  // 既存の実績を取得（新形式：memberIndexで特定／旧データ：メンバー名+役職でフォールバック）
+  // 既存の実績。KPIに実績が無ければ、日報の実績記入（KPI登録前に入れた分）から自動で拾う
   function getResult(kpiId, date, memberIndex, memberName, role) {
-    const byIndex = Object.values(kpiResults).find(r =>
-      r.kpiId === kpiId && r.date === date && r.memberIndex === memberIndex
-    );
-    if (byIndex) return byIndex;
-    return Object.values(kpiResults).find(r =>
-      r.kpiId === kpiId && r.date === date && r.memberIndex === undefined &&
-      r.memberName === memberName && r.role === role
-    );
+    const saved = getSavedResult(kpiResults, kpiId, date, memberIndex, memberName, role);
+    if (saved) return saved;
+    const fr = resultFromFrames(frames, kpiData[kpiId], date, memberIndex, registeredNames);
+    return fr ? { actual: fr.actual, fromReport: true } : undefined;
   }
 
   function openNew() {
