@@ -1,5 +1,102 @@
 import React from 'react';
 
+const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
+const ICONS = {
+  book: <path d="M4 5h6a2 2 0 012 2v12a2 2 0 00-2-2H4zM20 5h-6a2 2 0 00-2 2v12a2 2 0 012-2h6z" {...S} />,
+  phones: <><rect x="3" y="6" width="7" height="13" rx="1.5" {...S} /><rect x="12" y="3" width="9" height="17" rx="1.5" {...S} /></>,
+  tab: <><rect x="3" y="5" width="18" height="13" rx="2" {...S} /><path d="M9 21h6" {...S} /></>,
+  target: <><circle cx="12" cy="12" r="8" {...S} /><circle cx="12" cy="12" r="4" {...S} /><circle cx="12" cy="12" r="1" {...S} /></>,
+  pen: <><path d="M5 4h10l4 4v12H5z" {...S} /><path d="M9 12h6M9 16h4" {...S} /></>,
+  check: <path d="M4 12l5 5L20 6" {...S} />,
+  search: <><circle cx="11" cy="11" r="6.5" {...S} /><path d="M16 16l4 4" {...S} /></>,
+  lock: <><rect x="5" y="11" width="14" height="9" rx="2" {...S} /><path d="M8 11V8a4 4 0 018 0v3" {...S} /></>,
+  out: <path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4M10 16l-4-4 4-4M6 12h10" {...S} />,
+  x: <path d="M6 6l12 12M18 6L6 18" {...S} />,
+};
+const Icon = ({ k, size = 22 }) => <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">{ICONS[k]}</svg>;
+
+// ホーム画面（案C）：中央に「au navi」と用語検索、その下にメニューのタイル
+// PC（900px以上）は3列×2段のタイル、スマホは1列のカード。右上のボタンで右側からメニューが開く（最初は閉じている）
+export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft }) {
+  const count = Object.keys(terms || {}).length;
+  const [q, setQ] = React.useState('');
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const MENU = [
+    ['用語一覧', '検索・カテゴリ・ランクで絞り込んで調べる', 'book', () => onOpenFiltered({})],
+    ['機種比較', 'iPhone・Androidのできる／できないを一覧表で比べる', 'phones', onGoDevices],
+    ['オレタブ', '本番前にオレタブの操作を練習する（横画面）', 'tab', onGoOreTab],
+    ['KPI', '現場全体の目標と、メンバーごとの実績', 'target', onGoKpi],
+    ['日報', '日報の登録・確認、実績確認・店舗特徴・個人実績', 'pen', onGoNippou],
+    ['テスト', '練習モード・本番モードで理解度をチェック', 'check', onGoTest],
+  ];
+  const search = (e) => { e.preventDefault(); onOpenFiltered({ q: q.trim() }); };
+  const go = (fn) => () => { setMenuOpen(false); fn && fn(); };
+
+  return (
+    <div className="page">
+      <header className="hdr">
+        <div className="logo"><div className="logo-mark">au</div><h1>au navi</h1></div>
+        <div className="hdr-right">
+          {testUser?.name && <div className="user-chip">{testUser.name}</div>}
+          <button className={`btn-toggle ${menuOpen ? 'active' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label="メニュー" aria-expanded={menuOpen}>
+            <span /><span /><span />
+          </button>
+        </div>
+      </header>
+
+      <div className="t-body hm2">
+        <section className="hm2-hero">
+          <div className="hm2-eyebrow">au事業部</div>
+          <div className="hm2-title">au navi</div>
+          {testUser?.name && <div className="hm2-greet">{testUser.name}さん、おつかれさまです</div>}
+        </section>
+
+        {draft && (
+          <button className="hm2-draft" onClick={() => onResumeDraft(draft)}>
+            <span className="hm2-ico"><Icon k="pen" size={24} /></span>
+            <span className="hm2-tile-text"><span className="hm2-tile-title">書きかけの日報があります</span><span className="hm2-tile-desc">{draftText}　タップで続きから</span></span>
+          </button>
+        )}
+        <form className="hm2-search" onSubmit={search} role="search">
+          <Icon k="search" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`用語をさがす（${count}件）`} aria-label="用語をさがす" />
+          {q && <button type="submit" className="hm2-search-go">検索</button>}
+        </form>
+
+        <section className="hm2-tiles">
+          {MENU.map(([title, desc, icon, fn]) => (
+            <button key={title} className="hm2-tile" onClick={fn}>
+              <span className="hm2-ico"><Icon k={icon} size={28} /></span>
+              <span className="hm2-tile-text"><span className="hm2-tile-title">{title}</span><span className="hm2-tile-desc">{desc}</span></span>
+              <Arrow />
+            </button>
+          ))}
+        </section>
+
+        <div className="hm2-foot"><button className="hm-admin" onClick={onAdminLogin}>管理者ログイン</button></div>
+      </div>
+
+      {/* 右側から開くメニュー */}
+      {menuOpen && <div className="hm2-ov" onClick={() => setMenuOpen(false)} />}
+      <nav className={`hm2-drawer ${menuOpen ? 'open' : ''}`} aria-hidden={!menuOpen} aria-label="メニュー">
+        <div className="hm2-drawer-head">
+          <div>
+            <div className="hm2-drawer-name">{testUser?.name || ''}</div>
+            <div className="hm2-drawer-sub">au navi</div>
+          </div>
+          <button className="hm2-drawer-x" onClick={() => setMenuOpen(false)} aria-label="メニューを閉じる"><Icon k="x" size={20} /></button>
+        </div>
+        {MENU.map(([title, , icon, fn]) => (
+          <button key={title} className="hm2-drawer-item" onClick={go(fn)} tabIndex={menuOpen ? 0 : -1}><Icon k={icon} size={20} />{title}</button>
+        ))}
+        <div className="hm2-drawer-sep" />
+        <button className="hm2-drawer-item" onClick={go(onAdminLogin)} tabIndex={menuOpen ? 0 : -1}><Icon k="lock" size={20} />管理者ログイン</button>
+        {onLogout && <button className="hm2-drawer-item" onClick={go(onLogout)} tabIndex={menuOpen ? 0 : -1}><Icon k="out" size={20} />ログアウト</button>}
+      </nav>
+    </div>
+  );
+}
+
 function Arrow() {
   return (
     <svg className="hm-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -8,56 +105,3 @@ function Arrow() {
   );
 }
 
-// ホーム画面：用語一覧・テスト・機種比較・管理者ログイン。
-// スマホは縦積み、PC（900px以上）は左にタイトル、右にメニューの2カラム。
-export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin }) {
-  const count = Object.keys(terms || {}).length;
-  const card = (title, desc, onClick) => (
-    <button className="hm-card" onClick={onClick}>
-      <div className="hm-card-text">
-        <div className="hm-card-title">{title}</div>
-        <div className="hm-card-desc">{desc}</div>
-      </div>
-      <Arrow />
-    </button>
-  );
-
-  return (
-    <div className="page">
-      <header className="hdr">
-        <div className="logo">
-          <div className="logo-mark">au</div>
-          <h1>au navi</h1>
-        </div>
-        <div className="hdr-right">
-          {testUser?.name && <div className="user-chip">{testUser.name}</div>}
-          {onLogout && <button className="btn-ghost" onClick={onLogout}>ログアウト</button>}
-        </div>
-      </header>
-
-      <div className="t-body hm">
-        <div className="hm-wrap">
-          <section className="hm-hero">
-            <div className="hm-hero-eyebrow">au事業部</div>
-            <div className="hm-hero-title">au navi</div>
-            <div className="hm-hero-count">
-              <span className="hm-hero-num">{count}</span>
-              <span className="hm-hero-unit">件の用語を収録</span>
-            </div>
-            {testUser?.name && <div className="hm-hero-greet">{testUser.name}さん、おつかれさまです</div>}
-          </section>
-
-          <section className="hm-menu">
-            {card('用語一覧', '検索・カテゴリ・ランクで絞り込んで調べる', () => onOpenFiltered({}))}
-            {card('機種比較', 'iPhone・Androidのできる／できないを一覧表で比べる', onGoDevices)}
-            {card('オレタブ', '本番前にオレタブの操作を練習する（横画面）', onGoOreTab)}
-            {card('KPI', '現場全体の目標と、メンバーごとの実績', onGoKpi)}
-            {card('日報', '日報の登録・確認、実績確認・店舗特徴・個人実績', onGoNippou)}
-            {card('テスト', '練習モード・本番モードで理解度をチェック', onGoTest)}
-            <button className="hm-admin" onClick={onAdminLogin}>管理者ログイン</button>
-          </section>
-        </div>
-      </div>
-    </div>
-  );
-}

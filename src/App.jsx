@@ -1,5 +1,8 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useDbCollection } from './useFirebase.js';
+import { ref as npRef, onValue as npOnValue } from 'firebase/database';
+import { db as npDb, ensureAnonAuth } from './nippou/lib/firebase.js';
+import { loadDraft, draftPath, draftLabel } from './nippou/lib/draft.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
 import DeviceCompare from './components/DeviceCompare.jsx';
 // オレタブ：押した瞬間に全画面＋横向き固定を試す（Androidなど。iPhoneは回転表示で対応）
@@ -50,7 +53,34 @@ export default function App() {
     try { const u = JSON.parse(localStorage.getItem('autest_user') || 'null'); return u && u.uid ? u : null; } catch { return null; }
   });
   const [npStart, setNpStart] = useState('/');
-  const handleLogout = () => { localStorage.removeItem('autest_user'); setTestUser(null); setPage('login'); };
+  const [loginNotice, setLoginNotice] = useState('');
+  const handleLogout = (notice) => {
+    localStorage.removeItem('autest_user'); setTestUser(null); setPage('login');
+    setLoginNotice(typeof notice === 'string' ? notice : '');
+  };
+
+  // ログイン中の人の名簿の状態を見張る。管理画面で「ログイン不可」にされた・名簿から削除された場合は、その場で自動ログアウト
+  // 「閲覧のみ」などの権限の変更も、ログインし直さずに反映する
+  useEffect(() => {
+    if (!testUser?.uid) return undefined;
+    let unsub = () => {};
+    let alive = true;
+    ensureAnonAuth().then(() => {
+      if (!alive) return;
+      unsub = npOnValue(npRef(npDb, `fp_users/${testUser.uid}`), (snap) => {
+        const u = snap.val();
+        if (!u) return handleLogout('名簿から登録が外されたため、ログアウトしました');
+        if (u.permission === 'disabled') return handleLogout('このアカウントはログインが禁止されたため、ログアウトしました');
+        if (u.permission === 'pending') return handleLogout('利用申請の承認待ちに戻されたため、ログアウトしました');
+        if (u.permission && u.permission !== testUser.permission) {
+          const next = { ...testUser, permission: u.permission };
+          localStorage.setItem('autest_user', JSON.stringify(next));
+          setTestUser(next);
+        }
+      }, () => { /* 通信できないときは何もしない（ログイン状態はそのまま） */ });
+    });
+    return () => { alive = false; unsub(); };
+  }, [testUser?.uid, testUser?.permission]);
 
   const [page, setPage] = useState(testUser ? 'home' : 'login');
   const [glossaryCat, setGlossaryCat] = useState('all');
@@ -98,6 +128,9 @@ export default function App() {
       onGoDevices={() => setPage('devices')}
       onGoOreTab={() => { tryLandscape(); setPage('oretab'); }}
       onGoNippou={() => { setNpStart('/'); setPage('nippou'); }}
+      draft={loadDraft(testUser?.name)}
+      draftText={(() => { const d = loadDraft(testUser?.name); return d ? draftLabel(d) : ''; })()}
+      onResumeDraft={(d) => { setNpStart(draftPath(d)); setPage('nippou'); }}
       onGoKpi={() => { setNpStart('/kpi'); setPage('nippou'); }}
       onLogout={handleLogout}
       onAdminLogin={() => setPage('admin-login')}
@@ -142,7 +175,7 @@ export default function App() {
       );
       break;
     case 'login':
-      content = <Login onLogin={handleLogin} profiles={profiles} />;
+      content = <Login onLogin={(u) => { setLoginNotice(''); handleLogin(u); }} profiles={profiles} notice={loginNotice} />;
       break;
     case 'test-home':
       content = (

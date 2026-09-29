@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { parseLineBrief } from '../lib/lineParser';
+import { loadDraft, saveDraft, clearDraft } from '../lib/draft';
 import Layout from '../components/Layout';
 import {
   AU_L, UQ_L, FT_L, BR, AL_L, OT_L, useFrames, emptyDay, calcDay, dayFilled, datesBetween, addDays, md,
@@ -42,8 +43,21 @@ export default function FrameForm() {
   const [lineText, setLineText] = useState('');
   const [showLine, setShowLine] = useState(false);
 
-  // 編集・追加：登録済みの日報枠を読み込む
   const loadedRef = useRef(false);
+  // 書きかけの下書きがあれば、そこから再開する（新規は下書きが新規のとき、編集はその日報枠の下書きのとき）
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const d = loadDraft(me);
+    if (!d) return;
+    if ((!id && !d.frameId) || (id && d.frameId === id)) {
+      loadedRef.current = true;
+      setFrame(d.frame); setIdx(d.idx || 0);
+      if (d.setup) setSetup(d.setup);
+      setRestored(true);
+    }
+  }, []);
+
+  // 編集・追加：登録済みの日報枠を読み込む
   useEffect(() => {
     if (!id || loading || loadedRef.current) return;
     const f = frames.find((x) => x.id === id);
@@ -64,6 +78,18 @@ export default function FrameForm() {
     setFrame(copy);
     setIdx(at);
   }, [id, loading, frames]);
+
+  useEffect(() => {
+    if (!frame) return;
+    saveDraft({ user: me, frameId: id || null, frame, idx });
+  }, [frame, idx]);
+  const discardDraft = () => {
+    clearDraft();
+    setRestored(false);
+    if (id) { const f = frames.find((x) => x.id === id); if (f) { setFrame(JSON.parse(JSON.stringify(f))); setIdx(0); } }
+    else { setFrame(null); setIdx(0); }
+    showToast('下書きを破棄しました');
+  };
 
   const overlapping = useMemo(() => {
     if (!setup.store || id) return [];
@@ -188,6 +214,7 @@ export default function FrameForm() {
           await update(ref(db), up);
         }
       }
+      clearDraft();
       showToast('保存しました');
       navigate(`/frames/${fid}?date=${cur.date}`, { replace: true });
     } catch (e) {
@@ -289,6 +316,12 @@ export default function FrameForm() {
       <button className="btn btn-outline" onClick={() => setPreview(true)}>プレビューを確認</button>
       <button className="btn btn-p" style={{ marginTop: 0 }} disabled={saving} onClick={save}>{saving ? '保存中…' : '保存する'}</button></>}>
       <div className="np-wrap">
+        {restored && (
+          <div className="np-draft">
+            <span>書きかけの内容から再開しました（この端末に自動で保存されています）</span>
+            <button className="fchip" onClick={discardDraft}>破棄して最初から</button>
+          </div>
+        )}
         <div className="card">
           <label className="form-group"><span>店舗名</span><input className="inp" value={frame.store} onChange={(e) => setFrameField({ store: e.target.value, channel: detectChannel(e.target.value) || frame.channel })} /></label>
           <div style={{ display: 'flex', gap: 8 }}>

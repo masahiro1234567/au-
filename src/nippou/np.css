@@ -133,3 +133,11 @@
 .np-statrow-top{display:flex;gap:8px;font-size:.84rem;}
 .np-statrow-top b{flex:1;}
 .np-statrow-top strong{color:var(--pd);}
+/* 書きかけの日報（下書き） */
+.np-draft{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:#fef3c7;border:1.5px solid #fde68a;font-size:.76rem;font-weight:700;color:#92400e;}
+.np-draft>span{flex:1;min-width:180px;}
+.np-draft.big{flex-direction:column;align-items:stretch;}
+.np-draft.big>div{display:flex;flex-direction:column;gap:2px;}
+.np-draft.big b{font-size:.9rem;}
+.np-draft.big .btn{margin-top:4px;}
+.np-draft .fchip{align-self:flex-start;}

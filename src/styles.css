@@ -663,3 +663,53 @@ html,body{overscroll-behavior:none;}
 .au-login-msg{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:.8rem;font-weight:700;line-height:1.5;}
 .au-login-msg.ok{background:#ecfdf5;color:#047857;}
 .au-login-msg.ng{background:#fee2e2;color:#b91c1c;}
+
+/* ===== ホーム（案C：検索＋タイル、右から開くメニュー） ===== */
+.hm2{display:flex;flex-direction:column;align-items:center;gap:18px;padding:22px 14px 32px;}
+.hm2>*{width:100%;max-width:960px;}
+.hm2-hero{text-align:center;padding:6px 0 2px;}
+.hm2-eyebrow{font-size:.74rem;font-weight:800;color:var(--pd);letter-spacing:.08em;}
+.hm2-title{font-size:2rem;font-weight:900;margin-top:2px;}
+.hm2-greet{font-size:.84rem;color:var(--sub);margin-top:4px;}
+.hm2-search{max-width:720px;height:54px;background:#fff;border:2px solid var(--border);border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 8px 0 20px;color:var(--pd);box-shadow:var(--sh);}
+.hm2-search:focus-within{border-color:var(--primary);}
+.hm2-search input{flex:1;min-width:0;border:none;outline:none;background:transparent;font-family:inherit;font-size:16px;color:var(--text);}
+.hm2-search-go{height:40px;padding:0 18px;border:none;border-radius:999px;background:var(--pd);color:#fff;font-family:inherit;font-size:.84rem;font-weight:800;cursor:pointer;}
+.hm2-tiles{display:grid;grid-template-columns:1fr;gap:10px;}
+.hm2-tile{display:flex;align-items:center;gap:14px;min-height:78px;padding:14px 16px;background:#fff;border:1.5px solid var(--border);border-radius:16px;font-family:inherit;text-align:left;cursor:pointer;color:var(--text);box-shadow:var(--sh-sm);}
+.hm2-tile:hover{border-color:var(--primary);}
+.hm2-ico{width:48px;height:48px;border-radius:14px;background:var(--pl);color:var(--pd);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.hm2-tile-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.hm2-tile-title{font-size:1rem;font-weight:900;}
+.hm2-tile-desc{font-size:.72rem;color:var(--sub);line-height:1.5;}
+.hm2-tile .hm-arrow{color:var(--primary);flex-shrink:0;}
+.hm2-foot{display:flex;justify-content:center;}
+.hm2-foot .hm-admin{max-width:320px;}
+@media (min-width:900px){
+  .hm2{padding:44px 24px 40px;gap:26px;}
+  .hm2-title{font-size:2.8rem;}
+  .hm2-greet{font-size:.9rem;}
+  .hm2-search{height:60px;}
+  .hm2-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
+  .hm2-tile{flex-direction:column;justify-content:center;gap:10px;min-height:160px;padding:20px;text-align:center;}
+  .hm2-ico{width:60px;height:60px;border-radius:18px;}
+  .hm2-tile-text{align-items:center;}
+  .hm2-tile-title{font-size:1.1rem;}
+  .hm2-tile .hm-arrow{display:none;}
+}
+/* 右から開くメニュー（最初は閉じている） */
+.hm2-ov{position:fixed;inset:0;background:rgba(26,15,8,.35);z-index:290;}
+.hm2-drawer{position:fixed;top:0;right:0;bottom:0;width:280px;max-width:86vw;background:#fff;z-index:300;box-shadow:-6px 0 24px rgba(0,0,0,.12);display:flex;flex-direction:column;padding:0 10px 16px;transform:translateX(105%);transition:transform .22s ease;overflow-y:auto;visibility:hidden;}
+.hm2-drawer.open{transform:translateX(0);visibility:visible;}
+.hm2-drawer-head{display:flex;align-items:flex-start;gap:8px;padding:18px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+.hm2-drawer-head>div{flex:1;min-width:0;}
+.hm2-drawer-name{font-size:.95rem;font-weight:900;}
+.hm2-drawer-sub{font-size:.7rem;color:var(--sub);margin-top:2px;}
+.hm2-drawer-x{width:40px;height:40px;border:1.5px solid var(--border);border-radius:10px;background:#fff;color:var(--sub);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.hm2-drawer-item{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 12px;border:none;border-radius:10px;background:none;font-family:inherit;font-size:.9rem;font-weight:700;color:#4a3528;cursor:pointer;text-align:left;}
+.hm2-drawer-item:hover{background:var(--pl);color:var(--pd);}
+.hm2-drawer-sep{height:1px;background:var(--border);margin:8px 6px;}
+
+.hm2-draft{max-width:720px;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;background:#fef3c7;border:1.5px solid #fde68a;font-family:inherit;text-align:left;cursor:pointer;color:#92400e;}
+.hm2-draft .hm2-ico{background:#fff;color:#b45309;}
+.hm2-draft .hm2-tile-desc{color:#92400e;}

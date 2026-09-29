@@ -15,7 +15,7 @@ async function sha256(text) {
 // au navi のログイン：名前＋パスワード
 // ・名簿（日報の fp_users）に登録された人だけ入れる。名簿にない名前は「申請」として登録し、管理者の承認を待つ
 // ・初回（自分のパスワードをまだ決めていない人）は初回用パスワードで入り、自分のパスワードを設定する
-export default function Login({ onLogin, profiles }) {
+export default function Login({ onLogin, profiles, notice }) {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [step, setStep] = useState('login'); // login / setpw
@@ -91,6 +91,7 @@ export default function Login({ onLogin, profiles }) {
           <div className="fw8" style={{ fontSize: '1.15rem' }}>{step === 'login' ? 'ログイン' : 'パスワードの設定'}</div>
           <div className="ts mt8">{step === 'login' ? '名前とパスワードを入力してください' : '次回から使う、自分のパスワードを決めてください'}</div>
         </div>
+        {notice && <div className="au-login-msg ng" style={{ marginTop: 0, marginBottom: 12 }}>{notice}</div>}
         <div className="t-card">
           {step === 'login' ? (<>
             <div className="form-group"><label>名前 <span className="req">*</span></label>
