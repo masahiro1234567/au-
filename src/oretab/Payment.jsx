@@ -119,10 +119,16 @@ const DIALOGS = {
 
 const isEmpty = (e) => !Object.keys(e || {}).some((k) => e[k]);
 
-export default function Payment({ onClose, onMultitask, config }) {
+// web：ブラウザで開く「Web版お支払い目安額」（上のバーと、レイアウト（鉛筆）→印刷のボタンが無い。ほかの機能は同じ）
+// ctrl：見積もりの中身を外から渡す（Web版で、印刷プレビューにも同じ内容を出すため）
+// preview：印刷プレビュー用（見るだけ）
+export const WEB_PAY_H = 820;
+export default function Payment({ onClose, onMultitask, config, web, ctrl, preview }) {
   const cfg = React.useMemo(() => buildConfig(config), [config]);
-  const [ests, setEsts] = useState([{}, {}, {}, {}, {}]);
-  const [cur, setCur] = useState(0);
+  const [estsIn, setEstsIn] = useState([{}, {}, {}, {}, {}]);
+  const [curIn, setCurIn] = useState(0);
+  const ests = ctrl ? ctrl.ests : estsIn, setEsts = ctrl ? ctrl.setEsts : setEstsIn;
+  const cur = ctrl ? ctrl.cur : curIn, setCur = ctrl ? ctrl.setCur : setCurIn;
   const [dlg, setDlg] = useState(null);
   const [planDlg, setPlanDlg] = useState(false);
   const [optDlg, setOptDlg] = useState(false);
@@ -183,13 +189,13 @@ export default function Payment({ onClose, onMultitask, config }) {
   const discounts = brand ? [{ id: '', label: '' }, ...discountsFor(cfg, brand)] : [{ id: '', label: '' }];
 
   return (
-    <div className="ot-screen" style={{ background: layout ? '#cfc8c1' : undefined }}>
+    <div className="ot-screen" style={{ background: layout ? '#cfc8c1' : undefined, height: web ? WEB_PAY_H : undefined, pointerEvents: preview ? 'none' : undefined }}>
       <div className={`ot-pay-wrap ${layout ? 'layout' : ''}`}>
-        <TopBar right={['multi', 'manual', 'x']} onMultitask={onMultitask} onClose={onClose} noop={noop} />
+        {!web && <TopBar right={['multi', 'manual', 'x']} onMultitask={onMultitask} onClose={onClose} noop={noop} />}
         <main className="ot-main" style={{ padding: '8px 14px 8px 30px' }}>
           <button className="ot-side-tab" onClick={noop}>ご説明コンテンツ</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <h1 className="ot-h1" style={{ marginRight: 'auto' }}>お支払い目安額</h1>
+            <h1 className="ot-h1" style={{ marginRight: 'auto' }}>お支払い目安額{web ? '（Web版）' : ''}</h1>
             <button className="ot-btn sm" onClick={noop}>回線紐づけ</button>
             <button className="ot-btn sm" onClick={noop}>お支払い目安額(固定)</button>
             <button className="ot-btn sm" onClick={noop}>サマリ表示 <b className="ot-badge">1</b></button>
@@ -210,7 +216,7 @@ export default function Payment({ onClose, onMultitask, config }) {
               <button className="ot-btn sm" onClick={copyEst}><Tool d="copy" />コピー</button>
               <button className="ot-btn icon" onClick={noop} aria-label="保存"><Tool d="up" /></button>
               <button className="ot-btn icon" onClick={noop} aria-label="読込"><Tool d="down" /></button>
-              <button className="ot-btn icon" onClick={() => { setLayout(true); form.closeKp(); setDlg(null); setPlanDlg(false); }} aria-label="レイアウト"><Tool d="pen" /></button>
+              {!web && <button className="ot-btn icon" onClick={() => { setLayout(true); form.closeKp(); setDlg(null); setPlanDlg(false); }} aria-label="レイアウト"><Tool d="pen" /></button>}
               <button className="ot-btn icon" onClick={noop} aria-label="グラフ"><Tool d="chart" /></button>
               <button className="ot-btn icon" onClick={noop} aria-label="ヘルプ"><Tool d="q" /></button>
               <button className="ot-btn icon" onClick={() => setAskDelete(true)} aria-label="このタブを削除"><Tool d="re" /></button>

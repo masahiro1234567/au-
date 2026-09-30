@@ -5,6 +5,7 @@ import Identity from './Identity.jsx';
 import Payment from './Payment.jsx';
 import AreaSearch from './AreaSearch.jsx';
 import DenkiInquiry from './DenkiInquiry.jsx';
+import { Wallpaper, LockScreen, Passcode, HomeScreen, Browser } from './IPad.jsx';
 
 const W = 1024, H = 768;
 const TITLES = { portal: 'ポータルメニュー', identity: 'お客様照会', payment: 'お支払い目安額', area: 'エリア検索', denki: 'auでんき契約照会' };
@@ -116,6 +117,10 @@ export default function OreTab({ onExit, payConfig }) {
   const [multi, setMulti] = useState(false);
   const toast = useToast();
   const [stageEl, setStageEl] = useState(null);
+  // iPadの画面：lock（ロック画面）→ pass（パスコード）→ home（ホーム画面）→ app（オレタブ）／ browser（ブラウザ）
+  const [ip, setIp] = useState('lock');
+  // オレタブを閉じる（ポータルのログアウト）と、開いていた画面と入力はリセットしてホーム画面へ
+  const closeOreTab = () => { setOpen([]); setActive('portal'); setMulti(false); setIp('home'); };
 
   const openScreen = (k) => { setOpen((o) => (o.includes(k) ? o : [...o, k])); setActive(k); setMulti(false); };
   const closeScreen = (k) => { setOpen((o) => o.filter((x) => x !== k)); setActive((a) => (a === k ? 'portal' : a)); };
@@ -150,8 +155,19 @@ export default function OreTab({ onExit, payConfig }) {
     <div className="ot-viewport">
       <div className="ot-stage" style={stageStyle} ref={setStageEl}>
         <StageContext.Provider value={stageEl}>
+        {ip !== 'app' && (
+          <div className="ip-root">
+            <Wallpaper />
+            {ip === 'lock' && <LockScreen onUnlock={() => setIp('pass')} />}
+            {ip === 'pass' && <Passcode onOk={() => setIp('home')} onCancel={() => setIp('lock')} />}
+            {ip === 'home' && <HomeScreen onOpenOreTab={() => setIp('app')} onOpenBrowser={() => setIp('browser')} onLock={() => setIp('lock')}
+              onExit={() => { exitLandscape(); onExit(); }} say={toast.say} />}
+            {ip === 'browser' && <Browser config={payConfig} onClose={() => setIp('home')} say={toast.say} />}
+          </div>
+        )}
+        {ip === 'app' && <>
         <div className="ot-layer-screen" style={layerStyle('portal')}>
-          <Portal onOpen={openScreen} onMultitask={() => setMulti(true)} onLogout={() => { exitLandscape(); onExit(); }} say={toast.say} />
+          <Portal onOpen={openScreen} onMultitask={() => setMulti(true)} onLogout={closeOreTab} say={toast.say} />
         </div>
         {open.map((k) => {
           const C = SCREENS[k];
@@ -181,6 +197,7 @@ export default function OreTab({ onExit, payConfig }) {
             style={{ left: pos[k].x, top: pos[k].y, width: TW, height: TH, borderColor: active === k ? '#ff6600' : '#e0d6cc' }}
             onClick={() => { setActive(k); setMulti(false); }} />
         ))}
+        </>}
         <Toast msg={toast.msg} />
         </StageContext.Provider>
       </div>
