@@ -15,13 +15,14 @@ function SummaryTab({ results }) {
   const entries = useMemo(() => {
     const users = {};
     Object.values(results || {}).forEach((r) => {
-      if (!users[r.userId]) {
-        users[r.userId] = {
+      const uk = String(r.userName || r.userId || '').normalize('NFKC').replace(/[\s　]/g, '');
+      if (!users[uk]) {
+        users[uk] = {
           name: r.userName, email: r.userEmail || '', pos: r.userPos || '', cr: r.userCloserRank || '',
           off: { ts: 0, tq: 0, tc: 0 }, pra: { ts: 0, tq: 0, tc: 0 }, mistakes: {},
         };
       }
-      const u = users[r.userId];
+      const u = users[uk];
       const m = r.mode === 'official' ? u.off : u.pra;
       m.tc++; m.ts += r.score; m.tq += r.total;
       (r.detail || []).forEach((d) => { if (!d.correct) u.mistakes[d.name] = (u.mistakes[d.name] || 0) + 1; });
@@ -29,11 +30,19 @@ function SummaryTab({ results }) {
     return Object.values(users);
   }, [results]);
 
-  if (!entries.length) return <div className="tc ts" style={{ padding: 40 }}>データなし</div>;
+  const resetAll = async () => {
+    if (!window.confirm('テストの記録をすべて消して、今日から記録し直します。\nサマリー・テストログ・メンバー進捗・ランキングの「テスト」「進捗」がすべて0から始まります。よろしいですか？')) return;
+    if (!window.confirm('この操作は戻せません。本当にリセットしますか？')) return;
+    await dbRemove('test_results');
+    await dbSet('admin_flags/testResetAt', Date.now());
+    showToast('テストの記録をリセットしました');
+  };
+  const resetBtn = <button className="btn-ghost" style={{ color: '#b91c1c', borderColor: '#fecaca' }} onClick={resetAll}>テストの記録をすべてリセット</button>;
+  if (!entries.length) return <div className="tc ts" style={{ padding: 40 }}>データなし（テストの記録はまだありません）</div>;
 
   return (
     <div>
-      <div className="section-title">メンバー別成績サマリー</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><div className="section-title" style={{ flex: 1, margin: 0 }}>メンバー別成績サマリー</div>{resetBtn}</div>
       {entries.map((u, i) => {
         const opct = u.off.tq > 0 ? Math.round((u.off.ts / u.off.tq) * 100) : null;
         const ppct = u.pra.tq > 0 ? Math.round((u.pra.ts / u.pra.tq) * 100) : null;

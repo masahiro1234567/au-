@@ -186,6 +186,7 @@ function useIsMobile() {
 }
 
 function AdminKpiTab() {
+  const navigate = useNavigate();
   const { data: kpiData } = useFirebaseList('fp_kpi');
   const { data: fpUsers } = useFirebaseList('fp_users');
   const showToast = useToast();
@@ -339,6 +340,7 @@ function AdminKpiTab() {
   const overallNum = +editing?.overallTarget || 0;
   const remaining = overallNum - totalAssigned;
   const remainColor = remaining === 0 ? 'var(--green)' : remaining < 0 ? 'var(--red)' : 'var(--orange)';
+      <button className="btn btn-outline" style={{ marginBottom: 10 }} onClick={() => navigate('/kpi')}>実績の確認・修正（KPIの画面を開く）</button>
 
   // キャッチャー除外の合計計算（1日分）
   function calcDayTotal(date) {

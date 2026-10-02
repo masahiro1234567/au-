@@ -3,7 +3,7 @@ import { useDbCollection, dbSet } from '../useFirebase.js';
 import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
 import { showToast } from '../utils.js';
 import { parseBook, RANK_STYLE, RANKS5, normName } from '../evalSheets.js';
-import { PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS } from './EvalEditors.jsx';
+import { PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS, WorkList, SelfTable } from './EvalEditors.jsx';
 import { dbPush, dbUpdateMany } from '../useFirebase.js';
 
 // ===== 評価一覧（Googleスプレッドシートを読み取って表示）=====
@@ -14,7 +14,7 @@ const GRADE_ORDER = ['S', 'A', 'B', 'C', 'R'];
 const idOf = (v) => { const m = String(v || '').match(/\/d\/([A-Za-z0-9_-]{20,})/); return m ? m[1] : String(v || '').trim(); };
 
 // 不可は「不可」と書かずに、文字なしのグレーにする（label を付けたときだけ文字を出す：評価基準の説明など）
-const Rank = ({ v, big, label }) => {
+export const Rank = ({ v, big, label }) => {
   const st = RANK_STYLE[v];
   if (!st) return <span className="ev-plain">{v || '－'}</span>;
   const blank = v === '不可' && !label;
@@ -26,7 +26,7 @@ const rateColor = (v) => { const n = parseFloat(String(v).replace('%', '')); if 
 // 個人の目標（例：クローズを秀に／達成条件：個人ディレクター達成率75%）。本人と管理者がこの画面で書き込める
 // 保存先：eval_goals/{名前のキー} = [{ item, rank, cond }]（書き込みがなければスプレッドシートの内容を出す）
 const GOAL_ITEMS = ['キャッチ', 'クローズ', 'ディレクション'];
-function GoalEditor({ person, saved, canEdit }) {
+export function GoalEditor({ person, saved, canEdit }) {
   const base = saved ? (Array.isArray(saved) ? saved : Object.values(saved)) : person.goalsSheet || [];
   const [edit, setEdit] = useState(null);
   const list = (edit || base).filter(Boolean);
@@ -79,6 +79,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
   const [goals] = useDbCollection('eval_goals');
   const [cfg] = useDbCollection('eval_config');
   const { data: fpUsers } = useFirebaseList('fp_users');
+  const { data: kpiData } = useFirebaseList('fp_kpi');
   const sheetId = (cfg && cfg.sheetId) || '';
   const [sheetBook, setSheetBook] = useState(null);
   const [evalData] = useDbCollection('eval_data');
@@ -255,7 +256,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
   const canAdd = Object.values(fpUsers || {}).filter((u) => u && u.name && u.permission !== 'pending' && !people.some((p) => p.key === normName(u.name))).map((u) => u.name).sort((a, b) => a.localeCompare(b, 'ja'));
 
   const tabs = [
-    book && book.summary && ['summary', '評価サマリ'],
+    book && people.length > 0 && ['summary', '評価サマリ'],
     book && book.persons.length > 0 && ['person', '個人別'],
     book && book.kpi && ['kpi', '月次KPI'],
     book && book.standard && ['standard', '評価基準'],
@@ -293,7 +294,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
             <button className="ev-btn" onClick={() => exportCsv('summary')}>CSV（サマリ）</button>
             <button className="ev-btn" onClick={() => exportCsv('skills')}>CSV（スキル評価）</button>
             <button className="ev-btn" onClick={() => setShowHist(!showHist)}>変更履歴</button>
-            <button className="btn-ghost" onClick={() => setShowSetting(!showSetting)}>スプレッドシートの設定</button>
+            {!appMode && <button className="btn-ghost" onClick={() => setShowSetting(!showSetting)}>スプレッドシートの設定</button>}
           </div>
         )}
         {isAdmin && adding && (
@@ -312,7 +313,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
             {!Object.keys(history || {}).length && <div className="ev-note">まだ変更はありません</div>}
           </div>
         )}
-        {(showSetting || (!sheetId && isAdmin && !appMode)) && isAdmin && (
+        {!appMode && (showSetting || !sheetId) && isAdmin && (
           <div className="ev-card">
             <div className="ev-h">スプレッドシートを登録</div>
             <div className="ev-note">評価一覧のスプレッドシートのURLを貼り付けてください。スプレッドシートの共有に、読み取り用のアカウント（サービスアカウント）を「閲覧者」で追加しておく必要があります。{sheetId && `　今の登録：…${sheetId.slice(-8)}`}</div>
@@ -374,8 +375,10 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                           </div>
                         )}
                         {p.info && (p.info.kana || p.info.start) && <div className="ev-sub" style={{ marginBottom: 6 }}>{[p.info.kana, p.info.start && `稼働開始 ${p.info.start}`].filter(Boolean).join('・')}</div>}
-                        {p.person && <GoalEditor key={p.key} person={p.person} saved={(goals || {})[p.key]} canEdit={isAdmin || (!!user && normName(user.name) === p.key)} />}
-                        {p.reviews.length > 0 && (<><div className="ev-h">具体評価</div>
+                        {p.person && <GoalEditor key={p.key} person={p.person} saved={(goals || {})[p.key]} canEdit={!isAdmin && !!user && normName(user.name) === p.key} />}
+                        {p.person && appMode ? (
+                          <WorkList person={p.person} isAdmin={isAdmin} kpiData={kpiData} userName={user && user.name} legacy={p.reviews} />
+                        ) : p.reviews.length > 0 && (<><div className="ev-h">具体評価</div>
                           {p.reviews.map((x) => <div key={x.label} className="ev-review"><small>{x.label}{x.store ? `（${x.store}）` : ''}</small>{x.text && <p>{x.text}</p>}</div>)}</>)}
                         {p.secs.map((sec) => {
                           const k = p.key + '|' + sec.name, so = !!openSec[k];
@@ -396,7 +399,9 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                             </div>
                           );
                         })}
-                        {p.person && [['目標設定', p.person.goals], ['具体的アクションプラン', p.person.actions], ['月次振り返り / 1on1ログ', p.person.logs]].filter(([, tb]) => tb.rows.length).map(([title, tb]) => {
+                        {p.person && appMode && <SelfTable person={p.person} field="goals" title="目標設定" canEdit={!isAdmin && !!user && normName(user.name) === p.key} />}
+                        {p.person && appMode && <SelfTable person={p.person} field="actions" title="具体的アクションプラン" canEdit={!isAdmin && !!user && normName(user.name) === p.key} />}
+                        {p.person && (appMode ? [['月次振り返り / 1on1ログ', p.person.logs]] : [['目標設定', p.person.goals], ['具体的アクションプラン', p.person.actions], ['月次振り返り / 1on1ログ', p.person.logs]]).filter(([, tb]) => tb.rows.length).map(([title, tb]) => {
                           const k = p.key + '|' + title, so = !!openSec[k];
                           return (
                             <div key={title} className="ev-secbox">

@@ -102,6 +102,32 @@ export default function Kpi() {
   const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
   const mdLabel = (dt) => { const [, mo, da] = String(dt).split('-').map(Number); return `${mo}/${da}（${dowLabel(dt).replace('曜日', '')}）`; };
   const [myIdx, setMyIdx] = useState(0);
+  // ---- ディレクターが自社メンバーでない日は、各メンバーが自分の実績を入力する ----
+  const { data: fpActual } = useFirebaseList('fp_kpi_fp'); // その日のFP全体の獲得件数（日報が無い日用）
+  const [drafts, setDrafts] = useState({});
+  const ours = (name) => !!name && name !== '他社' && [...registeredNames].some((r) => nn(r) === nn(name));
+  const selfMode = (ms) => !ms.some((m) => m.role === 'ディレクター' && ours(m.member));
+  const saveMine = async (kid, dt, mi, m) => {
+    const k = `${kid}_${dt}_${mi}`;
+    const v = drafts[k];
+    if (v === undefined || v === '') return showToast('実績件数を入力してください');
+    const target = +(m.role === 'キャッチャー' ? (m.catcherCount || m.target) : m.target) || 0;
+    const actual = +v || 0;
+    await set(ref(db, `fp_kpi_results/${resultKey(kid, dt, mi)}`), {
+      kpiId: kid, date: dt, memberIndex: mi, memberName: m.member, role: m.role, target, actual,
+      ach: target > 0 ? Math.round((actual / target) * 100) : 0, store: kpiData[kid]?.store || '', channel: kpiData[kid]?.channel || '',
+      selfEntered: true, enteredBy: user?.name || '', updatedAt: Date.now(),
+    });
+    setDrafts((d) => { const x = { ...d }; delete x[k]; return x; });
+    showToast('実績を保存しました');
+  };
+  const saveFp = async (kid, dt) => {
+    const k = `fp_${kid}_${dt}`;
+    if (drafts[k] === undefined) return;
+    await set(ref(db, `fp_kpi_fp/${kid}_${dt}`), { value: +drafts[k] || 0, by: user?.name || '', at: Date.now() });
+    setDrafts((d) => { const x = { ...d }; delete x[k]; return x; });
+    showToast('FP全体の獲得件数を保存しました');
+  };
   const myDays = useMemo(() => {
     const out = [];
     Object.entries(kpiData || {}).forEach(([kid, k]) => (k.dates || []).forEach((dt) => {
@@ -114,6 +140,17 @@ export default function Kpi() {
     }));
     return out.sort((a, b) => (a.dt > b.dt ? 1 : -1)).slice(0, 6);
   }, [kpiData, user && user.name, todayStr]);
+
+  const myPending = useMemo(() => {
+    const out = [];
+    Object.entries(kpiData || {}).forEach(([kid, k]) => (k.dates || []).forEach((dt) => {
+      if (dt > todayStr) return;
+      const ms = (k.dateMembers && k.dateMembers[dt]) || [];
+      if (!selfMode(ms)) return;
+      ms.forEach((m, mi) => { if (isMe(m.member) && !getSavedResult(kpiResults, kid, dt, mi, m.member, m.role)) out.push({ kid, dt, store: k.store }); });
+    }));
+    return out.sort((a, b) => (a.dt < b.dt ? 1 : -1));
+  }, [kpiData, kpiResults, registeredNames, user && user.name, todayStr]);
 
   const cards = useMemo(() => {
     return Object.entries(kpiData)
@@ -261,6 +298,15 @@ export default function Kpi() {
         );
       })()}
 
+      {myPending.length > 0 && (
+        <div className="np-warn" style={{ marginBottom: 12 }}>
+          <b>実績が未入力の日があります</b>
+          <span style={{ fontWeight: 500 }}>ディレクターが自社メンバーでない日は、自分の実績を自分で入力してください</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+            {myPending.map((x) => <button key={x.kid + x.dt} className="fchip" onClick={() => { setPickerVal(null); setOpenIds((prev) => ({ ...prev, [x.kid]: true })); }}>{mdLabel(x.dt)} {x.store}</button>)}
+          </div>
+        </div>
+      )}
       <MonthPicker value={pickerVal} onChange={setPickerVal} />
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <select className="inp" style={{ flex: '0 0 auto', width: 'auto', padding: '8px 10px', fontSize: '.84rem' }}
@@ -290,7 +336,23 @@ export default function Kpi() {
                   const fp = ms.filter((m) => m.role !== 'キャッチャー').reduce((a, m) => a + (+m.target || 0), 0);
                   return (
                     <div key={dt}>
-                      <div className="kp-day"><b>{mdLabel(dt)}</b><span>FP全体 <strong>{fp}件</strong></span></div>
+                      <div className="kp-day"><b>{mdLabel(dt)}</b><span>FP全体 目標 <strong>{fp}件</strong></span></div>
+                      {selfMode(ms) && dt <= todayStr && (() => {
+                        const canFp = isAdmin || ms.some((m) => isMe(m.member));
+                        const fk = `fp_${id}_${dt}`;
+                        const cur = (fpActual || {})[`${id}_${dt}`];
+                        return (
+                          <div className="kp-self">
+                            <span>ディレクターが自社メンバーでない日です。各自で自分の実績を入力してください</span>
+                            <div className="kp-self-fp">FP全体の獲得
+                              {canFp ? (<>
+                                <input className="inp" inputMode="numeric" value={drafts[fk] ?? (cur ? cur.value : '')} onChange={(e) => setDrafts({ ...drafts, [fk]: e.target.value.replace(/[^0-9]/g, '') })} aria-label="FP全体の獲得件数" />件
+                                {drafts[fk] !== undefined && <button className="fchip active" onClick={() => saveFp(id, dt)}>保存</button>}
+                              </>) : <b>{cur ? `${cur.value}件` : '未入力'}</b>}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {ms.map((m, mi) => {
                         const cat = m.role === 'キャッチャー';
                         const target = cat ? (m.catcherCount || m.target) : m.target;
@@ -301,6 +363,15 @@ export default function Kpi() {
                             <span className="kp-grow" style={{ fontWeight: me ? 900 : 500 }}>{me ? 'あなた' : (m.member || '－')}</span>
                             <span className={`kp-role ${m.member === '他社' ? 'oth' : ROLE_CLS[m.role] || ''}`}>{ROLE_SHORT[m.role] || m.role}</span>
                             <b className="kp-t">{res && res.actual !== undefined && res.actual !== '' ? <small>{res.actual}/</small> : null}{target || 0}<small>{cat ? '組' : '件'}</small></b>
+                            {selfMode(ms) && dt <= todayStr && (me || isAdmin) && m.member !== '他社' && (() => {
+                              const dk = `${id}_${dt}_${mi}`;
+                              return (
+                                <span className="kp-in">
+                                  <input className="inp" inputMode="numeric" placeholder="実績" value={drafts[dk] ?? (res && res.actual !== undefined ? String(res.actual) : '')} onChange={(e) => setDrafts({ ...drafts, [dk]: e.target.value.replace(/[^0-9]/g, '') })} aria-label={`${me ? '自分' : m.member}の実績件数`} />
+                                  {drafts[dk] !== undefined && <button className="fchip active" onClick={() => saveMine(id, dt, mi, m)}>保存</button>}
+                                </span>
+                              );
+                            })()}
                           </div>
                         );
                       })}

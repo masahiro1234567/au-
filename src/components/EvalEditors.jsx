@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { dbSet, dbPush } from '../useFirebase.js';
+import { dbSet, dbPush, dbRemove, dbUpdateMany } from '../useFirebase.js';
 import { showToast } from '../utils.js';
 import { RANKS5 } from '../evalSheets.js';
 
@@ -21,6 +21,9 @@ export function normPerson(p) {
     info: p.info || { name: p.name || '' },
     totals: arr(p.totals), goalsSheet: arr(p.goalsSheet), skills: arr(p.skills), reviews: arr(p.reviews),
     goals: tb(p.goals, GOAL_HEADS), actions: tb(p.actions, ACTION_HEADS), logs: tb(p.logs, LOG_HEADS),
+    // 稼働評価：1件ずつ残す（新しい順）。まだ無い人は、取り込んだ「具体評価」を表示用に使う
+    works: Object.entries(p.works || {}).filter(([, w]) => w).map(([id, w]) => ({ id, ...w })).sort((a, b) => (b.sortKey || b.at || 0) - (a.sortKey || a.at || 0)),
+    rankLog: Object.values(p.rankLog || {}).filter(Boolean).sort((a, b) => (b.at || 0) - (a.at || 0)),
   };
 }
 // 新しく追加するメンバーの、ひな形（スキル評価の項目は、今いる人の項目をそのまま使う）
@@ -54,9 +57,26 @@ function diffSummary(a, b) {
   if (JSON.stringify(a.info) !== JSON.stringify(b.info)) out.push('基本情報');
   return out.length ? out : ['変更なし'];
 }
+function rankChanges(a, b) {
+  const out = [];
+  TOTAL_LABELS.forEach((l) => {
+    const x = (arr(a && a.totals).find((t) => t.label === l) || {}).rank || '', y = (arr(b.totals).find((t) => t.label === l) || {}).rank || '';
+    if (x !== y && y) out.push(`総合（${l}）：${x || '－'}→${y}`);
+  });
+  arr(b.skills).forEach((s) => {
+    const o = arr(a && a.skills).find((x) => x.item === s.item && x.section === s.section);
+    if (o && o.rank !== s.rank && s.rank) out.push(`${s.item}：${o.rank || '－'}→${s.rank}`);
+  });
+  return out;
+}
 export async function savePerson(before, after, userName) {
-  const data = { ...clone(after), updatedAt: Date.now(), updatedBy: userName || '管理者' };
-  await dbSet(`eval_data/persons/${after.key}`, data);
+  // 稼働評価・本人が書く欄（目標設定・アクションプラン）・ランクの記録は、ここでは上書きしない
+  const { works, rankLog, goals, actions, ...rest } = clone(after);
+  const data = { ...rest, updatedAt: Date.now(), updatedBy: userName || '管理者' };
+  const up = {};
+  Object.entries(data).forEach(([k, v]) => { up[`eval_data/persons/${after.key}/${k}`] = v; });
+  await dbUpdateMany(up);
+  for (const text of rankChanges(before, after)) await dbPush(`eval_data/persons/${after.key}/rankLog`, { at: Date.now(), by: userName || '管理者', text });
   await dbPush('eval_history', { key: after.key, name: after.info.name, by: userName || '管理者', at: Date.now(), summary: diffSummary(before, after).slice(0, 12).join('、') });
 }
 
@@ -101,12 +121,6 @@ export function PersonEditor({ person, userName, onDone }) {
     if (!window.confirm('今のランクを「前回ランク」に移して、新しい評価を付け始めます。よろしいですか？')) return;
     up({ skills: d.skills.map((s) => ({ ...s, prev: s.rank || s.prev, rank: '' })) });
   };
-  // 新しい「直近の評価」を追加（直近→前回→前々回にずれる）
-  const addReview = () => {
-    const old = d.reviews;
-    const labels = ['直近の評価', '前回の評価', '前々回の評価'];
-    up({ reviews: [{ label: labels[0], store: '', text: '' }, ...old.slice(0, 2).map((r, i) => ({ ...r, label: labels[i + 1] }))] });
-  };
   const sections = [...new Set(d.skills.map((s) => s.section || 'その他'))];
   const save = async () => {
     setSaving(true);
@@ -130,16 +144,6 @@ export function PersonEditor({ person, userName, onDone }) {
         </div>
       </div>
       <div className="ev-edit-block">
-        <div className="ev-h" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>具体評価<span style={{ flex: 1 }} /><button className="ev-btn" onClick={addReview}>＋ 新しい評価を追加</button></div>
-        {d.reviews.map((r, i) => (
-          <div key={i} className="ev-edit-review">
-            <b>{r.label}</b>
-            <input className="ev-inp" value={r.store || ''} placeholder="店舗名" onChange={(e) => up({ reviews: d.reviews.map((x, j) => (j === i ? { ...x, store: e.target.value } : x)) })} />
-            <textarea className="ev-inp ev-ta" rows={3} value={r.text || ''} placeholder="評価の内容" onChange={(e) => up({ reviews: d.reviews.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)) })} />
-          </div>
-        ))}
-      </div>
-      <div className="ev-edit-block">
         <div className="ev-h" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>スキル評価<span style={{ flex: 1 }} /><button className="ev-btn" onClick={rollSkills}>今のランクを前回に移す</button></div>
         {sections.map((sec) => (
           <div key={sec}>
@@ -154,8 +158,6 @@ export function PersonEditor({ person, userName, onDone }) {
           </div>
         ))}
       </div>
-      <TableEdit title="目標設定" table={d.goals} onChange={(t) => up({ goals: t })} />
-      <TableEdit title="具体的アクションプラン" table={d.actions} onChange={(t) => up({ actions: t })} />
       <TableEdit title="月次振り返り / 1on1ログ" table={d.logs} onChange={(t) => up({ logs: t })} />
       <div className="ev-edit-foot">
         <button className="ev-btn" onClick={onDone}>キャンセル</button>
@@ -238,4 +240,130 @@ export function downloadCsv(filename, rows) {
   const a = document.createElement('a');
   a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+
+// ===== 本人が書く欄（目標設定・アクションプラン）=====
+// 本人だけが書ける（管理者は見るだけ）。保存先：eval_data/persons/{キー}/goals ・ /actions
+export function SelfTable({ person, field, title, canEdit }) {
+  const table = person[field] || { heads: [], rows: [] };
+  const [edit, setEdit] = useState(null);
+  const heads = table.heads.length ? table.heads : field === 'goals' ? GOAL_HEADS : ACTION_HEADS;
+  const rows = (table.rows || []).filter((r) => Object.values(r || {}).some(Boolean));
+  if (!rows.length && !canEdit) return null;
+  const save = async () => {
+    await dbSet(`eval_data/persons/${person.key}/${field}`, { heads, rows: (edit.rows || []).filter((r) => Object.values(r).some(Boolean)) });
+    setEdit(null); showToast('保存しました');
+  };
+  return (
+    <div className="ev-secbox">
+      <div className="ev-secbtn" style={{ cursor: 'default' }}><b>{title}</b>{canEdit && !edit && <button className="ev-btn" onClick={() => setEdit({ heads, rows: rows.length ? rows : [Object.fromEntries(heads.map((h) => [h, '']))] })}>書く・直す</button>}</div>
+      {edit ? (
+        <div style={{ padding: '0 12px 10px' }}>
+          <TableEdit title="" table={edit} onChange={setEdit} />
+          <div className="ev-edit-foot"><button className="ev-btn" onClick={() => setEdit(null)}>キャンセル</button><button className="ev-btn p" onClick={save}>保存</button></div>
+        </div>
+      ) : (
+        rows.map((row, i) => (
+          <div key={i} className="ev-goal">{heads.filter((h) => !/^No\.?$/i.test(h) && row[h]).map((h, j) => <div key={h} className={j === 0 ? 'first' : ''}><small>{h}</small><span>{row[h]}</span></div>)}</div>
+        ))
+      )}
+    </div>
+  );
+}
+
+// ===== 稼働評価（店舗管理者からの評価）=====
+// 管理者だけが記入・編集・削除。最初は新しい3件、「以前の評価を見る」で全部
+const DOWS = ['日', '月', '火', '水', '木', '金', '土'];
+const mdLabel = (dt) => { const [y, m, d] = String(dt).split('-').map(Number); if (!y) return dt || ''; return `${m}/${d}（${DOWS[new Date(y, m - 1, d).getDay()]}）`; };
+const nn = (x) => String(x || '').normalize('NFKC').replace(/[\s　]/g, '');
+// KPIで、このメンバーが最後に稼働した週（今日より前で一番新しい日の、月曜〜日曜）の現場
+export function lastWeekSites(kpiData, personKey) {
+  const today = new Date(); const t = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const all = [];
+  Object.values(kpiData || {}).forEach((k) => (k && k.dates || []).forEach((dt) => {
+    if (dt >= t) return;
+    const ms = (k.dateMembers && k.dateMembers[dt]) || [];
+    if (ms.some((m) => m && nn(m.member) === personKey)) all.push({ date: dt, store: k.store || '' });
+  }));
+  if (!all.length) return [];
+  all.sort((a, b) => (a.date < b.date ? 1 : -1));
+  const last = new Date(all[0].date + 'T00:00:00');
+  const mon = new Date(last); mon.setDate(last.getDate() - ((last.getDay() + 6) % 7));
+  const ms = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, '0')}-${String(mon.getDate()).padStart(2, '0')}`;
+  const seen = new Set();
+  return all.filter((x) => x.date >= ms && x.date <= all[0].date).sort((a, b) => (a.date > b.date ? 1 : -1))
+    .filter((x) => { const k = x.date + x.store; if (seen.has(k)) return false; seen.add(k); return true; });
+}
+export function WorkList({ person, isAdmin, kpiData, userName, legacy }) {
+  const [more, setMore] = useState(false);
+  const [adding, setAdding] = useState(null); // { picks: [...], manual: [...] }
+  const [editId, setEditId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const works = person.works.length ? person.works : (legacy || []).map((r, i) => ({ id: 'legacy' + i, legacy: true, dateLabel: r.label, store: r.store, text: r.text }));
+  const shown = more ? works : works.slice(0, 3);
+  const fmt = (t) => { if (!t) return ''; const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  const sugs = isAdmin ? lastWeekSites(kpiData, person.key) : [];
+  const start = () => setAdding({ forms: sugs.map((x) => ({ on: true, date: x.date, store: x.store, text: '' })), manual: [] });
+  const save = async () => {
+    const list = [...adding.forms.filter((f) => f.on), ...adding.manual].filter((f) => f.store || f.text);
+    if (!list.length) return showToast('書く現場を選ぶか、入力してください');
+    for (const f of list) {
+      await dbPush(`eval_data/persons/${person.key}/works`, { date: f.date || '', store: f.store || '', text: f.text || '', at: Date.now(), by: userName || '管理者', sortKey: f.date ? new Date(f.date + 'T00:00:00').getTime() : Date.now() });
+    }
+    await dbPush('eval_history', { key: person.key, name: person.info.name, by: userName || '管理者', at: Date.now(), summary: `稼働評価を${list.length}件追加` });
+    setAdding(null); showToast(`${list.length}件を保存しました`);
+  };
+  const setF = (grp, i, k, v) => setAdding({ ...adding, [grp]: adding[grp].map((f, j) => (j === i ? { ...f, [k]: v } : f)) });
+  const FormBox = ({ f, grp, i }) => (
+    <div className="ev-card" style={{ padding: 12, marginBottom: 6 }}>
+      <div className="ev-edit-grid" style={{ gridTemplateColumns: '160px 1fr' }}>
+        <label><small>稼働日</small><input className="ev-inp" type="date" value={f.date} onChange={(e) => setF(grp, i, 'date', e.target.value)} /></label>
+        <label><small>稼働店舗</small><input className="ev-inp" value={f.store} placeholder="店舗名" onChange={(e) => setF(grp, i, 'store', e.target.value)} /></label>
+      </div>
+      <label className="ev-edit-review" style={{ borderTop: 'none', paddingBottom: 0 }}><small>店舗管理者からの評価</small><textarea className="ev-inp ev-ta" rows={3} value={f.text} placeholder="評価の内容" onChange={(e) => setF(grp, i, 'text', e.target.value)} /></label>
+    </div>
+  );
+  return (
+    <div>
+      <div className="ev-h" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>稼働評価<span style={{ flex: 1 }} />{isAdmin && !adding && <button className="ev-btn p" onClick={start}>＋ 稼働評価を追加</button>}</div>
+      {adding && (
+        <div className="ev-addbox">
+          <b style={{ fontSize: '.8rem' }}>最後に稼働した週の現場（KPIから）</b>
+          <div className="ev-note">今日より前で、このメンバーがKPIに入っている一番新しい週です。書く現場にチェックを入れてください（1件だけでもOK）</div>
+          {!sugs.length && <div className="ev-note">KPIに登録された稼働が見つかりませんでした。下の「店舗を手で入力して追加」から書いてください</div>}
+          {adding.forms.map((f, i) => (
+            <div key={'s' + i}>
+              <button className={`ev-sug ${f.on ? 'on' : ''}`} onClick={() => setF('forms', i, 'on', !f.on)}><i />{mdLabel(sugs[i].date)}<b>{sugs[i].store}</b></button>
+              {f.on && FormBox({ f, grp: 'forms', i })}
+            </div>
+          ))}
+          {adding.manual.map((f, i) => <div key={'m' + i}>{FormBox({ f, grp: 'manual', i })}</div>)}
+          <button className="ev-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setAdding({ ...adding, manual: [...adding.manual, { date: '', store: '', text: '' }] })}>＋ 店舗を手で入力して追加</button>
+          <div className="ev-edit-foot" style={{ background: 'transparent' }}><button className="ev-btn" onClick={() => setAdding(null)}>キャンセル</button><button className="ev-btn p" onClick={save}>{adding.forms.filter((f) => f.on).length + adding.manual.length}件を保存</button></div>
+        </div>
+      )}
+      {!works.length && !adding && <div className="ev-note">まだ稼働評価はありません</div>}
+      {shown.map((w) => (
+        <div key={w.id} className="ev-review">
+          <div className="ev-work-h">
+            <span className="ev-chip">{w.legacy ? w.dateLabel : mdLabel(w.date)}</span><b>{w.store || '店舗未記入'}</b>
+            {!w.legacy && <span className="ev-sub" style={{ marginLeft: 'auto' }}>記入 {fmt(w.at)}{w.by ? `・${w.by}` : ''}</span>}
+            {isAdmin && !w.legacy && editId !== w.id && <>
+              <button className="ev-btn" onClick={() => { setEditId(w.id); setEditText(w.text || ''); }}>編集</button>
+              <button className="ev-btn" style={{ color: '#b91c1c' }} onClick={async () => { if (window.confirm('この稼働評価を削除します。よろしいですか？')) { await dbRemove(`eval_data/persons/${person.key}/works/${w.id}`); showToast('削除しました'); } }}>削除</button>
+            </>}
+          </div>
+          {editId === w.id ? (
+            <div style={{ marginTop: 6 }}>
+              <textarea className="ev-inp ev-ta" rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} />
+              <div className="ev-edit-foot" style={{ background: 'transparent' }}><button className="ev-btn" onClick={() => setEditId(null)}>キャンセル</button>
+                <button className="ev-btn p" onClick={async () => { await dbSet(`eval_data/persons/${person.key}/works/${w.id}/text`, editText); setEditId(null); showToast('保存しました'); }}>保存</button></div>
+            </div>
+          ) : w.text && <p>{w.text}</p>}
+        </div>
+      ))}
+      {works.length > 3 && <button className="ev-btn" style={{ marginTop: 6 }} onClick={() => setMore(!more)}>{more ? '新しい3件だけにする' : `以前の評価を見る（ほか${works.length - 3}件）`}</button>}
+    </div>
+  );
 }

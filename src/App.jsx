@@ -24,6 +24,7 @@ import Glossary from './components/Glossary.jsx';
 import Login from './components/Login.jsx';
 import TestHome from './components/TestHome.jsx';
 import EvalPage from './components/EvalPage.jsx';
+import MyPage from './components/MyPage.jsx';
 import Quiz from './components/Quiz.jsx';
 import Result from './components/Result.jsx';
 import AdminLogin from './components/AdminLogin.jsx';
@@ -148,6 +149,7 @@ export default function App() {
       onResumeDraft={(d) => { setNpStart(draftPath(d)); setPage('nippou'); }}
       onGoKpi={() => { setNpStart('/kpi'); setPage('nippou'); }}
       onGoEval={() => setPage('eval')}
+      onGoMyPage={() => setPage('mypage')}
       onLogout={handleLogout}
       onAdminLogin={() => setPage('admin-login')}
     />
@@ -164,6 +166,9 @@ export default function App() {
           <OreTab onExit={() => setPage('home')} payConfig={payConfig} />
         </Suspense>
       );
+      break;
+    case 'mypage':
+      content = <MyPage user={testUser} onBack={() => setPage('home')} onGoKpi={() => { setNpStart('/kpi'); setPage('nippou'); }} />;
       break;
     case 'eval':
       content = <EvalPage isAdmin={false} user={testUser} onBack={() => setPage('home')} />;

@@ -66,6 +66,7 @@ export function NippouAdmin({ user }) {
               <Route path="/report/frame/:id" element={<FrameForm />} />
               <Route path="/frames/:id" element={<FrameDetail />} />
               <Route path="/results/:id" element={<MemberResults />} />
+              <Route path="/kpi" element={<Kpi />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </MemoryRouter>

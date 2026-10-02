@@ -9,6 +9,7 @@ const ICONS = {
   pen: <><path d="M5 4h10l4 4v12H5z" {...S} /><path d="M9 12h6M9 16h4" {...S} /></>,
   check: <path d="M4 12l5 5L20 6" {...S} />,
   chart: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" {...S} /></>,
+  user: <><circle cx="12" cy="8" r="4" {...S} /><path d="M4 21c1-4.5 4-7 8-7s7 2.5 8 7" {...S} /></>,
   search: <><circle cx="11" cy="11" r="6.5" {...S} /><path d="M16 16l4 4" {...S} /></>,
   lock: <><rect x="5" y="11" width="14" height="9" rx="2" {...S} /><path d="M8 11V8a4 4 0 018 0v3" {...S} /></>,
   out: <path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4M10 16l-4-4 4-4M6 12h10" {...S} />,
@@ -18,7 +19,7 @@ const Icon = ({ k, size = 22 }) => <svg width={size} height={size} viewBox="0 0 
 
 // ホーム画面（案C）：中央に「au navi」と用語検索、その下にメニューのタイル
 // PC（900px以上）は3列×2段のタイル、スマホは1列のカード。右上のボタンで右側からメニューが開く（最初は閉じている）
-export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft, unreadCount = 0, streak, onGoEval }) {
+export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft, unreadCount = 0, streak, onGoEval, onGoMyPage }) {
   const count = Object.keys(terms || {}).length;
   const [q, setQ] = React.useState('');
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -39,7 +40,7 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
       <header className="hdr">
         <div className="logo"><div className="logo-mark">au</div><h1>au navi</h1></div>
         <div className="hdr-right">
-          {testUser?.name && <div className="user-chip">{testUser.name}</div>}
+          {testUser?.name && (onGoMyPage ? <button className="user-chip" style={{ cursor: 'pointer', border: 'none', fontFamily: 'inherit' }} onClick={onGoMyPage} aria-label="マイページを開く">{testUser.name}</button> : <div className="user-chip">{testUser.name}</div>)}
           <button className={`btn-toggle ${menuOpen ? 'active' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label="メニュー" aria-expanded={menuOpen}>
             <span /><span /><span />
           </button>
@@ -104,6 +105,7 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
           <button key={title} className="hm2-drawer-item" onClick={go(fn)} tabIndex={menuOpen ? 0 : -1}><Icon k={icon} size={20} />{title}</button>
         ))}
         <div className="hm2-drawer-sep" />
+        {onGoMyPage && <button className="hm2-drawer-item" onClick={go(onGoMyPage)} tabIndex={menuOpen ? 0 : -1}><Icon k="user" size={20} />マイページ</button>}
         <button className="hm2-drawer-item" onClick={go(onAdminLogin)} tabIndex={menuOpen ? 0 : -1}><Icon k="lock" size={20} />管理者ログイン</button>
         {onLogout && <button className="hm2-drawer-item" onClick={go(onLogout)} tabIndex={menuOpen ? 0 : -1}><Icon k="out" size={20} />ログアウト</button>}
       </nav>
