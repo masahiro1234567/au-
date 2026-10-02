@@ -81,7 +81,7 @@ export default function MyPage({ user, onBack, onGoKpi }) {
   const Sec = ({ k, title, hint, children }) => (
     <div className="mp-card">
       <button className="mp-sec" onClick={() => setOpen({ ...open, [k]: !open[k] })} aria-expanded={!!open[k]}>
-        <b>{title}</b>{hint && <span>{hint}</span>}<i>{open[k] ? '▲' : '▼'}</i>
+        <b>{title}</b><i>{open[k] ? '▲' : '▼'}</i>
       </button>
       {open[k] && <div className="mp-body">{children}</div>}
     </div>
@@ -97,7 +97,14 @@ export default function MyPage({ user, onBack, onGoKpi }) {
       <div className="t-body mp">
         <div className="mp-card mp-prof">
           <span className="mp-av">{(user && user.name || '?').slice(0, 1)}</span>
-          <div><b>{user && user.name}</b><small>{[me.position, me.grade && `等級${me.grade}`, person && person.info.start && `稼働開始 ${person.info.start}`].filter(Boolean).join('・')}</small></div>
+          <div className="mp-prof-main">
+            <b>{user && user.name}</b>
+            <div className="mp-badges">
+              {me.position && <span className="mp-bd pos">{me.position}</span>}
+              {me.grade && <span className="mp-bd gr">等級{me.grade}</span>}
+            </div>
+            {person && person.info.start && <small>稼働開始 {person.info.start}</small>}
+          </div>
         </div>
 
         {pending.length > 0 && (

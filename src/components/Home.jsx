@@ -31,6 +31,7 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
     ['日報', '日報の登録・確認、実績確認・店舗特徴・個人実績', 'pen', onGoNippou],
     ['テスト', 'ランク別・全範囲・未出題で理解度をチェック', 'check', onGoTest],
     ['評価一覧', 'メンバーの評価・育成計画・月次KPIを見る', 'chart', onGoEval],
+    ['マイページ', '自分の評価・目標・稼働の記録', 'user', onGoMyPage],
   ];
   const search = (e) => { e.preventDefault(); onOpenFiltered({ q: q.trim() }); };
   const go = (fn) => () => { setMenuOpen(false); fn && fn(); };
