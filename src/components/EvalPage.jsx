@@ -11,10 +11,12 @@ const POS_ORDER = ['責任者', 'MQ', 'SAM', 'IN', 'NV'];
 const GRADE_ORDER = ['S', 'A', 'B', 'C', 'R'];
 const idOf = (v) => { const m = String(v || '').match(/\/d\/([A-Za-z0-9_-]{20,})/); return m ? m[1] : String(v || '').trim(); };
 
-const Rank = ({ v, big }) => {
+// 不可は「不可」と書かずに、文字なしのグレーにする（label を付けたときだけ文字を出す：評価基準の説明など）
+const Rank = ({ v, big, label }) => {
   const st = RANK_STYLE[v];
   if (!st) return <span className="ev-plain">{v || '－'}</span>;
-  return <span className={`ev-rank ${big ? 'big' : ''}`} style={{ background: st.bg, color: st.fg }}>{v}</span>;
+  const blank = v === '不可' && !label;
+  return <span className={`ev-rank ${big ? 'big' : ''} ${blank ? 'none' : ''}`} style={{ background: st.bg, color: st.fg }} aria-label={v} title={v}>{blank ? '' : v}</span>;
 };
 // 達成率の色：100%以上は緑、80%以上はオレンジ、80%未満は赤
 const rateColor = (v) => { const n = parseFloat(String(v).replace('%', '')); if (Number.isNaN(n)) return null; return n >= 100 ? 'ok' : n >= 80 ? 'mid' : 'ng'; };
@@ -120,11 +122,6 @@ export default function EvalPage({ isAdmin, onBack, user }) {
 
   const persons = useMemo(() => (book ? sortKeys(book.persons.map((p) => ({ ...p, name: p.info.name }))) : []), [book, cfg, memberInfo]);
   const summaryRows = useMemo(() => (book && book.summary ? sortKeys(book.summary.rows) : []), [book, cfg, memberInfo]);
-  const allKeys = useMemo(() => {
-    const seen = new Map();
-    [...persons, ...summaryRows].forEach((x) => { if (!seen.has(x.key)) seen.set(x.key, x); });
-    return sortKeys([...seen.values()]);
-  }, [persons, summaryRows]);
 
   // ---- 管理者の操作 ----
   const move = async (key, d) => {
@@ -149,6 +146,58 @@ export default function EvalPage({ isAdmin, onBack, user }) {
     showToast('登録しました');
   };
 
+  // ---- 1人分（個人別シート＋評価サマリ）----
+  const [openSec, setOpenSec] = useState({});
+  const TOTAL3 = ['キャッチ', 'クローズ', 'ディレクション'];
+  const people = useMemo(() => {
+    if (!book) return [];
+    const S = book.summary;
+    const START = { キャッチ: 'キャッチ力', クローズ: 'クローズ力', ディレクション: 'ディレクション力', ディレクター: 'ディレクション力' };
+    // サマリの列のまとまり（「キャッチ」の列から次のまとまりまで）
+    const colGroup = {};
+    if (S) {
+      let g = Object.keys(S.groups || {}).length ? null : '';
+      S.headers.forEach((h) => {
+        if (g === null) { colGroup[h] = (S.groups || {})[h] || ''; return; }
+        const k = h.replace(/[\s　]/g, '');
+        if (START[k]) g = START[k];
+        else if (!S.rankCols.includes(h)) g = '';
+        if (g && S.rankCols.includes(h)) colGroup[h] = g;
+      });
+    }
+    const totalOf = (cells, idx) => {
+      if (!cells) return '';
+      const h = S.headers.find((x) => START[x.replace(/[\s　]/g, '')] === ['キャッチ力', 'クローズ力', 'ディレクション力'][idx]);
+      return h ? cells[h] : '';
+    };
+    const map = new Map();
+    book.persons.forEach((pp) => map.set(pp.key, { key: pp.key, name: pp.info.name, role: pp.info.role, person: pp, info: pp.info }));
+    (S ? S.rows : []).forEach((r) => { const m = map.get(r.key) || { key: r.key, name: r.name, role: '', info: null }; m.row = r; if (!m.role) m.role = r.cells['現役割'] || ''; map.set(r.key, m); });
+    const list = [...map.values()].map((m) => {
+      const pt = (m.person && m.person.totals) || [];
+      const fromP = (i) => (pt.find((x) => [/キャッチ/, /クローズ/, /ディレク/][i].test(x.label)) || {}).rank || '';
+      const tot3 = [0, 1, 2].map((i) => fromP(i) || totalOf(m.row && m.row.cells, i));
+      // まとまりごとの項目：個人別シートがあればそれ（前回ランク・コメント付き）、なければサマリの列
+      let secs;
+      if (m.person && m.person.skills.length) {
+        const names = [...new Set(m.person.skills.map((x) => x.section || 'その他'))];
+        secs = names.map((n) => ({ name: n, items: m.person.skills.filter((x) => (x.section || 'その他') === n) }));
+      } else if (m.row) {
+        const names = [...new Set(Object.values(colGroup).filter(Boolean))];
+        secs = names.map((n) => ({ name: n, items: S.headers.filter((h) => colGroup[h] === n && !START[h.replace(/[\s　]/g, '')]).map((h) => ({ item: h, rank: m.row.cells[h], prev: '' })) }));
+      } else secs = [];
+      secs.forEach((sec) => { const i = ['キャッチ力', 'クローズ力', 'ディレクション力'].indexOf(sec.name); sec.total = i >= 0 ? tot3[i] : ''; });
+      return { ...m, tot3, secs, reviews: (m.person && m.person.reviews) || [] };
+    });
+    return sortKeys(list);
+  }, [book, cfg, memberInfo]);
+
+  const allKeys = useMemo(() => {
+    const seen = new Map();
+    [...persons, ...summaryRows, ...people].forEach((x) => { if (!seen.has(x.key)) seen.set(x.key, x); });
+    return sortKeys([...seen.values()]);
+  }, [persons, summaryRows, people]);
+
   const tabs = [
     book && book.summary && ['summary', '評価サマリ'],
     book && book.persons.length > 0 && ['person', '個人別'],
@@ -157,7 +206,6 @@ export default function EvalPage({ isAdmin, onBack, user }) {
     ...((book && book.tables) || []).map((tb, i) => [`t${i}`, tb.title]),
   ].filter(Boolean);
   const curTab = tabs.find((x) => x[0] === tab) ? tab : (tabs[0] && tabs[0][0]);
-  const cur = persons.find((p) => p.key === sel && visible(p));
 
   const AdminCtl = ({ it }) => isAdmin && (
     <span className="ev-ctl" onClick={(e) => e.stopPropagation()}>
@@ -203,104 +251,78 @@ export default function EvalPage({ isAdmin, onBack, user }) {
             {tabs.map(([k, l]) => <button key={k} className={`tq-tab ${curTab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}
           </div>
 
-          {/* ---- 評価サマリ ---- */}
-          {curTab === 'summary' && book.summary && (() => {
-            // まとまり（キャッチ力など）：サマリの見出しの上の行から。無ければ個人別シートのスキル評価の分け方を使う
-            const fromPersons = {};
-            book.persons.forEach((p) => p.skills.forEach((x) => { if (x.section && !fromPersons[x.item]) fromPersons[x.item] = x.section; }));
-            const S0 = book.summary;
-            const S = { ...S0, groups: Object.keys(S0.groups || {}).length ? S0.groups : Object.fromEntries(S0.headers.map((h) => [h, fromPersons[h] || fromPersons[h.replace(/\s/g, '')] || '']).filter(([, v]) => v)) };
-            const cols = S.headers.filter((h) => h !== '氏名' && !/フリガナ|ふりがな/.test(h));
-            const rows = summaryRows.filter(visible);
-            // まとまり（キャッチ力など）ごとに、続いている列をまとめる
-            const spans = [];
-            cols.forEach((h) => { const gname = (S.groups || {})[h] || ''; const last = spans[spans.length - 1]; if (gname && last && last.g === gname) last.n++; else spans.push({ g: gname, n: 1, first: h }); });
-            const hasGroups = spans.some((x) => x.g);
-            return (<>
-              <div className="ev-table-wrap ev-pc">
-                <table className="ev-table">
-                  <thead>
-                    {hasGroups ? (<>
-                      <tr><th rowSpan={2} className="nm">氏名</th>{spans.map((x) => (x.g ? <th key={x.first} colSpan={x.n} className="grp">{x.g}</th> : <th key={x.first} rowSpan={2} className={x.first === '現役割' ? 'role' : ''}>{x.first}</th>))}{isAdmin && <th rowSpan={2} />}</tr>
-                      <tr>{cols.filter((h) => (S.groups || {})[h]).map((h) => <th key={h} className="sub">{h}</th>)}</tr>
-                    </>) : (
-                      <tr><th className="nm">氏名</th>{cols.map((h) => <th key={h} className={h === '現役割' ? 'role' : ''}>{h}</th>)}{isAdmin && <th />}</tr>
-                    )}
-                  </thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.key} className={hidden[r.key] ? 'dim' : ''} onClick={() => { const p = persons.find((x) => x.key === r.key); if (p) { setSel(p.key); setTab('person'); } }}>
-                        <td className="nm">{r.name}</td>
-                        {cols.map((h) => <td key={h} className={S.rankCols.includes(h) ? 'rk' : h === '現役割' ? 'role' : ''}>{S.rankCols.includes(h) ? <Rank v={r.cells[h]} /> : r.cells[h]}</td>)}
-                        {isAdmin && <td><AdminCtl it={r} /></td>}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="ev-sp">
-                {rows.map((r) => (
-                  <div key={r.key} className={`ev-card ev-scard ${hidden[r.key] ? 'dim' : ''}`}>
-                    <div className="ev-scard-top"><b>{r.name}</b><span className="ev-sub">{r.cells['現役割']}</span></div>
-                    {[...new Set(S.rankCols.map((h) => (S.groups || {})[h] || ''))].map((gname) => (
-                      <div key={gname || 'none'}>
-                        {gname && <div className="ev-sec">{gname}</div>}
-                        <div className="ev-ranks">{S.rankCols.filter((h) => ((S.groups || {})[h] || '') === gname).map((h) => <span key={h}><small>{h}</small><Rank v={r.cells[h]} /></span>)}</div>
-                      </div>
-                    ))}
-                    {cols.filter((h) => !S.rankCols.includes(h) && !['フリガナ', '現役割'].includes(h) && r.cells[h]).map((h) => (
-                      <div key={h} className="ev-kv"><span>{h}</span><b>{r.cells[h]}</b></div>
-                    ))}
-                    <AdminCtl it={r} />
+          {/* ---- 評価サマリ：キャッチ・クローズ・ディレクションの総合評価だけ ---- */}
+          {curTab === 'summary' && (
+            <>
+              <div className="ev-sum">
+                <div className="ev-sum-row head"><span>氏名</span>{TOTAL3.map((x) => <span key={x}>{x}</span>)}{isAdmin && <span />}</div>
+                {people.filter(visible).map((p) => (
+                  <div key={p.key} className={`ev-sum-row ${hidden[p.key] ? 'dim' : ''}`}>
+                    <button className="ev-sum-name" onClick={() => { setSel(p.key); setTab('person'); }}><b>{p.name}</b><small>{p.role}</small></button>
+                    {p.tot3.map((v, i) => <span key={i} className="ev-sum-c"><Rank v={v} /></span>)}
+                    {isAdmin && <AdminCtl it={p} />}
                   </div>
                 ))}
               </div>
-            </>);
-          })()}
+              <div className="ev-note" style={{ marginTop: 6 }}>名前を押すと、その人の個人別が開きます</div>
+            </>
+          )}
 
-          {/* ---- 個人別 ---- */}
+          {/* ---- 個人別：押すとその場で開く。キャッチ力などのまとまりも開閉できる ---- */}
           {curTab === 'person' && (
-            <div className="ev-grid">
-              <div className="ev-list">
-                {persons.filter(visible).map((p) => (
-                  <button key={p.key} className={`ev-row ${sel === p.key ? 'on' : ''} ${hidden[p.key] ? 'dim' : ''}`} onClick={() => setSel(p.key)}>
-                    <span className="ev-av">{p.name.slice(0, 1)}</span>
-                    <span className="ev-grow"><b>{p.name}</b><small>{p.info.role}</small></span>
-                    <span className="ev-mini">{p.totals.filter((x) => RANKS5.includes(x.rank)).map((x) => <Rank key={x.label} v={x.rank} />)}</span>
-                    <AdminCtl it={p} />
-                  </button>
-                ))}
-              </div>
-              <div className="ev-card ev-detail">
-                {!cur && <div className="ev-empty" style={{ padding: '50px 0' }}>左の一覧から名前を選んでください</div>}
-                {cur && (<>
-                  <div className="ev-d-head"><span className="ev-av big">{cur.name.slice(0, 1)}</span><div className="ev-grow"><b>{cur.name}</b><div className="ev-sub">{[cur.info.kana, cur.info.role, cur.info.start && `稼働開始 ${cur.info.start}`].filter(Boolean).join('・')}</div></div>
-                    <button className="ev-btn ev-close" onClick={() => setSel(null)} aria-label="閉じる">×</button></div>
-                  {cur.totals.some((x) => x.rank) && <div className="ev-totals">{cur.totals.filter((x) => x.rank).map((x) => <div key={x.label}><small>{x.label}</small><Rank v={x.rank} big /></div>)}</div>}
-                  <GoalEditor key={cur.key} person={cur} saved={(goals || {})[cur.key]} canEdit={isAdmin || (!!user && normName(user.name) === cur.key)} />
-                  {cur.reviews.length > 0 && (<><div className="ev-h">具体評価</div>{cur.reviews.map((x) => <div key={x.label} className="ev-review"><small>{x.label}</small><p>{x.text}</p></div>)}</>)}
-                  {cur.skills.length > 0 && (<><div className="ev-h">スキル評価</div>
-                    <div className="ev-skill-head"><span>評価項目</span><span>ランク</span><span>前回ランク</span></div>
-                    {[...new Set(cur.skills.map((x) => x.section))].map((sec) => (
-                      <div key={sec || 'none'} className="ev-skillsec">
-                        {sec && <div className="ev-sec">{sec}</div>}
-                        {cur.skills.filter((x) => x.section === sec).map((x) => (
-                          <div key={x.item} className="ev-skill">
-                            <div className="ev-skill-top"><b>{x.item}</b><span className="ev-skill-c1"><Rank v={x.rank} /></span><span className="ev-skill-c1"><Rank v={x.prev} /></span></div>
-                            {x.comment && <div className="ev-skill-c">{x.comment}</div>}
-                          </div>
-                        ))}
+            <div className="ev-plist">
+              {people.filter(visible).map((p) => {
+                const on = sel === p.key;
+                return (
+                  <div key={p.key} className={`ev-pcard ${on ? 'on' : ''} ${hidden[p.key] ? 'dim' : ''}`}>
+                    <button className="ev-prow" onClick={() => setSel(on ? null : p.key)} aria-expanded={on}>
+                      <span className="ev-av">{p.name.slice(0, 1)}</span>
+                      <span className="ev-grow"><b>{p.name}</b><small>{p.role}</small></span>
+                      <span className="ev-mini">{p.tot3.map((v, i) => <Rank key={i} v={v} />)}</span>
+                      <span className="ev-arrow">{on ? '▲' : '▼'}</span>
+                    </button>
+                    {isAdmin && <div className="ev-pctl"><AdminCtl it={p} /></div>}
+                    {on && (
+                      <div className="ev-pbody">
+                        {p.info && (p.info.kana || p.info.start) && <div className="ev-sub" style={{ marginBottom: 6 }}>{[p.info.kana, p.info.start && `稼働開始 ${p.info.start}`].filter(Boolean).join('・')}</div>}
+                        {p.person && <GoalEditor key={p.key} person={p.person} saved={(goals || {})[p.key]} canEdit={isAdmin || (!!user && normName(user.name) === p.key)} />}
+                        {p.reviews.length > 0 && (<><div className="ev-h">具体評価</div>
+                          {p.reviews.map((x) => <div key={x.label} className="ev-review"><small>{x.label}{x.store ? `（${x.store}）` : ''}</small>{x.text && <p>{x.text}</p>}</div>)}</>)}
+                        {p.secs.map((sec) => {
+                          const k = p.key + '|' + sec.name, so = !!openSec[k];
+                          return (
+                            <div key={sec.name} className="ev-secbox">
+                              <button className="ev-secbtn" onClick={() => setOpenSec({ ...openSec, [k]: !so })} aria-expanded={so}>
+                                <b>{sec.name}</b>{sec.total && <Rank v={sec.total} />}<span className="ev-arrow">{so ? '▲' : '▼'}</span>
+                              </button>
+                              {so && (<>
+                                <div className="ev-srow head"><span>評価項目</span><span>ランク</span><span>前回</span></div>
+                                {sec.items.map((x) => (
+                                  <div key={x.item}>
+                                    <div className="ev-srow"><span>{x.item}</span><span><Rank v={x.rank} /></span><span><Rank v={x.prev} /></span></div>
+                                    {x.comment && <div className="ev-skill-c" style={{ padding: '0 4px 8px' }}>{x.comment}</div>}
+                                  </div>
+                                ))}
+                              </>)}
+                            </div>
+                          );
+                        })}
+                        {p.person && [['目標設定', p.person.goals], ['具体的アクションプラン', p.person.actions], ['月次振り返り / 1on1ログ', p.person.logs]].filter(([, tb]) => tb.rows.length).map(([title, tb]) => {
+                          const k = p.key + '|' + title, so = !!openSec[k];
+                          return (
+                            <div key={title} className="ev-secbox">
+                              <button className="ev-secbtn" onClick={() => setOpenSec({ ...openSec, [k]: !so })} aria-expanded={so}><b>{title}</b><span className="ev-arrow">{so ? '▲' : '▼'}</span></button>
+                              {so && tb.rows.map((row, i) => (
+                                <div key={i} className="ev-goal">{tb.heads.filter((h) => !/^No\.?$/i.test(h) && row[h]).map((h, j) => <div key={h} className={j === 0 ? 'first' : ''}><small>{h}</small><span>{row[h]}</span></div>)}</div>
+                              ))}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}</>)}
-                  {[['目標設定', cur.goals], ['具体的アクションプラン', cur.actions], ['月次振り返り / 1on1ログ', cur.logs]].filter(([, tb]) => tb.rows.length).map(([title, tb]) => (
-                    <div key={title}><div className="ev-h">{title}</div>
-                      {tb.rows.map((row, i) => (
-                        <div key={i} className="ev-goal">{tb.heads.filter((h) => !/^No\.?$/i.test(h) && row[h]).map((h, j) => <div key={h} className={j === 0 ? 'first' : ''}><small>{h}</small><span>{row[h]}</span></div>)}</div>
-                      ))}
-                    </div>
-                  ))}
-                </>)}
-              </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -328,7 +350,7 @@ export default function EvalPage({ isAdmin, onBack, user }) {
 
           {/* ---- 評価基準 ---- */}
           {curTab === 'standard' && book.standard && (
-            <div className="ev-card">{book.standard.list.map((x) => <div key={x.rank} className="ev-std"><Rank v={x.rank} big /><span>{x.desc}</span></div>)}</div>
+            <div className="ev-card">{book.standard.list.map((x) => <div key={x.rank} className="ev-std"><Rank v={x.rank} big label /><span>{x.desc}</span></div>)}</div>
           )}
 
           {/* ---- その他の表 ---- */}

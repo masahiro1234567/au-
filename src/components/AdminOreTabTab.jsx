@@ -82,12 +82,24 @@ function cellText(sec, key, row) {
 
 // 画面の縮小図（編集できる部分を枠で囲む）
 function ScreenMap({ sel, onPick }) {
+  // 枠の幅に合わせて、1024×768の図全体を縮小（スマホでも全部見えて、どの枠も押せるように）
+  const boxRef = React.useRef(null);
+  const [scale, setScale] = React.useState(0.539);
+  React.useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return undefined;
+    const fit = () => setScale(Math.min(el.clientWidth / 1024, 0.6));
+    fit();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+    if (ro) ro.observe(el); else window.addEventListener('resize', fit);
+    return () => { if (ro) ro.disconnect(); else window.removeEventListener('resize', fit); };
+  }, []);
   const B = (x, y, w, h, bg, bd, children, extra = {}) => (
     <div style={{ position: 'absolute', left: x, top: y, width: w, height: h, background: bg, border: `1.5px solid ${bd}`, borderRadius: 6, boxSizing: 'border-box', fontSize: 12, color: '#6b5a4e', padding: '4px 8px', overflow: 'hidden', ...extra }}>{children}</div>
   );
   return (
-    <div className="ota-map">
-      <div className="ota-map-inner">
+    <div className="ota-map" ref={boxRef} style={{ height: 768 * scale }}>
+      <div className="ota-map-inner" style={{ transform: `scale(${scale})` }}>
         {B(0, 0, 1024, 52, '#fff', '#fff', <b style={{ color: '#1a0f08' }}>緊急0　未読0　応対要請</b>, { borderBottom: '2px solid #ff6600', borderRadius: 0 })}
         {B(30, 60, 300, 30, 'transparent', 'transparent', <b style={{ fontSize: 18, color: '#1a0f08' }}>お支払い目安額</b>)}
         {B(30, 98, 660, 36, '#ece6e0', '#e0d6cc', '見積もりタブ 1〜5　／　コピー・保存・鉛筆・削除')}

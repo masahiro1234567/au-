@@ -169,7 +169,13 @@ export function parsePerson(sheet) {
     }
   }
   // 具体評価（直近／前回／前々回）
-  const reviews = ['直近の評価', '前回の評価', '前々回の評価'].map((l) => ({ label: l, text: rightOf(g, l, 6) })).filter((x) => x.text);
+  // 店舗名は、ラベルのかっこの中（例：「直近の評価（エディオン◯◯店）」）
+  const reviews = ['直近の評価', '前回の評価', '前々回の評価'].map((l) => {
+    const p = find(g, (x) => has(x, l));
+    const lab = p ? clean((g[p[0]] || [])[p[1]]) : '';
+    const m = lab.match(/[（(]\s*([^）)]+?)\s*[)）]/);
+    return { label: l, store: m ? m[1] : '', text: rightOf(g, l, 6) };
+  }).filter((x) => x.text || x.store);
   // 表（見出しの次の行から、空行まで）
   const table = (labels) => {
     const h = headerCols(g, labels);
