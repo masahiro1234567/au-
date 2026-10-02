@@ -19,7 +19,60 @@ const Rank = ({ v, big }) => {
 // 達成率の色：100%以上は緑、80%以上はオレンジ、80%未満は赤
 const rateColor = (v) => { const n = parseFloat(String(v).replace('%', '')); if (Number.isNaN(n)) return null; return n >= 100 ? 'ok' : n >= 80 ? 'mid' : 'ng'; };
 
-export default function EvalPage({ isAdmin, onBack }) {
+// 個人の目標（例：クローズを秀に／達成条件：個人ディレクター達成率75%）。本人と管理者がこの画面で書き込める
+// 保存先：eval_goals/{名前のキー} = [{ item, rank, cond }]（書き込みがなければスプレッドシートの内容を出す）
+const GOAL_ITEMS = ['キャッチ', 'クローズ', 'ディレクション'];
+function GoalEditor({ person, saved, canEdit }) {
+  const base = saved ? (Array.isArray(saved) ? saved : Object.values(saved)) : person.goalsSheet || [];
+  const [edit, setEdit] = useState(null);
+  const list = (edit || base).filter(Boolean);
+  const set = (i, k, v) => setEdit(list.map((g, j) => (j === i ? { ...g, [k]: v } : g)));
+  const save = async () => {
+    await dbSet(`eval_goals/${person.key}`, list.filter((g) => g.item || g.cond).map((g) => ({ item: g.item || '', rank: g.rank || '', cond: g.cond || '' })));
+    setEdit(null);
+    showToast('目標を保存しました');
+  };
+  if (!list.length && !canEdit) return null;
+  return (
+    <div>
+      <div className="ev-h">目標（各自で設定）</div>
+      {!edit && list.map((g, i) => (
+        <div key={i} className="ev-goalrow">
+          <span className="ev-goal-item">{g.item || '－'}</span>
+          <span className="ev-goal-rank"><small>目標</small><Rank v={g.rank} /></span>
+          <span className="ev-goal-cond"><small>達成条件</small>{g.cond || '－'}</span>
+        </div>
+      ))}
+      {!edit && !list.length && <div className="ev-note">まだ目標が書かれていません</div>}
+      {edit && list.map((g, i) => (
+        <div key={i} className="ev-goaledit">
+          <select className="ev-inp" value={g.item} onChange={(e) => set(i, 'item', e.target.value)} aria-label="項目">
+            <option value="">項目</option>{[...new Set([...GOAL_ITEMS, g.item].filter(Boolean))].map((x) => <option key={x}>{x}</option>)}
+          </select>
+          <select className="ev-inp" value={g.rank} onChange={(e) => set(i, 'rank', e.target.value)} aria-label="目標ランク">
+            <option value="">目標ランク</option>{RANKS5.map((x) => <option key={x}>{x}</option>)}
+          </select>
+          <input className="ev-inp" value={g.cond} onChange={(e) => set(i, 'cond', e.target.value)} placeholder="達成条件（例：個人ディレクター達成率75%）" aria-label="達成条件" />
+          <button className="ev-btn" onClick={() => setEdit(list.filter((_, j) => j !== i))} aria-label="この目標を削除">×</button>
+        </div>
+      ))}
+      {canEdit && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+          {!edit && <button className="ev-btn" onClick={() => setEdit(list.length ? list : [{ item: '', rank: '', cond: '' }])}>目標を書く・直す</button>}
+          {edit && <>
+            <button className="ev-btn" onClick={() => setEdit([...list, { item: '', rank: '', cond: '' }])}>＋ 目標を追加</button>
+            <span style={{ flex: 1 }} />
+            <button className="ev-btn" onClick={() => setEdit(null)}>キャンセル</button>
+            <button className="ev-btn p" onClick={save}>保存</button>
+          </>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function EvalPage({ isAdmin, onBack, user }) {
+  const [goals] = useDbCollection('eval_goals');
   const [cfg] = useDbCollection('eval_config');
   const { data: fpUsers } = useFirebaseList('fp_users');
   const sheetId = (cfg && cfg.sheetId) || '';
@@ -152,18 +205,33 @@ export default function EvalPage({ isAdmin, onBack }) {
 
           {/* ---- 評価サマリ ---- */}
           {curTab === 'summary' && book.summary && (() => {
-            const S = book.summary;
-            const cols = S.headers.filter((h) => h !== '氏名');
+            // まとまり（キャッチ力など）：サマリの見出しの上の行から。無ければ個人別シートのスキル評価の分け方を使う
+            const fromPersons = {};
+            book.persons.forEach((p) => p.skills.forEach((x) => { if (x.section && !fromPersons[x.item]) fromPersons[x.item] = x.section; }));
+            const S0 = book.summary;
+            const S = { ...S0, groups: Object.keys(S0.groups || {}).length ? S0.groups : Object.fromEntries(S0.headers.map((h) => [h, fromPersons[h] || fromPersons[h.replace(/\s/g, '')] || '']).filter(([, v]) => v)) };
+            const cols = S.headers.filter((h) => h !== '氏名' && !/フリガナ|ふりがな/.test(h));
             const rows = summaryRows.filter(visible);
+            // まとまり（キャッチ力など）ごとに、続いている列をまとめる
+            const spans = [];
+            cols.forEach((h) => { const gname = (S.groups || {})[h] || ''; const last = spans[spans.length - 1]; if (gname && last && last.g === gname) last.n++; else spans.push({ g: gname, n: 1, first: h }); });
+            const hasGroups = spans.some((x) => x.g);
             return (<>
               <div className="ev-table-wrap ev-pc">
                 <table className="ev-table">
-                  <thead><tr><th>氏名</th>{cols.map((h) => <th key={h}>{h}</th>)}{isAdmin && <th />}</tr></thead>
+                  <thead>
+                    {hasGroups ? (<>
+                      <tr><th rowSpan={2} className="nm">氏名</th>{spans.map((x) => (x.g ? <th key={x.first} colSpan={x.n} className="grp">{x.g}</th> : <th key={x.first} rowSpan={2} className={x.first === '現役割' ? 'role' : ''}>{x.first}</th>))}{isAdmin && <th rowSpan={2} />}</tr>
+                      <tr>{cols.filter((h) => (S.groups || {})[h]).map((h) => <th key={h} className="sub">{h}</th>)}</tr>
+                    </>) : (
+                      <tr><th className="nm">氏名</th>{cols.map((h) => <th key={h} className={h === '現役割' ? 'role' : ''}>{h}</th>)}{isAdmin && <th />}</tr>
+                    )}
+                  </thead>
                   <tbody>
                     {rows.map((r) => (
                       <tr key={r.key} className={hidden[r.key] ? 'dim' : ''} onClick={() => { const p = persons.find((x) => x.key === r.key); if (p) { setSel(p.key); setTab('person'); } }}>
                         <td className="nm">{r.name}</td>
-                        {cols.map((h) => <td key={h} className={S.rankCols.includes(h) ? 'rk' : ''}>{S.rankCols.includes(h) ? <Rank v={r.cells[h]} /> : r.cells[h]}</td>)}
+                        {cols.map((h) => <td key={h} className={S.rankCols.includes(h) ? 'rk' : h === '現役割' ? 'role' : ''}>{S.rankCols.includes(h) ? <Rank v={r.cells[h]} /> : r.cells[h]}</td>)}
                         {isAdmin && <td><AdminCtl it={r} /></td>}
                       </tr>
                     ))}
@@ -174,7 +242,12 @@ export default function EvalPage({ isAdmin, onBack }) {
                 {rows.map((r) => (
                   <div key={r.key} className={`ev-card ev-scard ${hidden[r.key] ? 'dim' : ''}`}>
                     <div className="ev-scard-top"><b>{r.name}</b><span className="ev-sub">{r.cells['現役割']}</span></div>
-                    <div className="ev-ranks">{S.rankCols.map((h) => <span key={h}><small>{h}</small><Rank v={r.cells[h]} /></span>)}</div>
+                    {[...new Set(S.rankCols.map((h) => (S.groups || {})[h] || ''))].map((gname) => (
+                      <div key={gname || 'none'}>
+                        {gname && <div className="ev-sec">{gname}</div>}
+                        <div className="ev-ranks">{S.rankCols.filter((h) => ((S.groups || {})[h] || '') === gname).map((h) => <span key={h}><small>{h}</small><Rank v={r.cells[h]} /></span>)}</div>
+                      </div>
+                    ))}
                     {cols.filter((h) => !S.rankCols.includes(h) && !['フリガナ', '現役割'].includes(h) && r.cells[h]).map((h) => (
                       <div key={h} className="ev-kv"><span>{h}</span><b>{r.cells[h]}</b></div>
                     ))}
@@ -193,7 +266,7 @@ export default function EvalPage({ isAdmin, onBack }) {
                   <button key={p.key} className={`ev-row ${sel === p.key ? 'on' : ''} ${hidden[p.key] ? 'dim' : ''}`} onClick={() => setSel(p.key)}>
                     <span className="ev-av">{p.name.slice(0, 1)}</span>
                     <span className="ev-grow"><b>{p.name}</b><small>{p.info.role}</small></span>
-                    <span className="ev-mini">{p.totals.map((x) => <Rank key={x.label} v={x.rank} />)}</span>
+                    <span className="ev-mini">{p.totals.filter((x) => RANKS5.includes(x.rank)).map((x) => <Rank key={x.label} v={x.rank} />)}</span>
                     <AdminCtl it={p} />
                   </button>
                 ))}
@@ -203,15 +276,17 @@ export default function EvalPage({ isAdmin, onBack }) {
                 {cur && (<>
                   <div className="ev-d-head"><span className="ev-av big">{cur.name.slice(0, 1)}</span><div className="ev-grow"><b>{cur.name}</b><div className="ev-sub">{[cur.info.kana, cur.info.role, cur.info.start && `稼働開始 ${cur.info.start}`].filter(Boolean).join('・')}</div></div>
                     <button className="ev-btn ev-close" onClick={() => setSel(null)} aria-label="閉じる">×</button></div>
-                  {cur.totals.length > 0 && <div className="ev-totals">{cur.totals.map((x) => <div key={x.label}><small>{x.label}</small><Rank v={x.rank} big /></div>)}</div>}
+                  {cur.totals.some((x) => x.rank) && <div className="ev-totals">{cur.totals.filter((x) => x.rank).map((x) => <div key={x.label}><small>{x.label}</small><Rank v={x.rank} big /></div>)}</div>}
+                  <GoalEditor key={cur.key} person={cur} saved={(goals || {})[cur.key]} canEdit={isAdmin || (!!user && normName(user.name) === cur.key)} />
                   {cur.reviews.length > 0 && (<><div className="ev-h">具体評価</div>{cur.reviews.map((x) => <div key={x.label} className="ev-review"><small>{x.label}</small><p>{x.text}</p></div>)}</>)}
                   {cur.skills.length > 0 && (<><div className="ev-h">スキル評価</div>
+                    <div className="ev-skill-head"><span>評価項目</span><span>ランク</span><span>前回ランク</span></div>
                     {[...new Set(cur.skills.map((x) => x.section))].map((sec) => (
                       <div key={sec || 'none'} className="ev-skillsec">
                         {sec && <div className="ev-sec">{sec}</div>}
                         {cur.skills.filter((x) => x.section === sec).map((x) => (
                           <div key={x.item} className="ev-skill">
-                            <div className="ev-skill-top"><b>{x.item}</b><span className="ev-skill-r">{x.prev && <><Rank v={x.prev} /><i>→</i></>}<Rank v={x.rank} /></span></div>
+                            <div className="ev-skill-top"><b>{x.item}</b><span className="ev-skill-c1"><Rank v={x.rank} /></span><span className="ev-skill-c1"><Rank v={x.prev} /></span></div>
                             {x.comment && <div className="ev-skill-c">{x.comment}</div>}
                           </div>
                         ))}

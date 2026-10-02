@@ -1041,3 +1041,22 @@ html,body{overscroll-behavior:none;}
 .ev-goal .first span{font-weight:800;}
 .ev-std{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #fbe7da;font-size:.82rem;}
 .ev-std:first-child{border-top:none;}
+
+.ev-table th.grp{background:#ffe7d6;color:var(--pd);border-left:2px solid #fff;}
+.ev-table th.sub{font-size:.68rem;}
+.ev-table th.nm,.ev-table td.nm{position:sticky;left:0;background:#fff;z-index:1;}
+.ev-table th.nm{background:var(--pl);}
+.ev-table th.role,.ev-table td.role{white-space:nowrap;min-width:96px;}
+.ev-table th{white-space:normal;min-width:44px;}
+.ev-skill-head{display:grid;grid-template-columns:1fr 64px 64px;gap:6px;padding:6px 2px;font-size:.66rem;font-weight:800;color:var(--sub);border-bottom:1.5px solid var(--border);}
+.ev-skill-head span:not(:first-child){text-align:center;}
+.ev-skill-top{display:grid!important;grid-template-columns:1fr 64px 64px;gap:6px;align-items:center;}
+.ev-skill-c1{display:flex;justify-content:center;}
+.ev-sec{text-align:center;}
+
+.ev-goalrow{display:grid;grid-template-columns:110px 70px 1fr;gap:10px;align-items:center;padding:8px 2px;border-top:1px solid #fbe7da;font-size:.8rem;}
+.ev-goal-item{font-weight:800;}
+.ev-goalrow small{display:block;font-size:.6rem;color:var(--sub);font-weight:700;}
+.ev-goal-rank{display:flex;flex-direction:column;align-items:flex-start;gap:2px;}
+.ev-goaledit{display:grid;grid-template-columns:120px 110px 1fr 40px;gap:6px;margin-top:6px;}
+@media (max-width:640px){.ev-goaledit{grid-template-columns:1fr 1fr;}.ev-goaledit input{grid-column:1 / -1;}.ev-goalrow{grid-template-columns:90px 60px 1fr;}}

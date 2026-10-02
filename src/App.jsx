@@ -166,7 +166,7 @@ export default function App() {
       );
       break;
     case 'eval':
-      content = <EvalPage isAdmin={isAdmin} onBack={() => setPage(isAdmin ? 'admin' : 'home')} />;
+      content = <EvalPage isAdmin={isAdmin} user={testUser} onBack={() => setPage(isAdmin ? 'admin' : 'home')} />;
       break;
     case 'nippou':
       content = (

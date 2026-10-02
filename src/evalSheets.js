@@ -60,7 +60,17 @@ export function parseSummary(sheet) {
     rows.push({ name, key: normName(name), cells });
   }
   const rankCols = headers.filter((x) => rows.some((row) => RANKS5.includes(row.cells[x.label]))).map((x) => x.label);
-  return { title: t((g[0] || [])[0]) || sheet.title, headers: headers.map((x) => x.label), rankCols, rows };
+  // まとまり：見出しの1つ上の行に、結合セルで「キャッチ力」などが書かれている（結合セルは左端だけに値が入る）
+  const groups = {};
+  const gr = g[hr - 1] || [];
+  const gCells = gr.map((x, c) => ({ c, v: clean(x) })).filter((x) => x.v);
+  if (hr >= 1 && gCells.length >= 2) {
+    headers.forEach((x) => {
+      const owner = [...gCells].reverse().find((y) => y.c <= x.c);
+      if (owner) groups[x.label] = owner.v;
+    });
+  }
+  return { title: t((g[0] || [])[0]) || sheet.title, headers: headers.map((x) => x.label), rankCols, groups, rows };
 }
 
 // ---- 月次KPI進捗 ----
@@ -120,12 +130,18 @@ export function parsePerson(sheet) {
   const info = { name, kana: rightOf(g, 'フリガナ'), role: rightOf(g, '現役割'), start: rightOf(g, '稼働開始日'), period: rightOf(g, '評価期間') };
   // 総合評価（キャッチャー／クローズ／ディレクター）
   const totals = [];
+  const goalsSheet = [];
   g.forEach((row, r) => (row || []).forEach((x, c) => {
     const s = t(x);
     if (has(s, '総合評価')) {
       const label = clean(s).replace('総合評価', '').replace(/[（()）]/g, '').trim() || '総合';
-      const v = ((g[r] || []).slice(c + 1, c + 4).map(t).find((y) => RANKS5.includes(y))) || ((g[r] || []).slice(c + 1).map(t).find(Boolean)) || '';
-      totals.push({ label, rank: v });
+      const v = (g[r] || []).slice(c + 1, c + 4).map(t).find((y) => RANKS5.includes(y)) || '';
+      // 「クローズ秀」のように、項目名の最後にランクが付いているものは目標（右のセルが達成条件）
+      const gm = label.match(/^(.*?)(秀|優|良|可|不可)$/);
+      if (gm && !v) {
+        const cond = (g[r] || []).slice(c + 1).map(clean).find(Boolean) || '';
+        goalsSheet.push({ item: gm[1].trim(), rank: gm[2], cond });
+      } else totals.push({ label, rank: v });
     }
   }));
   // 現状スキル評価・現場評価（評価項目｜観点｜ランク｜前回ランク｜コメント）
@@ -147,6 +163,8 @@ export function parsePerson(sheet) {
       if (!item && left.length === 1) { section = left[0]; blank = 0; continue; }
       if (!item) { if (!left.length) blank++; continue; }
       blank = 0;
+      const view = clean(row[cols['観点']]), rk = t(row[cols['ランク']]), pv = prevCol >= 0 ? t(row[prevCol]) : '', cm = comCol >= 0 ? clean(row[comCol]) : '';
+      if (!view && !rk && !pv && !cm) { section = item; continue; }
       skills.push({ section, item, view: clean(row[cols['観点']]), rank: t(row[cols['ランク']]), prev: prevCol >= 0 ? t(row[prevCol]) : '', comment: comCol >= 0 ? clean(row[comCol]) : '' });
     }
   }
@@ -172,7 +190,7 @@ export function parsePerson(sheet) {
   const actions = table(['対象スキル', 'アクション']);
   const logs = table(['記入日']);
   const filled = (tb) => (tb && tb.rows ? { ...tb, rows: tb.rows.filter((row) => Object.entries(row).some(([k, v]) => v && !/^No\.?$/i.test(k) && !/^\d+$/.test(v))) } : { heads: [], rows: [] });
-  return { title: sheet.title, key: normName(name || sheet.title), info, totals, skills, reviews, goals: filled(goals), actions: filled(actions), logs: filled(logs) };
+  return { title: sheet.title, key: normName(name || sheet.title), info, totals, goalsSheet, skills, reviews, goals: filled(goals), actions: filled(actions), logs: filled(logs) };
 }
 
 // ---- その他の表 ----
