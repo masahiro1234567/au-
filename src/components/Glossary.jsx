@@ -1,4 +1,6 @@
 import { isUnread, isFlagged, markSeen, flagTerm } from '../termNotify.js';
+import { useDbCollection } from '../useFirebase.js';
+import { ym } from '../testStats.js';
 import React, { useMemo, useState } from 'react';
 import Sidebar from './Sidebar.jsx';
 import { TermFormModal, TermDetailModal } from './TermModals.jsx';
@@ -54,7 +56,13 @@ export default function Glossary({ terms, isAdmin, initialCat, initialQuery, ini
 
   const detailTerm = detailId ? terms[detailId] : null;
   // 用語を開いたら「見た」を記録（緑の〇が消える）
-  const openTerm = (id) => { setDetailId(id); markSeen(user, id); };
+  // 今月この用語を何回開いたか（自分の分だけ。毎月1日に0から）
+  const [views] = useDbCollection(user?.id ? `user_profiles/${user.id}/views/${ym()}` : 'user_profiles/__none__/views');
+  const openTerm = (id) => {
+    setDetailId(id);
+    markSeen(user, id);
+    if (user?.id) dbSet(`user_profiles/${user.id}/views/${ym()}/${id}`, ((views || {})[id] || 0) + 1);
+  };
 
   const handleAdd = async (form) => {
     try {
@@ -189,6 +197,7 @@ export default function Glossary({ terms, isAdmin, initialCat, initialQuery, ini
         onEdit={() => { setEditing({ id: detailId, term: detailTerm }); setDetailId(null); }}
         onSelectRelated={(id) => { setDetailHistory([...detailHistory, detailId]); openTerm(id); }}
         flag={flags && flags[detailId]}
+        viewCount={(views || {})[detailId] || 0}
         onFlag={async (text) => { await flagTerm(detailId, user?.name, text); showToast('変更が必要と報告しました'); }}
       />
       <TermFormModal

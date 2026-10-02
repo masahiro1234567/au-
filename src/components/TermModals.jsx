@@ -365,7 +365,7 @@ function AutoRelatedSection({ term, currentId, allTerms, onSelectRelated }) {
 }
 
 // 詳細表示モーダル
-export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onClose, onBack, onEdit, onSelectRelated, flag, onFlag }) {
+export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onClose, onBack, onEdit, onSelectRelated, flag, onFlag, viewCount }) {
   const [reporting, setReporting] = React.useState(false);
   const [reason, setReason] = React.useState('');
   React.useEffect(() => { setReporting(false); setReason(''); }, [currentId]);
@@ -382,6 +382,7 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
         </div>
         <div className="modal-body">
           <div className={`detail-rank-bar rank-${term.rank || ''}`} />
+          {viewCount > 0 && <div className="tn-views">今月 {viewCount}回閲覧</div>}
           {reports.length > 0 && (
             <div className="tn-flagbox">
               <b><span className="tn-dot red" />変更が必要と報告されています</b>

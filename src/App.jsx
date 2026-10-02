@@ -4,6 +4,7 @@ import { ref as npRef, onValue as npOnValue } from 'firebase/database';
 import { db as npDb, ensureAnonAuth } from './nippou/lib/firebase.js';
 import { loadDraft, draftPath, draftLabel } from './nippou/lib/draft.js';
 import { useSeen, isUnread } from './termNotify.js';
+import { recordOpen } from './testStats.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
 import DeviceCompare from './components/DeviceCompare.jsx';
 // オレタブ：押した瞬間に全画面＋横向き固定を試す（Androidなど。iPhoneは回転表示で対応）
@@ -49,6 +50,7 @@ export default function App() {
   const [payConfig] = useDbCollection('oretab_pay'); // オレタブ：お支払い目安額の設定（管理画面で編集）
   const knowledgeTypes = resolveKnowledgeTypes(knowledgeTypesDb);
   const [termFlags] = useDbCollection('term_flags'); // 変更が必要と報告された用語
+  const [userActivity] = useDbCollection('user_activity'); // au naviを開いた日（ランキングのログイン）
 
   // au navi のログイン（名簿と照合した人だけ）。以前の共通パスワード方式のログイン情報（uid無し）は、ログインし直してもらう
   const [testUser, setTestUser] = useState(() => {
@@ -63,6 +65,9 @@ export default function App() {
     localStorage.removeItem('autest_user'); setTestUser(null); setPage('login');
     setLoginNotice(typeof notice === 'string' ? notice : '');
   };
+
+  // au navi を開いた日を記録（ランキングの「ログイン」。1日1回）
+  useEffect(() => { if (testUser?.uid) recordOpen(testUser); }, [testUser?.uid]);
 
   // ログイン中の人の名簿の状態を見張る。管理画面で「ログイン不可」にされた・名簿から削除された場合は、その場で自動ログアウト
   // 「閲覧のみ」などの権限の変更も、ログインし直さずに反映する
@@ -193,6 +198,8 @@ export default function App() {
           user={testUser}
           terms={publicTerms}
           results={results}
+          profiles={profiles}
+          activity={userActivity}
           onBack={() => setPage('home')}
           onStartQuiz={startQuiz}
         />
@@ -205,6 +212,7 @@ export default function App() {
           mode={quizConfig.mode}
           qtype={quizConfig.qtype}
           selRank={quizConfig.selRank}
+          mastered={quizConfig.mastered}
           onFinish={handleQuizFinish}
           onQuit={() => setPage('test-home')}
         />

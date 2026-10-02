@@ -852,3 +852,28 @@ html,body{overscroll-behavior:none;}
 
 /* 管理画面のいちばん上のタブ（日報管理／用語集管理）は少し大きく */
 .adm-top .tab{font-size:.9rem;padding:10px 16px;}
+
+.tn-views{display:inline-block;margin:8px 0 0;font-size:.68rem;font-weight:700;color:var(--sub);background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:3px 10px;}
+/* テスト：進捗の円グラフ・メンバー進捗・ランキング */
+.tq-donut-row{display:flex;align-items:center;gap:14px;}
+.tq-legend{flex:1;display:flex;flex-direction:column;gap:6px;font-size:.74rem;}
+.tq-legend>div{display:flex;align-items:center;gap:8px;}
+.tq-legend i{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+.tq-legend b{width:16px;}
+.tq-legend span{color:#4a3528;}
+.tq-legend .rest{color:var(--sub);}
+.tq-legend .rest i{background:#f1ebe5;}
+.tq-chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:.7rem;}
+.tq-chips span{display:flex;align-items:center;gap:4px;}
+.tq-chips i{width:8px;height:8px;border-radius:2px;}
+.tq-seg.three{grid-template-columns:repeat(3,1fr);}
+.tq-ranks.five{grid-template-columns:repeat(5,minmax(0,1fr));}
+.tq-go:disabled{background:#d9cfc6;cursor:default;}
+.tq-memwrap{display:flex;flex-direction:column;gap:8px;}
+.tq-mem{width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--border);background:#fff;font-family:inherit;text-align:left;cursor:pointer;color:var(--text);font-size:.86rem;}
+.tq-mem.on{border-color:var(--pd);background:var(--pl);}
+.tq-av{width:36px;height:36px;border-radius:50%;background:var(--pl);color:var(--pd);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;flex-shrink:0;}
+.tq-rank-row{padding:11px 6px;border-radius:8px;}
+.tq-rank-row.me{background:var(--pl);}
+.tq-me{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--pl);font-size:.84rem;}
+@media (min-width:900px){.tq-memwrap .tq-card{max-width:560px;}}

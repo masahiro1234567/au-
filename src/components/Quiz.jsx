@@ -24,10 +24,13 @@ function distractors(id, t, entries, terms) {
 // 説明文に用語名そのものが入っていたら伏せる（答えが丸見えにならないように）
 const mask = (text, name) => (name ? String(text || '').split(name).join('〇〇') : String(text || ''));
 
-function buildQuiz(terms, qtype, selRank) {
+// qtype：rank（ランク別）／all（全範囲）／notyet（未出題＝まだ正解していない用語。selRank は ランク か「すべて」）
+function buildQuiz(terms, qtype, selRank, mastered) {
   const entries = Object.entries(terms).filter(([, t]) => t && t.name && t.description);
-  const pool = qtype === 'rank' ? entries.filter(([, t]) => t.rank === selRank) : entries;
-  const count = qtype === 'rank' ? 5 : 10;
+  const pool = qtype === 'rank' ? entries.filter(([, t]) => t.rank === selRank)
+    : qtype === 'notyet' ? entries.filter(([, t]) => !(mastered && mastered.has(t.name)) && (selRank === 'すべて' || t.rank === selRank))
+    : entries;
+  const count = qtype === 'all' ? 10 : 5;
   if (pool.length < 1 || entries.length < CHOICES) return null;
   return shuffle(pool).slice(0, Math.min(count, pool.length)).map(([id, q]) => ({
     term: q,
@@ -36,14 +39,14 @@ function buildQuiz(terms, qtype, selRank) {
   }));
 }
 
-export default function Quiz({ terms, mode, qtype, selRank, onFinish, onQuit }) {
+export default function Quiz({ terms, mode, qtype, selRank, mastered, onFinish, onQuit }) {
   const [quiz, setQuiz] = useState(null);
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [picked, setPicked] = useState(null);
 
   useEffect(() => {
-    setQuiz(buildQuiz(terms, qtype, selRank));
+    setQuiz(buildQuiz(terms, qtype, selRank, mastered));
     setIdx(0); setAnswers([]); setPicked(null);
   }, []); // eslint-disable-line
 
@@ -83,7 +86,7 @@ export default function Quiz({ terms, mode, qtype, selRank, onFinish, onQuit }) 
   return (
     <div className="page">
       <div className="hdr">
-        <div className="logo"><div className="logo-mark">au</div><h1>{mode === 'practice' ? '練習' : '本番'}テスト</h1></div>
+        <div className="logo"><div className="logo-mark">au</div><h1>テスト</h1></div>
         <div className="hdr-right">
           <ConfirmButton label="終了" message="テストを終了しますか？" onConfirm={onQuit} className="btn-back" />
         </div>

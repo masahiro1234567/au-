@@ -15,12 +15,12 @@ export default function Result({ user, mode, qtype, selRank, answers, onHome, on
         await dbPush('test_results', {
           userId: user.id, userName: user.name,
           userPos: user.pos || '', userCloserRank: user.closerRank || '',
-          mode, qtype, rank: qtype === 'rank' ? selRank : 'all',
+          mode: 'official', qtype, rank: qtype === 'all' ? 'all' : selRank,
           score, total, pct,
           detail: answers.map((a) => ({ name: a.term.name, termRank: a.term.rank, correct: a.isCorrect })),
           createdAt: Date.now(),
         });
-        setSaveMsg(mode === 'official' ? '結果を保存しました' : '練習モードのため、結果は保存していません');
+        setSaveMsg('結果を保存しました。進捗とランキングに反映されます');
       } catch {
         setSaveMsg('結果を保存できませんでした');
       }
@@ -31,15 +31,15 @@ export default function Result({ user, mode, qtype, selRank, answers, onHome, on
     <div className="page">
       <div className="hdr">
         <div className="logo"><div className="logo-mark">au</div><h1>テスト結果</h1></div>
-        <div className="hdr-right"><span className="tq-pill">{mode === 'practice' ? '練習' : '本番'}</span></div>
+        <div className="hdr-right" />
       </div>
       <div className="t-body tq-body">
         <div className="tq-stack">
           <div className="tq-card tq-score">
-            <div className="tq-lbl" style={{ marginBottom: 0 }}>{qtype === 'rank' ? `${selRank}ランク` : '全範囲'}・{total}問</div>
+            <div className="tq-lbl" style={{ marginBottom: 0 }}>{qtype === 'rank' ? `${selRank}ランク` : qtype === 'notyet' ? `未出題（${selRank}）` : '全範囲'}・{total}問</div>
             <div className="tq-score-num">{score}<span> / {total}問</span></div>
             <div className="tq-score-pct">正答率 {pct}%</div>
-            {saveMsg && <div className={`tq-score-msg ${mode === 'official' ? 'saved' : ''}`}>{saveMsg}</div>}
+            {saveMsg && <div className="tq-score-msg saved">{saveMsg}</div>}
           </div>
           <div className="tq-card">
             <div className="tq-lbl" style={{ marginBottom: 0 }}>振り返り</div>
