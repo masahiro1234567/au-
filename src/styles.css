@@ -1096,3 +1096,20 @@ html,body{overscroll-behavior:none;}
 .ev-srow span:not(:first-child){display:flex;justify-content:center;}
 .ev-srow.head{background:#fbf7f3;font-size:.66rem;font-weight:800;color:var(--sub);}
 .ev-secbox .ev-goal{padding:8px 12px;}
+
+/* 評価一覧：編集 */
+.ev-upd{display:flex;align-items:center;gap:8px;justify-content:space-between;margin:2px 0 8px;font-size:.68rem;color:var(--sub);}
+.ev-edit{display:flex;flex-direction:column;gap:6px;}
+.ev-edit-block{padding-bottom:6px;}
+.ev-edit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.ev-edit-grid label,.ev-edit-trow label{display:flex;flex-direction:column;gap:3px;font-size:.66rem;font-weight:700;color:var(--sub);}
+.ev-rsel{min-height:34px;padding:0 4px;font-size:14px;}
+.ev-ta{min-height:36px;padding:6px 8px;line-height:1.5;resize:vertical;width:100%;box-sizing:border-box;}
+.ev-edit-review{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-top:1px solid #fbe7da;font-size:.76rem;}
+.ev-edit-skill{border-top:1px solid #fbe7da;padding-bottom:6px;}
+.ev-edit-skill .ev-srow{border-top:none;}
+.ev-edit-skill textarea{margin:0 12px;width:calc(100% - 24px);}
+.ev-edit-trow{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr)) 40px;gap:6px;align-items:end;padding:6px 0;border-top:1px solid #fbe7da;}
+.ev-edit-foot{display:flex;gap:8px;justify-content:flex-end;padding-top:10px;position:sticky;bottom:0;background:#fff;}
+.ev-kin{min-height:32px;width:64px;text-align:center;padding:0 4px;font-size:14px;}
+@media (max-width:640px){.ev-edit-grid{grid-template-columns:1fr 1fr;}}

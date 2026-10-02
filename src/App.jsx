@@ -166,7 +166,7 @@ export default function App() {
       );
       break;
     case 'eval':
-      content = <EvalPage isAdmin={isAdmin} user={testUser} onBack={() => setPage(isAdmin ? 'admin' : 'home')} />;
+      content = <EvalPage isAdmin={false} user={testUser} onBack={() => setPage('home')} />;
       break;
     case 'nippou':
       content = (
@@ -261,7 +261,6 @@ export default function App() {
           profiles={profiles}
           onBack={handleAdminLogout}
           onLogout={handleAdminLogout}
-          onOpenEval={() => setPage('eval')}
         />
       );
       break;

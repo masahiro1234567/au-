@@ -1,6 +1,7 @@
 import AdminDevicesTab from './AdminDevicesTab.jsx';
 import AdminOreTabTab from './AdminOreTabTab.jsx';
 import MemberAdmin from './MemberAdmin.jsx';
+import EvalPage from './EvalPage.jsx';
 import React, { useMemo, useState } from 'react';
 import AdminTermsTab from './AdminTermsTab.jsx';
 import AdminKnowledgeTab from './AdminKnowledgeTab.jsx';
@@ -225,7 +226,6 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
       <div className="hdr">
         <div className="logo"><div className="logo-mark">au</div><h1>管理者画面</h1></div>
         <div className="hdr-right">
-          {onOpenEval && <button className="btn-ghost" onClick={onOpenEval}>評価一覧の管理</button>}
           <button className="btn-ghost" onClick={onLogout}>ログアウト</button>
           <button className="btn-back" onClick={onBack}>← ホーム</button>
         </div>
@@ -240,8 +240,10 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
           <button className={`tab ${area === 'nippou' ? 'active' : ''}`} onClick={() => setArea('nippou')}>日報管理</button>
           <button className={`tab ${area === 'glossary' ? 'active' : ''}`} onClick={() => setArea('glossary')}>用語集管理{flagCount > 0 && <span className="tn-badge red">{flagCount}</span>}</button>
           <button className={`tab ${area === 'member' ? 'active' : ''}`} onClick={() => setArea('member')}>メンバー管理</button>
+          <button className={`tab ${area === 'eval' ? 'active' : ''}`} onClick={() => setArea('eval')}>評価一覧</button>
         </div>
         {area === 'member' && <MemberAdmin profiles={profiles} results={results} terms={terms} />}
+        {area === 'eval' && <EvalPage embedded isAdmin user={user} />}
         {area === 'nippou' && <React.Suspense fallback={<div className="loading"><div className="spinner" /></div>}><NippouAdmin user={user} /></React.Suspense>}
         {area === 'glossary' && <>
         <div className="tab-bar">
