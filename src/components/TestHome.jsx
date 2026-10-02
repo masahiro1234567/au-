@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { RANK_COLORS, RANKS, esc } from '../utils.js';
 import { buildPeople, progressOf, weeklyRanking, weekRange, normName } from '../testStats.js';
+import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
 
 // 進捗の円グラフ：円全体＝全用語。正解できた用語をランクごとの色で順に並べ、残りは薄いグレー
 export function ProgressDonut({ prog, size = 110 }) {
@@ -32,32 +33,48 @@ function Legend({ prog }) {
 }
 
 // メンバー進捗：名簿が並び、名前を押すとその下に円グラフが開く
+const POS_GROUPS = [['責任者', '管理者'], ['MQ', 'MQ'], ['SAM', 'SAM'], ['IN', 'IN'], ['NV', 'NV'], ['', '役職未設定']];
 function ProgressTab({ people, terms }) {
-  const list = Object.values(people).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  // 役職はメンバー管理（日報の名簿）のものを使う。名簿に無い人は用語集のプロフィールの役職
+  const { data: fpUsers } = useFirebaseList('fp_users');
+  const posOf = useMemo(() => {
+    const m = {};
+    Object.values(fpUsers || {}).forEach((u) => { if (u && u.name && u.permission !== 'pending') m[normName(u.name)] = u.position || ''; });
+    return m;
+  }, [fpUsers]);
   const [open, setOpen] = useState(null);
+  const list = Object.values(people).map((u) => ({ ...u, position: posOf[u.key] !== undefined ? posOf[u.key] : u.pos || '' }));
   if (!list.length) return <div className="tc ts" style={{ padding: 40 }}>まだメンバーがいません</div>;
+  const known = POS_GROUPS.map(([k]) => k);
+  const groups = POS_GROUPS.map(([k, label]) => ({ k, label, list: list.filter((u) => (known.includes(u.position) ? u.position : '') === k).sort((a, b) => a.name.localeCompare(b.name, 'ja')) })).filter((g) => g.list.length);
   return (
-    <div className="tq-stack">
+    <div className="tq-stack" style={{ gap: 8 }}>
       <div className="tq-note" style={{ marginTop: 0 }}>名前を押すと、その人の進捗が開きます</div>
-      {list.map((u) => {
-        const on = open === u.key;
-        const prog = progressOf(u, terms);
-        return (
-          <div key={u.key} className="tq-memwrap">
-            <button className={`tq-mem ${on ? 'on' : ''}`} onClick={() => setOpen(on ? null : u.key)} aria-expanded={on}>
-              <span className="tq-av">{(u.name || '?').slice(0, 1)}</span>
-              <span className="tq-grow"><b>{u.name}</b>{u.pos && <span className="tq-sub" style={{ display: 'block' }}>{u.pos}</span>}</span>
-              <span className="tq-sub">{on ? '▲' : '▼'}</span>
-            </button>
-            {on && (
-              <div className="tq-card">
-                <div className="tq-donut-row"><ProgressDonut prog={prog} size={120} /><Legend prog={prog} /></div>
-                <div className="tq-sub" style={{ marginTop: 10 }}>正解できた用語 {prog.done} / {prog.total}語・テスト {u.tests.length}回</div>
+      {groups.map((g) => (
+        <React.Fragment key={g.k || 'none'}>
+          <div className="mb-group"><span>{g.label}</span><i />{g.list.length}人</div>
+          {g.list.map((u) => {
+            const on = open === u.key;
+            const prog = progressOf(u, terms);
+            return (
+              <div key={u.key} className="tq-memwrap">
+                <button className={`tq-mem ${on ? 'on' : ''}`} onClick={() => setOpen(on ? null : u.key)} aria-expanded={on}>
+                  <span className="tq-av">{(u.name || '?').slice(0, 1)}</span>
+                  <span className="tq-grow"><b>{u.name}</b></span>
+                  <span className="tq-sub" style={{ fontWeight: 800, color: 'var(--pd)' }}>{prog.pct}%</span>
+                  <span className="tq-sub">{on ? '▲' : '▼'}</span>
+                </button>
+                {on && (
+                  <div className="tq-card">
+                    <div className="tq-donut-row"><ProgressDonut prog={prog} size={120} /><Legend prog={prog} /></div>
+                    <div className="tq-sub" style={{ marginTop: 10 }}>正解できた用語 {prog.done} / {prog.total}語・テスト {u.tests.length}回</div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </React.Fragment>
+      ))}
     </div>
   );
 }
