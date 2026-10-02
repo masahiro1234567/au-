@@ -9,6 +9,7 @@ import Layout from '../components/Layout';
 import MonthPicker from '../components/MonthPicker';
 import { useFrames } from '../lib/frames';
 import { resultKey, getSavedResult, resultFromFrames, kpiMembers } from '../lib/kpiLink';
+import { keepPlace, smoothScrollTo } from '../../keepPlace.js';
 
 const CHANNELS = ['エディオン','イオン','ジョーシン','ケーズデンキ','ヤマダ','コジマ','その他'];
 const DOWS = ['日','月','火','水','木','金','土'];
@@ -105,6 +106,16 @@ export default function Kpi() {
   // ---- ディレクターが自社メンバーでない日は、各メンバーが自分の実績を入力する ----
   const { data: fpActual } = useFirebaseList('fp_kpi_fp'); // その日のFP全体の獲得件数（日報が無い日用）
   const [drafts, setDrafts] = useState({});
+  const [nameFilter, setNameFilter] = useState('');
+  const [flash, setFlash] = useState('');
+  // 未入力のお知らせから、その日の現場まで移動して開く（0.6秒かけてなめらかに）
+  const jumpTo = (kid, dt) => {
+    setPickerVal(null); setNameFilter(''); setChannelFilter('');
+    setOpenIds((prev) => ({ ...prev, [kid]: true }));
+    setFlash(`${kid}_${dt}`);
+    setTimeout(() => smoothScrollTo(document.getElementById(`kpday-${kid}-${dt}`) || document.getElementById(`kpsite-${kid}`), 600), 60);
+    setTimeout(() => setFlash(''), 2400);
+  };
   const ours = (name) => !!name && name !== '他社' && [...registeredNames].some((r) => nn(r) === nn(name));
   const selfMode = (ms) => !ms.some((m) => m.role === 'ディレクター' && ours(m.member));
   const saveMine = async (kid, dt, mi, m) => {
@@ -303,7 +314,7 @@ export default function Kpi() {
           <b>実績が未入力の日があります</b>
           <span style={{ fontWeight: 500 }}>ディレクターが自社メンバーでない日は、自分の実績を自分で入力してください</span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-            {myPending.map((x) => <button key={x.kid + x.dt} className="fchip" onClick={() => { setPickerVal(null); setOpenIds((prev) => ({ ...prev, [x.kid]: true })); }}>{mdLabel(x.dt)} {x.store}</button>)}
+            {myPending.map((x) => <button key={x.kid + x.dt} className="fchip" onClick={() => jumpTo(x.kid, x.dt)}>{mdLabel(x.dt)} {x.store}</button>)}
           </div>
         </div>
       )}
@@ -314,17 +325,22 @@ export default function Kpi() {
           <option value="">すべての販路</option>
           {CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        {isAdmin && <button className="btn btn-p" style={{ flex: 1 }} onClick={openNew}>＋ KPIを登録</button>}
+        <select className="inp" style={{ flex: 1, minWidth: 0, padding: '8px 10px', fontSize: '.84rem' }} value={nameFilter} onChange={(e) => setNameFilter(e.target.value)} aria-label="名前で絞り込み">
+          <option value="">すべてのメンバー</option>
+          {[...new Set(Object.values(kpiData || {}).flatMap((k) => Object.values(k.dateMembers || {}).flatMap((ms) => (ms || []).map((m) => m && m.member)).filter((n) => n && n !== '他社')))].sort((a, b) => a.localeCompare(b, 'ja')).map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+        {isAdmin && <button className="btn btn-p" style={{ flex: '0 0 auto' }} onClick={openNew}>＋ KPIを登録</button>}
       </div>
+      {nameFilter && <div className="np-sub" style={{ marginBottom: 8, fontSize: '.76rem', color: 'var(--sub)' }}>{nameFilter} が入っている現場だけ表示しています</div>}
 
       {cards.length === 0 && <div className="empty">この月のKPIはありません</div>}
       <div className="card-title" style={{ margin: '6px 0 6px' }}>現場ごと</div>
-      {cards.map(({ id, k, dates, dateMembers }) => {
+      {cards.filter(({ dates, dateMembers }) => !nameFilter || dates.some((dt) => (dateMembers[dt] || []).some((m) => nn(m.member) === nn(nameFilter)))).map(({ id, k, dates, dateMembers }) => {
         const on = !!openIds[id];
         const mine = dates.some((dt) => (dateMembers[dt] || []).some((m) => isMe(m.member)));
         return (
-          <div key={id} className={`kp-site ${on ? 'on' : ''}`}>
-            <button className="kp-site-head" onClick={() => setOpenIds((prev) => ({ ...prev, [id]: !prev[id] }))} aria-expanded={on}>
+          <div key={id} id={`kpsite-${id}`} className={`kp-site ${on ? 'on' : ''}`}>
+            <button className="kp-site-head" onClick={(e) => keepPlace(e.currentTarget, () => setOpenIds((prev) => ({ ...prev, [id]: !prev[id] })))} aria-expanded={on}>
               <span className="kp-grow"><b>{k.store}</b><small>{dates.map((dt) => mdLabel(dt)).join('・')}</small></span>
               {mine && <span className="kp-me-pill">あなた</span>}
               <span className="kp-arrow">{on ? '▲' : '▼'}</span>
@@ -335,7 +351,7 @@ export default function Kpi() {
                   const ms = dateMembers[dt] || [];
                   const fp = ms.filter((m) => m.role !== 'キャッチャー').reduce((a, m) => a + (+m.target || 0), 0);
                   return (
-                    <div key={dt}>
+                    <div key={dt} id={`kpday-${id}-${dt}`} className={flash === `${id}_${dt}` ? 'kp-flash' : ''}>
                       <div className="kp-day"><b>{mdLabel(dt)}</b><span>FP全体 目標 <strong>{fp}件</strong></span></div>
                       {selfMode(ms) && dt <= todayStr && (() => {
                         const canFp = isAdmin || ms.some((m) => isMe(m.member));
@@ -359,7 +375,7 @@ export default function Kpi() {
                         const res = getResult(id, dt, mi, m.member, m.role);
                         const me = isMe(m.member);
                         return (
-                          <div key={mi} className={`kp-mem ${me ? 'me' : ''}`}>
+                          <div key={mi} className={`kp-mem ${me || (nameFilter && nn(m.member) === nn(nameFilter)) ? 'me' : ''}`}>
                             <span className="kp-grow" style={{ fontWeight: me ? 900 : 500 }}>{me ? 'あなた' : (m.member || '－')}</span>
                             <span className={`kp-role ${m.member === '他社' ? 'oth' : ROLE_CLS[m.role] || ''}`}>{ROLE_SHORT[m.role] || m.role}</span>
                             <b className="kp-t">{res && res.actual !== undefined && res.actual !== '' ? <small>{res.actual}/</small> : null}{target || 0}<small>{cat ? '組' : '件'}</small></b>

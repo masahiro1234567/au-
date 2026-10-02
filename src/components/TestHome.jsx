@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { RANK_COLORS, RANKS, esc } from '../utils.js';
 import { buildPeople, progressOf, weeklyRanking, weekRange, normName } from '../testStats.js';
 import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
+import { keepPlace } from '../keepPlace.js';
 
 // 進捗の円グラフ：円全体＝全用語。正解できた用語をランクごとの色で順に並べ、残りは薄いグレー
 export function ProgressDonut({ prog, size = 110 }) {
@@ -43,7 +44,13 @@ function ProgressTab({ people, terms }) {
     return m;
   }, [fpUsers]);
   const [open, setOpen] = useState(null);
-  const list = Object.values(people).map((u) => ({ ...u, position: posOf[u.key] !== undefined ? posOf[u.key] : u.pos || '' }));
+  const all = { ...people };
+  Object.values(fpUsers || {}).forEach((u) => {
+    if (!u || !u.name || u.permission === 'pending' || u.permission === 'disabled') return;
+    const k = normName(u.name);
+    if (!all[k]) all[k] = { key: k, name: u.name, pos: u.position || '', tests: [], firstCorrect: {} };
+  });
+  const list = Object.values(all).map((u) => ({ ...u, position: posOf[u.key] !== undefined ? posOf[u.key] : u.pos || '' }));
   if (!list.length) return <div className="tc ts" style={{ padding: 40 }}>まだメンバーがいません</div>;
   const known = POS_GROUPS.map(([k]) => k);
   const groups = POS_GROUPS.map(([k, label]) => ({ k, label, list: list.filter((u) => (known.includes(u.position) ? u.position : '') === k).sort((a, b) => a.name.localeCompare(b.name, 'ja')) })).filter((g) => g.list.length);
@@ -58,7 +65,7 @@ function ProgressTab({ people, terms }) {
             const prog = progressOf(u, terms);
             return (
               <div key={u.key} className="tq-memwrap">
-                <button className={`tq-mem ${on ? 'on' : ''}`} onClick={() => setOpen(on ? null : u.key)} aria-expanded={on}>
+                <button className={`tq-mem ${on ? 'on' : ''}`} onClick={(e) => keepPlace(e.currentTarget, () => setOpen(on ? null : u.key))} aria-expanded={on}>
                   <span className="tq-av">{(u.name || '?').slice(0, 1)}</span>
                   <span className="tq-grow"><b>{u.name}</b></span>
                   <span className="tq-sub" style={{ fontWeight: 800, color: 'var(--pd)' }}>{prog.pct}%</span>

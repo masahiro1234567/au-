@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDbCollection, dbSet } from '../useFirebase.js';
+import { keepPlace } from '../keepPlace.js';
 import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
 import { showToast } from '../utils.js';
 import { parseBook, RANK_STYLE, RANKS5, normName } from '../evalSheets.js';
-import { PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS, WorkList, SelfTable } from './EvalEditors.jsx';
+import { PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS, WorkList, SelfTable, SectionEdit } from './EvalEditors.jsx';
 import { dbPush, dbUpdateMany } from '../useFirebase.js';
 
 // ===== 評価一覧（Googleスプレッドシートを読み取って表示）=====
@@ -165,6 +166,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
 
   // ---- 1人分（個人別シート＋評価サマリ）----
   const [openSec, setOpenSec] = useState({});
+  const [secEdit, setSecEdit] = useState(null); // その場で編集しているまとまり（人のキー|まとまり名）
   const TOTAL3 = ['キャッチ', 'クローズ', 'ディレクション'];
   const people = useMemo(() => {
     if (!book) return [];
@@ -356,7 +358,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                 const on = sel === p.key;
                 return (
                   <div key={p.key} className={`ev-pcard ${on ? 'on' : ''} ${hidden[p.key] ? 'dim' : ''}`}>
-                    <button className="ev-prow" onClick={() => setSel(on ? null : p.key)} aria-expanded={on}>
+                    <button className="ev-prow" onClick={(e) => keepPlace(e.currentTarget, () => setSel(on ? null : p.key))} aria-expanded={on}>
                       <span className="ev-av">{p.name.slice(0, 1)}</span>
                       <span className="ev-grow"><b>{p.name}</b><small>{p.role}</small></span>
                       <span className="ev-mini">{p.tot3.map((v, i) => <Rank key={i} v={v} />)}</span>
@@ -384,10 +386,12 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                           const k = p.key + '|' + sec.name, so = !!openSec[k];
                           return (
                             <div key={sec.name} className="ev-secbox">
-                              <button className="ev-secbtn" onClick={() => setOpenSec({ ...openSec, [k]: !so })} aria-expanded={so}>
+                              <button className="ev-secbtn" onClick={(e) => keepPlace(e.currentTarget, () => setOpenSec({ ...openSec, [k]: !so }))} aria-expanded={so}>
                                 <b>{sec.name}</b>{sec.total && <Rank v={sec.total} />}<span className="ev-arrow">{so ? '▲' : '▼'}</span>
                               </button>
-                              {so && (<>
+                              {so && isAdmin && appMode && p.person && secEdit === k && <SectionEdit person={p.person} section={sec.name} userName={user && user.name} onDone={() => setSecEdit(null)} />}
+                              {so && secEdit !== k && (<>
+                                {isAdmin && appMode && p.person && <div className="ev-secedit-bar"><button className="ev-btn p" onClick={() => setSecEdit(k)}>このまとまりを編集</button></div>}
                                 <div className="ev-srow head"><span>評価項目</span><span>ランク</span><span>前回</span></div>
                                 {sec.items.map((x) => (
                                   <div key={x.item}>
@@ -405,7 +409,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                           const k = p.key + '|' + title, so = !!openSec[k];
                           return (
                             <div key={title} className="ev-secbox">
-                              <button className="ev-secbtn" onClick={() => setOpenSec({ ...openSec, [k]: !so })} aria-expanded={so}><b>{title}</b><span className="ev-arrow">{so ? '▲' : '▼'}</span></button>
+                              <button className="ev-secbtn" onClick={(e) => keepPlace(e.currentTarget, () => setOpenSec({ ...openSec, [k]: !so }))} aria-expanded={so}><b>{title}</b><span className="ev-arrow">{so ? '▲' : '▼'}</span></button>
                               {so && tb.rows.map((row, i) => (
                                 <div key={i} className="ev-goal">{tb.heads.filter((h) => !/^No\.?$/i.test(h) && row[h]).map((h, j) => <div key={h} className={j === 0 ? 'first' : ''}><small>{h}</small><span>{row[h]}</span></div>)}</div>
                               ))}

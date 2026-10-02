@@ -367,3 +367,34 @@ export function WorkList({ person, isAdmin, kpiData, userName, legacy }) {
     </div>
   );
 }
+
+// ===== まとまり（キャッチ力など）だけを、その場で編集 =====
+// 開いたまとまりの中で直せるので、上の「編集する」から探しに行かなくていい
+const SEC_TOTAL = { キャッチ力: 'キャッチャー', クローズ力: 'クローズ', ディレクション力: 'ディレクター' };
+export function SectionEdit({ person, section, userName, onDone }) {
+  const base = normPerson(person);
+  const [skills, setSkills] = useState(() => clone(base.skills));
+  const totalLabel = SEC_TOTAL[section];
+  const [total, setTotal] = useState(() => (base.totals.find((t) => t.label === totalLabel) || {}).rank || '');
+  const [saving, setSaving] = useState(false);
+  const set = (i, k, v) => setSkills(skills.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
+  const save = async () => {
+    setSaving(true);
+    const totals = TOTAL_LABELS.map((l) => ({ label: l, rank: l === totalLabel ? total : ((base.totals.find((t) => t.label === l) || {}).rank || '') }));
+    try { await savePerson(base, { ...base, skills, totals: totalLabel ? totals : base.totals }, userName); showToast('保存しました'); onDone(); } catch (e) { showToast('保存できませんでした：' + e.message); }
+    setSaving(false);
+  };
+  return (
+    <div className="ev-secedit">
+      {totalLabel && <div className="ev-srow"><b>総合（{totalLabel}）</b><span><RankSel label={`総合（${totalLabel}）`} value={total} onChange={setTotal} /></span><span /></div>}
+      <div className="ev-srow head"><span>評価項目</span><span>ランク</span><span>前回</span></div>
+      {skills.map((s, i) => ((s.section || 'その他') === section ? (
+        <div key={i} className="ev-edit-skill">
+          <div className="ev-srow"><span>{s.item}</span><span><RankSel label={`${s.item}のランク`} value={s.rank} onChange={(v) => set(i, 'rank', v)} /></span><span><RankSel label={`${s.item}の前回ランク`} value={s.prev} onChange={(v) => set(i, 'prev', v)} /></span></div>
+          <textarea className="ev-inp ev-ta" rows={1} value={s.comment || ''} placeholder="強み・課題コメント" onChange={(e) => set(i, 'comment', e.target.value)} />
+        </div>
+      ) : null))}
+      <div className="ev-edit-foot" style={{ padding: '10px 12px' }}><button className="ev-btn" onClick={onDone}>キャンセル</button><button className="ev-btn p" disabled={saving} onClick={save}>{saving ? '保存中…' : '保存する'}</button></div>
+    </div>
+  );
+}

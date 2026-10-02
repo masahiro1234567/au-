@@ -6,6 +6,7 @@ import { dbGet, dbSet, dbUpdateMany } from '../useFirebase.js';
 import { RANKS, showToast } from '../utils.js';
 import { normName, buildPeople, progressOf } from '../testStats.js';
 import { ProgressDonut } from './TestHome.jsx';
+import { keepPlace } from '../keepPlace.js';
 import { RANK_COLORS } from '../utils.js';
 
 // ===== メンバー管理（用語集と日報のユーザーをまとめて管理）=====
@@ -154,6 +155,52 @@ export default function MemberAdmin({ profiles, results, terms }) {
   const prog = cur ? progressOf(people[cur.key], terms) : null;
   const tests = cur && people[cur.key] ? people[cur.key].tests.length : 0;
 
+  const renderDetail = () => (
+    <>
+          {!cur && <div className="mb-note" style={{ textAlign: 'center', padding: '60px 0' }}>左の名簿から名前を選ぶと、ここに詳細が出ます</div>}
+          {cur && (<>
+            <div className="mb-d-head">
+              <span className="mb-av big">{cur.name.slice(0, 1)}</span>
+              <div className="mb-grow"><b style={{ fontSize: '1.1rem' }}>{cur.name}</b><div className="mb-note">最終ログイン {fmt(cur.u?.lastLogin)}</div></div>
+              <button className="mb-btn mb-close" onClick={() => setSel(null)} aria-label="閉じる">×</button>
+            </div>
+            <div className="mb-lbl">用語集テストの進捗</div>
+            <div className="mb-d-prog">
+              <ProgressDonut prog={prog} size={120} />
+              <div className="mb-legend">
+                {RANKS.map((r) => <div key={r}><i style={{ background: RANK_COLORS[r] }} /><b style={{ color: RANK_COLORS[r] }}>{r}</b><span>{prog.byRank[r].done}語（全{prog.byRank[r].total}語）</span></div>)}
+                <div className="mb-note">テスト {tests}回・正解できた用語 {prog.done} / {prog.total}語</div>
+              </div>
+            </div>
+            <div className="mb-sep" />
+            {cur.perm === 'none' ? (
+              <div className="mb-note">このメンバーは日報の名簿（ログインの名簿）に登録されていません。テストの記録だけが残っています。</div>
+            ) : (<>
+              <div className="mb-fields">
+                <label>役職<select className="mb-inp" value={cur.u?.position || ''} onChange={(e) => { saveFp({ position: e.target.value }); saveProf({ pos: e.target.value }); }}><option value="">－</option>{POSITIONS.map((p) => <option key={p}>{p}</option>)}</select></label>
+                <label>等級<select className="mb-inp" value={cur.u?.grade || ''} onChange={(e) => saveFp({ grade: e.target.value })}><option value="">－</option>{GRADES.map((g) => <option key={g}>{g}</option>)}</select></label>
+                <label>クローザーランク<select className="mb-inp" value={cur.p?.closerRank || ''} onChange={(e) => saveProf({ closerRank: e.target.value })}><option value="">－</option>{RANKS.map((r) => <option key={r}>{r}</option>)}</select></label>
+              </div>
+              {cur.perm === 'pending' ? (
+                <div className="mb-btns">
+                  <button className="mb-btn g" onClick={() => saveFp({ permission: 'edit', approvedAt: Date.now() })}>承認して登録</button>
+                  <button className="mb-btn ng" onClick={() => saveFp({ permission: 'disabled' })}>拒否</button>
+                </div>
+              ) : (
+                <div className="mb-btns">
+                  <button className={`mb-btn ${cur.perm === 'edit' ? 'on' : ''}`} onClick={() => saveFp({ permission: 'edit' })}>編集可</button>
+                  <button className={`mb-btn ${cur.perm === 'readonly' ? 'on' : ''}`} onClick={() => saveFp({ permission: 'readonly' })}>閲覧のみ</button>
+                  <button className={`mb-btn ng ${cur.perm === 'disabled' ? 'on' : ''}`} onClick={() => saveFp({ permission: 'disabled' })}>ログイン不可</button>
+                  <button className="mb-btn" onClick={() => saveFp({ pwHash: null, pwSalt: null })}>{cur.u?.pwHash ? 'パスワードを初期化' : '初期パスワードのまま'}</button>
+                </div>
+              )}
+            </>)}
+            <div className="mb-sep" />
+            <button className="mb-btn ng" onClick={removeMember}>このメンバーを削除</button>
+          </>)}
+    </>
+  );
+
   return (
     <div className="mb">
       {mergeMsg && <div className="mb-msg">{mergeMsg}</div>}
@@ -206,7 +253,8 @@ export default function MemberAdmin({ profiles, results, terms }) {
             <React.Fragment key={g.k || 'none'}>
               <div className="mb-group"><span>{g.label}</span><i />{g.list.length}人</div>
               {g.list.map((m) => (
-            <button key={m.key} className={`mb-row ${sel === m.key ? 'on' : ''} ${m.perm === 'pending' ? 'pending' : ''}`} onClick={() => setSel(m.key)}>
+            <React.Fragment key={m.key}>
+            <button className={`mb-row ${sel === m.key ? 'on' : ''} ${m.perm === 'pending' ? 'pending' : ''}`} onClick={(e) => keepPlace(e.currentTarget, () => setSel(sel === m.key ? null : m.key))} aria-expanded={sel === m.key}>
               <span className="mb-av">{m.name.slice(0, 1)}</span>
               <span className="mb-row-main"><b>{m.name}</b>
                 <span className="mb-badges">
@@ -215,55 +263,17 @@ export default function MemberAdmin({ profiles, results, terms }) {
                   {m.perm === 'none' ? <span className="mb-bd old">名簿に未登録</span> : <span className={`mb-bd ${PERM_CLS[m.perm] || 'ok'}`}>{PERM[m.perm] || PERM.edit}</span>}
                 </span>
               </span>
-              <span className="mb-sub">›</span>
+              <span className="mb-sub">{sel === m.key ? '▲' : '▼'}</span>
             </button>
+            {sel === m.key && <div className="mb-card mb-detail mb-inline">{renderDetail()}</div>}
+            </React.Fragment>
               ))}
             </React.Fragment>
           ))}
         </div>
 
-        <div className="mb-card mb-detail">
-          {!cur && <div className="mb-note" style={{ textAlign: 'center', padding: '60px 0' }}>左の名簿から名前を選ぶと、ここに詳細が出ます</div>}
-          {cur && (<>
-            <div className="mb-d-head">
-              <span className="mb-av big">{cur.name.slice(0, 1)}</span>
-              <div className="mb-grow"><b style={{ fontSize: '1.1rem' }}>{cur.name}</b><div className="mb-note">最終ログイン {fmt(cur.u?.lastLogin)}</div></div>
-              <button className="mb-btn mb-close" onClick={() => setSel(null)} aria-label="閉じる">×</button>
-            </div>
-            <div className="mb-lbl">用語集テストの進捗</div>
-            <div className="mb-d-prog">
-              <ProgressDonut prog={prog} size={120} />
-              <div className="mb-legend">
-                {RANKS.map((r) => <div key={r}><i style={{ background: RANK_COLORS[r] }} /><b style={{ color: RANK_COLORS[r] }}>{r}</b><span>{prog.byRank[r].done}語（全{prog.byRank[r].total}語）</span></div>)}
-                <div className="mb-note">テスト {tests}回・正解できた用語 {prog.done} / {prog.total}語</div>
-              </div>
-            </div>
-            <div className="mb-sep" />
-            {cur.perm === 'none' ? (
-              <div className="mb-note">このメンバーは日報の名簿（ログインの名簿）に登録されていません。テストの記録だけが残っています。</div>
-            ) : (<>
-              <div className="mb-fields">
-                <label>役職<select className="mb-inp" value={cur.u?.position || ''} onChange={(e) => { saveFp({ position: e.target.value }); saveProf({ pos: e.target.value }); }}><option value="">－</option>{POSITIONS.map((p) => <option key={p}>{p}</option>)}</select></label>
-                <label>等級<select className="mb-inp" value={cur.u?.grade || ''} onChange={(e) => saveFp({ grade: e.target.value })}><option value="">－</option>{GRADES.map((g) => <option key={g}>{g}</option>)}</select></label>
-                <label>クローザーランク<select className="mb-inp" value={cur.p?.closerRank || ''} onChange={(e) => saveProf({ closerRank: e.target.value })}><option value="">－</option>{RANKS.map((r) => <option key={r}>{r}</option>)}</select></label>
-              </div>
-              {cur.perm === 'pending' ? (
-                <div className="mb-btns">
-                  <button className="mb-btn g" onClick={() => saveFp({ permission: 'edit', approvedAt: Date.now() })}>承認して登録</button>
-                  <button className="mb-btn ng" onClick={() => saveFp({ permission: 'disabled' })}>拒否</button>
-                </div>
-              ) : (
-                <div className="mb-btns">
-                  <button className={`mb-btn ${cur.perm === 'edit' ? 'on' : ''}`} onClick={() => saveFp({ permission: 'edit' })}>編集可</button>
-                  <button className={`mb-btn ${cur.perm === 'readonly' ? 'on' : ''}`} onClick={() => saveFp({ permission: 'readonly' })}>閲覧のみ</button>
-                  <button className={`mb-btn ng ${cur.perm === 'disabled' ? 'on' : ''}`} onClick={() => saveFp({ permission: 'disabled' })}>ログイン不可</button>
-                  <button className="mb-btn" onClick={() => saveFp({ pwHash: null, pwSalt: null })}>{cur.u?.pwHash ? 'パスワードを初期化' : '初期パスワードのまま'}</button>
-                </div>
-              )}
-            </>)}
-            <div className="mb-sep" />
-            <button className="mb-btn ng" onClick={removeMember}>このメンバーを削除</button>
-          </>)}
+        <div className="mb-card mb-detail mb-side">
+          {renderDetail()}
         </div>
       </div>
     </div>

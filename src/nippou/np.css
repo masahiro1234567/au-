@@ -190,3 +190,6 @@
 .np .kp-self-fp .inp,.np .kp-in .inp{width:64px;min-height:34px;padding:4px 6px;text-align:center;font-size:16px;}
 .np .kp-in{display:flex;align-items:center;gap:4px;margin-left:6px;}
 .np .kp-mem{flex-wrap:wrap;}
+.np .kp-flash{animation:kpflash 2.2s ease;border-radius:10px;}
+@keyframes kpflash{0%,30%{background:#ffe1c7;}100%{background:transparent;}}
+.np .filter-bar,.np .tab-bar{overflow-x:auto;overflow-y:hidden;touch-action:pan-x;overscroll-behavior:contain;}

@@ -106,7 +106,6 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
           <button key={title} className="hm2-drawer-item" onClick={go(fn)} tabIndex={menuOpen ? 0 : -1}><Icon k={icon} size={20} />{title}</button>
         ))}
         <div className="hm2-drawer-sep" />
-        {onGoMyPage && <button className="hm2-drawer-item" onClick={go(onGoMyPage)} tabIndex={menuOpen ? 0 : -1}><Icon k="user" size={20} />マイページ</button>}
         <button className="hm2-drawer-item" onClick={go(onAdminLogin)} tabIndex={menuOpen ? 0 : -1}><Icon k="lock" size={20} />管理者ログイン</button>
         {onLogout && <button className="hm2-drawer-item" onClick={go(onLogout)} tabIndex={menuOpen ? 0 : -1}><Icon k="out" size={20} />ログアウト</button>}
       </nav>

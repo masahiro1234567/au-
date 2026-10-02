@@ -6,6 +6,7 @@ import { getSavedResult, resultFromFrames, kpiMembers, storeMatch } from '../nip
 import { normName } from '../evalSheets.js';
 import { normPerson, WorkList, SelfTable, TOTAL_LABELS } from './EvalEditors.jsx';
 import { GoalEditor, Rank } from './EvalPage.jsx';
+import { keepPlace } from '../keepPlace.js';
 
 // ===== マイページ（自分の評価・稼働の記録）=====
 // 本人だけが見る画面。目標・目標設定・アクションプランはここから書き込める
@@ -80,7 +81,7 @@ export default function MyPage({ user, onBack, onGoKpi }) {
 
   const Sec = ({ k, title, hint, children }) => (
     <div className="mp-card">
-      <button className="mp-sec" onClick={() => setOpen({ ...open, [k]: !open[k] })} aria-expanded={!!open[k]}>
+      <button className="mp-sec" onClick={(e) => keepPlace(e.currentTarget, () => setOpen({ ...open, [k]: !open[k] }))} aria-expanded={!!open[k]}>
         <b>{title}</b><i>{open[k] ? '▲' : '▼'}</i>
       </button>
       {open[k] && <div className="mp-body">{children}</div>}
