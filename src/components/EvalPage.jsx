@@ -121,7 +121,7 @@ export default function EvalPage({ isAdmin, onBack }) {
         <div className="logo"><div className="logo-mark">au</div><h1>評価一覧</h1></div>
         <div className="hdr-right">
           {sheetId && <button className="btn-ghost" onClick={load} disabled={loading}>{loading ? '読み込み中…' : '最新にする'}</button>}
-          <button className="btn-back" onClick={onBack}>← ホーム</button>
+          <button className="btn-back" onClick={onBack}>← {isAdmin ? '管理画面' : 'ホーム'}</button>
         </div>
       </header>
       <div className="t-body ev-body">
@@ -141,7 +141,7 @@ export default function EvalPage({ isAdmin, onBack }) {
             </div>
           </div>
         )}
-        {!sheetId && !isAdmin && <div className="ev-empty">評価一覧はまだ準備中です（管理者がスプレッドシートを登録すると表示されます）</div>}
+        {!sheetId && !isAdmin && <div className="ev-empty">評価一覧はまだ準備中です。<br />管理者ログイン →「評価一覧の管理」から、スプレッドシートを登録すると表示されます。</div>}
         {err && <div className="ev-err">{err}</div>}
         {loading && !book && <div className="ev-empty">読み込み中…</div>}
 

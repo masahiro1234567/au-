@@ -214,7 +214,7 @@ function ProfileTab({ profiles }) {
   );
 }
 
-export default function Admin({ terms, ghostIds, results, profiles, knowledgeTypes, devices, payConfig, user, flags, onBack, onLogout }) {
+export default function Admin({ terms, ghostIds, results, profiles, knowledgeTypes, devices, payConfig, user, flags, onBack, onLogout, onOpenEval }) {
   const flagCount = Object.entries(flags || {}).filter(([id, f]) => f && f.active && terms[id]).length;
   const [tab, setTab] = useState('summary');
   // 日報管理（日報アプリの管理画面）と用語集管理を切り替える。最初は日報管理
@@ -225,6 +225,7 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
       <div className="hdr">
         <div className="logo"><div className="logo-mark">au</div><h1>管理者画面</h1></div>
         <div className="hdr-right">
+          {onOpenEval && <button className="btn-ghost" onClick={onOpenEval}>評価一覧の管理</button>}
           <button className="btn-ghost" onClick={onLogout}>ログアウト</button>
           <button className="btn-back" onClick={onBack}>← ホーム</button>
         </div>
