@@ -122,7 +122,7 @@ const isEmpty = (e) => !Object.keys(e || {}).some((k) => e[k]);
 // web：ブラウザで開く「Web版お支払い目安額」（上のバーと、レイアウト（鉛筆）→印刷のボタンが無い。ほかの機能は同じ）
 // ctrl：見積もりの中身を外から渡す（Web版で、印刷プレビューにも同じ内容を出すため）
 // preview：印刷プレビュー用（見るだけ）
-export const WEB_PAY_H = 820;
+export const WEB_PAY_H = 805; // 横向きの印刷で、縮尺90%以上だと2枚目に回る高さ（実際の現場と同じ）
 export default function Payment({ onClose, onMultitask, config, web, ctrl, preview }) {
   const cfg = React.useMemo(() => buildConfig(config), [config]);
   const [estsIn, setEstsIn] = useState([{}, {}, {}, {}, {}]);

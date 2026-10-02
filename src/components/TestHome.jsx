@@ -46,7 +46,7 @@ function ProgressTab({ people, terms }) {
           <div key={u.key} className="tq-memwrap">
             <button className={`tq-mem ${on ? 'on' : ''}`} onClick={() => setOpen(on ? null : u.key)} aria-expanded={on}>
               <span className="tq-av">{(u.name || '?').slice(0, 1)}</span>
-              <span className="tq-grow"><b>{u.name}</b>{(u.pos || u.cr) && <span className="tq-sub" style={{ display: 'block' }}>{u.pos}{u.cr ? '・' + u.cr : ''}</span>}</span>
+              <span className="tq-grow"><b>{u.name}</b>{u.pos && <span className="tq-sub" style={{ display: 'block' }}>{u.pos}</span>}</span>
               <span className="tq-sub">{on ? '▲' : '▼'}</span>
             </button>
             {on && (

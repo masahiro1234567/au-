@@ -948,3 +948,9 @@ html,body{overscroll-behavior:none;}
   .hm2-streak-num b{font-size:1.15rem;}
   .hm2-streak-week{width:230px;}
 }
+
+/* メンバー管理：役職ごとの見出し（薄く） */
+.mb-group{display:flex;align-items:center;gap:8px;margin:10px 2px 2px;font-size:.72rem;font-weight:800;color:#b8aca2;}
+.mb-group span{color:var(--sub);}
+.mb-group i{flex:1;height:1px;background:var(--border);}
+.mb-tools .mb-inp{font-size:14px;padding:0 6px;}

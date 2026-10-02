@@ -216,9 +216,9 @@ export function Browser({ config, onClose, say }) {
                     <button className={opt.orient === 'landscape' ? 'on' : ''} onClick={() => so({ orient: 'landscape' })} aria-label="横向き"><i className="l" /></button>
                   </span></div>
                 <div className="ip-print-row last"><span className="grow">縮尺</span>
-                  <button className="ip-print-arw" onClick={() => so({ scale: Math.max(opt.scale - 5, 50) })} aria-label="縮尺を下げる">◀</button>
+                  <button className="ip-print-arw" onClick={() => so({ scale: Math.max(opt.scale - 1, 50) })} aria-label="縮尺を下げる">◀</button>
                   <b className="ip-print-scale">{opt.scale}%</b>
-                  <button className="ip-print-arw" onClick={() => so({ scale: Math.min(opt.scale + 5, 150) })} aria-label="縮尺を上げる">▶</button></div>
+                  <button className="ip-print-arw" onClick={() => so({ scale: Math.min(opt.scale + 1, 150) })} aria-label="縮尺を上げる">▶</button></div>
               </div>
               <div className="ip-print-grp"><div className="ip-print-row last">メディアと品質<span className="ip-print-val">メディアタイプ自動選択、標準品質</span></div></div>
               <div className="ip-print-pages">

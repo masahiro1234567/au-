@@ -57,6 +57,8 @@ export default function MemberAdmin({ profiles, results, terms }) {
   const [sel, setSel] = useState(null);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('');
+  const [posF, setPosF] = useState('');
+  const [gradeF, setGradeF] = useState('');
   const [mergeMsg, setMergeMsg] = useState('');
   const [adding, setAdding] = useState(false);
   const [newU, setNewU] = useState({ name: '', position: 'NV', grade: 'R' });
@@ -93,7 +95,14 @@ export default function MemberAdmin({ profiles, results, terms }) {
     }).sort((a, b) => (a.perm === 'pending' ? -1 : 0) - (b.perm === 'pending' ? -1 : 0) || a.name.localeCompare(b.name, 'ja'));
   }, [fpUsers, profiles]);
   const pairs = members.filter((m) => m.dup);
-  const shown = members.filter((m) => (!q || normName(m.name).includes(normName(q))) && (!filter || m.perm === filter));
+  const shown = members.filter((m) => (!q || normName(m.name).includes(normName(q))) && (!filter || m.perm === filter)
+    && (!posF || (m.u?.position || '') === posF) && (!gradeF || (m.u?.grade || '') === gradeF));
+  // 役職ごとに並べる：申請中 → 管理者（責任者）→ MQ → SAM → IN → NV → 未設定。同じ役職の中は等級→名前の順
+  const GROUPS = [['__pending', '申請中'], ['責任者', '管理者'], ['MQ', 'MQ'], ['SAM', 'SAM'], ['IN', 'IN'], ['NV', 'NV'], ['', '役職未設定']];
+  const groupOf = (m) => (m.perm === 'pending' ? '__pending' : POSITIONS.includes(m.u?.position) ? m.u.position : '');
+  const gOrder = (g) => { const i = GRADES.indexOf(g); return i < 0 ? 99 : i; };
+  const grouped = GROUPS.map(([k, label]) => ({ k, label, list: shown.filter((m) => groupOf(m) === k)
+    .sort((a, b) => gOrder(a.u?.grade) - gOrder(b.u?.grade) || a.name.localeCompare(b.name, 'ja')) })).filter((g) => g.list.length);
   const cur = members.find((m) => m.key === sel) || null;
 
   // ---- 操作 ----
@@ -165,10 +174,18 @@ export default function MemberAdmin({ profiles, results, terms }) {
 
       <div className="mb-grid">
         <div className="mb-list">
+          <input className="mb-inp" value={q} onChange={(e) => setQ(e.target.value)} placeholder="名前で検索" aria-label="名前で検索" />
           <div className="mb-tools">
-            <input className="mb-inp" value={q} onChange={(e) => setQ(e.target.value)} placeholder="名前で検索" aria-label="名前で検索" />
-            <select className="mb-inp" style={{ width: 130 }} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="権限で絞り込み">
-              <option value="">すべて</option>
+            <select className="mb-inp" value={posF} onChange={(e) => setPosF(e.target.value)} aria-label="役職で絞り込み">
+              <option value="">役職：すべて</option>
+              {POSITIONS.map((p) => <option key={p} value={p}>{p === '責任者' ? '管理者（責任者）' : p}</option>)}
+            </select>
+            <select className="mb-inp" value={gradeF} onChange={(e) => setGradeF(e.target.value)} aria-label="等級で絞り込み">
+              <option value="">等級：すべて</option>
+              {GRADES.map((g) => <option key={g} value={g}>等級{g}</option>)}
+            </select>
+            <select className="mb-inp" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="権限で絞り込み">
+              <option value="">権限：すべて</option>
               {Object.entries(PERM).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
           </div>
@@ -184,7 +201,11 @@ export default function MemberAdmin({ profiles, results, terms }) {
             </div>
           )}
           {loading && <div className="mb-note" style={{ padding: 20, textAlign: 'center' }}>読み込み中…</div>}
-          {shown.map((m) => (
+          {!loading && !grouped.length && <div className="mb-note" style={{ padding: 20, textAlign: 'center' }}>当てはまるメンバーがいません</div>}
+          {grouped.map((g) => (
+            <React.Fragment key={g.k || 'none'}>
+              <div className="mb-group"><span>{g.label}</span><i />{g.list.length}人</div>
+              {g.list.map((m) => (
             <button key={m.key} className={`mb-row ${sel === m.key ? 'on' : ''} ${m.perm === 'pending' ? 'pending' : ''}`} onClick={() => setSel(m.key)}>
               <span className="mb-av">{m.name.slice(0, 1)}</span>
               <span className="mb-row-main"><b>{m.name}</b>
@@ -196,6 +217,8 @@ export default function MemberAdmin({ profiles, results, terms }) {
               </span>
               <span className="mb-sub">›</span>
             </button>
+              ))}
+            </React.Fragment>
           ))}
         </div>
 
