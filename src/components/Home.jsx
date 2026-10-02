@@ -8,6 +8,7 @@ const ICONS = {
   target: <><circle cx="12" cy="12" r="8" {...S} /><circle cx="12" cy="12" r="4" {...S} /><circle cx="12" cy="12" r="1" {...S} /></>,
   pen: <><path d="M5 4h10l4 4v12H5z" {...S} /><path d="M9 12h6M9 16h4" {...S} /></>,
   check: <path d="M4 12l5 5L20 6" {...S} />,
+  chart: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" {...S} /></>,
   search: <><circle cx="11" cy="11" r="6.5" {...S} /><path d="M16 16l4 4" {...S} /></>,
   lock: <><rect x="5" y="11" width="14" height="9" rx="2" {...S} /><path d="M8 11V8a4 4 0 018 0v3" {...S} /></>,
   out: <path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4M10 16l-4-4 4-4M6 12h10" {...S} />,
@@ -17,7 +18,7 @@ const Icon = ({ k, size = 22 }) => <svg width={size} height={size} viewBox="0 0 
 
 // ホーム画面（案C）：中央に「au navi」と用語検索、その下にメニューのタイル
 // PC（900px以上）は3列×2段のタイル、スマホは1列のカード。右上のボタンで右側からメニューが開く（最初は閉じている）
-export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft, unreadCount = 0, streak }) {
+export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft, unreadCount = 0, streak, onGoEval }) {
   const count = Object.keys(terms || {}).length;
   const [q, setQ] = React.useState('');
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -27,7 +28,8 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
     ['オレタブ', '本番前にオレタブの操作を練習する（横画面）', 'tab', onGoOreTab],
     ['KPI', '現場全体の目標と、メンバーごとの実績', 'target', onGoKpi],
     ['日報', '日報の登録・確認、実績確認・店舗特徴・個人実績', 'pen', onGoNippou],
-    ['テスト', '練習モード・本番モードで理解度をチェック', 'check', onGoTest],
+    ['テスト', 'ランク別・全範囲・未出題で理解度をチェック', 'check', onGoTest],
+    ['評価一覧', 'メンバーの評価・育成計画・月次KPIを見る', 'chart', onGoEval],
   ];
   const search = (e) => { e.preventDefault(); onOpenFiltered({ q: q.trim() }); };
   const go = (fn) => () => { setMenuOpen(false); fn && fn(); };
