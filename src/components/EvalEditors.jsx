@@ -1,4 +1,16 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+
+// 入力した文字の量に合わせて、高さが自動で伸び縮みする入力欄（日報の入力と同じ）
+export function AutoTA({ value, onChange, rows = 1, style, ...rest }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, [value]);
+  return <textarea ref={ref} rows={rows} value={value} onChange={onChange} style={{ overflow: 'hidden', resize: 'none', ...style }} {...rest} />;
+}
 import { dbSet, dbPush, dbRemove, dbUpdateMany } from '../useFirebase.js';
 import { showToast } from '../utils.js';
 import { RANKS5 } from '../evalSheets.js';
@@ -96,7 +108,7 @@ function TableEdit({ title, table, onChange }) {
       {rows.map((r, i) => (
         <div key={i} className="ev-edit-trow">
           {table.heads.map((h) => (
-            <label key={h}><small>{h}</small><textarea className="ev-inp ev-ta" rows={1} value={r[h] || ''} onChange={(e) => set(i, h, e.target.value)} /></label>
+            <label key={h}><small>{h}</small><AutoTA className="ev-inp ev-ta" rows={1} value={r[h] || ''} onChange={(e) => set(i, h, e.target.value)} /></label>
           ))}
           <button className="ev-btn" onClick={() => onChange({ ...table, rows: rows.filter((_, j) => j !== i) })} aria-label="この行を削除">×</button>
         </div>
@@ -152,7 +164,7 @@ export function PersonEditor({ person, userName, onDone }) {
             {d.skills.map((s, i) => ((s.section || 'その他') === sec ? (
               <div key={i} className="ev-edit-skill">
                 <div className="ev-srow"><span>{s.item}</span><span><RankSel label={`${s.item}のランク`} value={s.rank} onChange={(v) => setSkill(i, 'rank', v)} /></span><span><RankSel label={`${s.item}の前回ランク`} value={s.prev} onChange={(v) => setSkill(i, 'prev', v)} /></span></div>
-                <textarea className="ev-inp ev-ta" rows={1} value={s.comment || ''} placeholder="強み・課題コメント" onChange={(e) => setSkill(i, 'comment', e.target.value)} />
+                <AutoTA className="ev-inp ev-ta" rows={1} value={s.comment || ''} placeholder="強み・課題コメント" onChange={(e) => setSkill(i, 'comment', e.target.value)} />
               </div>
             ) : null))}
           </div>
@@ -225,7 +237,7 @@ export function StandardEditor({ standard, userName, onDone }) {
   return (
     <div className="ev-edit">
       {d.map((x, i) => (
-        <label key={x.rank} className="ev-edit-review"><b>{x.rank}</b><textarea className="ev-inp ev-ta" rows={2} value={x.desc} onChange={(e) => setD(d.map((y, j) => (j === i ? { ...y, desc: e.target.value } : y)))} /></label>
+        <label key={x.rank} className="ev-edit-review"><b>{x.rank}</b><AutoTA className="ev-inp ev-ta" rows={2} value={x.desc} onChange={(e) => setD(d.map((y, j) => (j === i ? { ...y, desc: e.target.value } : y)))} /></label>
       ))}
       <div className="ev-edit-foot"><button className="ev-btn" onClick={onDone}>キャンセル</button><button className="ev-btn p" onClick={save}>保存する</button></div>
     </div>
@@ -321,7 +333,7 @@ export function WorkList({ person, isAdmin, kpiData, userName, legacy }) {
         <label><small>稼働日</small><input className="ev-inp" type="date" value={f.date} onChange={(e) => setF(grp, i, 'date', e.target.value)} /></label>
         <label><small>稼働店舗</small><input className="ev-inp" value={f.store} placeholder="店舗名" onChange={(e) => setF(grp, i, 'store', e.target.value)} /></label>
       </div>
-      <label className="ev-edit-review" style={{ borderTop: 'none', paddingBottom: 0 }}><small>店舗管理者からの評価</small><textarea className="ev-inp ev-ta" rows={3} value={f.text} placeholder="評価の内容" onChange={(e) => setF(grp, i, 'text', e.target.value)} /></label>
+      <label className="ev-edit-review" style={{ borderTop: 'none', paddingBottom: 0 }}><small>店舗管理者からの評価</small><AutoTA className="ev-inp ev-ta" rows={3} value={f.text} placeholder="評価の内容" onChange={(e) => setF(grp, i, 'text', e.target.value)} /></label>
     </div>
   );
   return (
@@ -356,7 +368,7 @@ export function WorkList({ person, isAdmin, kpiData, userName, legacy }) {
           </div>
           {editId === w.id ? (
             <div style={{ marginTop: 6 }}>
-              <textarea className="ev-inp ev-ta" rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} />
+              <AutoTA className="ev-inp ev-ta" rows={3} value={editText} onChange={(e) => setEditText(e.target.value)} />
               <div className="ev-edit-foot" style={{ background: 'transparent' }}><button className="ev-btn" onClick={() => setEditId(null)}>キャンセル</button>
                 <button className="ev-btn p" onClick={async () => { await dbSet(`eval_data/persons/${person.key}/works/${w.id}/text`, editText); setEditId(null); showToast('保存しました'); }}>保存</button></div>
             </div>
@@ -391,7 +403,7 @@ export function SectionEdit({ person, section, userName, onDone }) {
       {skills.map((s, i) => ((s.section || 'その他') === section ? (
         <div key={i} className="ev-edit-skill">
           <div className="ev-srow"><span>{s.item}</span><span><RankSel label={`${s.item}のランク`} value={s.rank} onChange={(v) => set(i, 'rank', v)} /></span><span><RankSel label={`${s.item}の前回ランク`} value={s.prev} onChange={(v) => set(i, 'prev', v)} /></span></div>
-          <textarea className="ev-inp ev-ta" rows={1} value={s.comment || ''} placeholder="強み・課題コメント" onChange={(e) => set(i, 'comment', e.target.value)} />
+          <AutoTA className="ev-inp ev-ta" rows={1} value={s.comment || ''} placeholder="強み・課題コメント" onChange={(e) => set(i, 'comment', e.target.value)} />
         </div>
       ) : null))}
       <div className="ev-edit-foot" style={{ padding: '10px 12px' }}><button className="ev-btn" onClick={onDone}>キャンセル</button><button className="ev-btn p" disabled={saving} onClick={save}>{saving ? '保存中…' : '保存する'}</button></div>

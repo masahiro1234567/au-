@@ -126,7 +126,10 @@ const sectionTitle = (grid, r) => { const cells = rowText(grid, r); return cells
 // ---- 個人別 育成計画シート ----
 export function parsePerson(sheet) {
   const g = sheet.values || [];
-  const name = rightOf(g, '氏名');
+  // 名前：「氏名」のすぐ右のセル。空のときに隣の「フリガナ」やその中身を名前として拾わない
+  const np = find(g, (x) => has(x, '氏名'));
+  const nameCell = np ? t((g[np[0]] || [])[np[1] + 1]) : '';
+  const name = nameCell && !/フリガナ|ふりがな|現役割|稼働開始/.test(nameCell) ? nameCell : '';
   const info = { name, kana: rightOf(g, 'フリガナ'), role: rightOf(g, '現役割'), start: rightOf(g, '稼働開始日'), period: rightOf(g, '評価期間') };
   // 総合評価（キャッチャー／クローズ／ディレクター）
   const totals = [];

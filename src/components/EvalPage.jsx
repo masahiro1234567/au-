@@ -4,7 +4,7 @@ import { keepPlace } from '../keepPlace.js';
 import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
 import { showToast } from '../utils.js';
 import { parseBook, RANK_STYLE, RANKS5, normName } from '../evalSheets.js';
-import { PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS, WorkList, SelfTable, SectionEdit } from './EvalEditors.jsx';
+import { AutoTA, PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS, WorkList, SelfTable, SectionEdit } from './EvalEditors.jsx';
 import { dbPush, dbUpdateMany } from '../useFirebase.js';
 
 // ===== 評価一覧（Googleスプレッドシートを読み取って表示）=====
@@ -57,7 +57,7 @@ export function GoalEditor({ person, saved, canEdit }) {
           <select className="ev-inp" value={g.rank} onChange={(e) => set(i, 'rank', e.target.value)} aria-label="目標ランク">
             <option value="">目標ランク</option>{RANKS5.map((x) => <option key={x}>{x}</option>)}
           </select>
-          <input className="ev-inp" value={g.cond} onChange={(e) => set(i, 'cond', e.target.value)} placeholder="達成条件（例：個人ディレクター達成率75%）" aria-label="達成条件" />
+          <AutoTA className="ev-inp ev-ta" value={g.cond} onChange={(e) => set(i, 'cond', e.target.value)} placeholder="達成条件（例：個人ディレクター達成率75%）" aria-label="達成条件" />
           <button className="ev-btn" onClick={() => setEdit(list.filter((_, j) => j !== i))} aria-label="この目標を削除">×</button>
         </div>
       ))}
@@ -156,6 +156,14 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
     if (sel === key) setSel(null);
   };
   const restore = (key) => dbSet(`eval_config/removed/${key}`, null);
+  // データごと消す（もう戻せない）。スプレッドシートの読み込みで、人ではないものが入ってしまったときなど
+  const purge = async (key, name) => {
+    if (!window.confirm(`「${name}」を評価一覧のデータから完全に消します。もう戻せません。よろしいですか？`)) return;
+    await dbUpdateMany({ [`eval_data/persons/${key}`]: null, [`eval_config/removed/${key}`]: null, [`eval_config/hidden/${key}`]: null, [`eval_goals/${key}`]: null });
+    const ord = manual.filter((x) => x !== key);
+    if (ord.length !== manual.length) await dbSet('eval_config/order', ord);
+    showToast('完全に消しました');
+  };
   const saveUrl = async () => {
     const id = idOf(urlInput);
     if (!/^[A-Za-z0-9_-]{20,}$/.test(id)) return showToast('スプレッドシートのURLを貼り付けてください');
@@ -469,7 +477,14 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
               <div className="ev-h" style={{ marginTop: 0 }}>削除したメンバー（評価一覧に出していない人）</div>
               {Object.keys(removed).filter((k) => removed[k]).map((k) => {
                 const it = allKeys.find((x) => x.key === k);
-                return <div key={k} className="ev-kv"><span>{it ? it.name : k}</span><button className="ev-btn" onClick={() => restore(k)}>戻す</button></div>;
+                return (
+                  <div key={k} className="ev-kv"><span>{it ? it.name : k}</span>
+                    <span style={{ display: 'flex', gap: 6 }}>
+                      <button className="ev-btn" onClick={() => restore(k)}>戻す</button>
+                      <button className="ev-btn" style={{ color: '#b91c1c', borderColor: '#fecaca' }} onClick={() => purge(k, it ? it.name : k)}>完全に消す</button>
+                    </span>
+                  </div>
+                );
               })}
             </div>
           )}
