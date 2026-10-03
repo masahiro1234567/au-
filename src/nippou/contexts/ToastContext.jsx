@@ -13,7 +13,8 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={showToast}>
       {children}
-      {msg && <div className="toast">{msg}</div>}
+      {/* 見た目の指定（.np .toast）が効くように .np の中に出す */}
+      {msg && <div className="np"><div className="toast" role="status">{msg}</div></div>}
     </ToastContext.Provider>
   );
 }

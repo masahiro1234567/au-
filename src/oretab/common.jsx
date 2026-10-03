@@ -103,14 +103,19 @@ export const Icons = {
 
 // ---- 上部のバー。right：右側に並べるボタン（'multi','manual','eye','rw','sync','q','x','out'） ----
 const RIGHT_LABEL = { multi: 'マルチタスク', manual: 'マニュアル', eye: 'マスク解除', rw: 'RW未接続', sync: '担当者変更', q: 'ヘルプ', x: '閉じる', out: 'ログアウト' };
+// ログイン中の担当者（{ id, name }）と「担当者変更」を開く関数。OreTab.jsx で渡す
+export const StaffContext = React.createContext({ staff: null, changeStaff: null });
 export function TopBar({ right, onMultitask, onClose, onLogout, noop }) {
-  const handler = (k) => (k === 'multi' ? onMultitask : k === 'x' ? onClose : k === 'out' ? onLogout || noop : noop);
+  const { staff, changeStaff } = React.useContext(StaffContext);
+  const handler = (k) => (k === 'multi' ? onMultitask : k === 'x' ? onClose : k === 'out' ? onLogout || noop : k === 'sync' && changeStaff ? changeStaff : noop);
   return (
     <header className="ot-tb">
       <button className="ot-tb-btn" onClick={noop}>{Icons.alert}緊急 0</button>
       <button className="ot-tb-btn" onClick={noop}>{Icons.mail}未読 0</button>
       <button className="ot-tb-btn" onClick={noop}>{Icons.help}応対要請</button>
-      <span className="ot-tb-practice">練習用</span>
+      {staff ? (
+        <div className="ot-tb-staff"><div className="ot-ellipsis">［拠点コード］　［店舗名］</div><div className="ot-ellipsis">{staff.id}　{staff.name}</div></div>
+      ) : <span className="ot-tb-practice">練習用</span>}
       <div className="ot-tb-right">
         <button className="ot-tb-ev" onClick={noop}>イベントモード</button>
         {right.map((k) => (
@@ -240,5 +245,20 @@ export function OtSelect({ value, onChange, disabled, style, children, className
       </button>
       {panel && (stage ? ReactDOM.createPortal(panel, stage) : panel)}
     </>
+  );
+}
+
+// ---- 実機と同じ形のお知らせ（青い i のダイアログ） ----
+export function InfoDialog({ title, text, onOk }) {
+  return (
+    <div className="ot-dim" style={{ zIndex: 90 }}>
+      <div className="ot-info" role="alertdialog" aria-label={title || 'お知らせ'}>
+        <div className="ot-info-body">
+          <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#1e5fd0" /><path d="M20 17v12M20 11v1" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" /></svg>
+          <div>{title && <div style={{ fontWeight: 800 }}>{title}</div>}<div style={{ whiteSpace: 'pre-line' }}>{text}</div></div>
+        </div>
+        <button className="ot-info-ok" onClick={onOk}>OK</button>
+      </div>
+    </div>
   );
 }

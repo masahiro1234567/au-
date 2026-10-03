@@ -520,19 +520,39 @@ export default function Payment({ onClose, onMultitask, config, web, ctrl, previ
         </div>
       )}
 
-      {/* レイアウト（鉛筆）：戻る矢印と印刷 */}
+      {/* レイアウト（鉛筆）：印刷プレビュー。戻る矢印と、書込・拡大・一つ戻る・一つ進む・印刷 */}
       {layout && !printCode && (
         <div className="ot-layer">
           <button className="ot-layout-back" onClick={() => setLayout(false)} aria-label="レイアウトを閉じる">
             <svg width="58" height="46" viewBox="0 0 58 46" aria-hidden="true"><path d="M24 3L3 23l21 20V31h31V15H24z" fill="#fff" stroke="#4a3528" strokeWidth="2.5" strokeLinejoin="round" /></svg>
           </button>
-          <button className="ot-layout-print" onClick={() => setPrintCode(String(Math.floor(1000 + Math.random() * 9000)))}>印刷</button>
+          <div className="ot-pv-tools">
+            <button onClick={noop}><PvIco d="pen" />書込</button>
+            <button onClick={noop}><PvIco d="zoom" />拡大</button>
+            <button onClick={noop}><PvIco d="undo" />一つ戻る</button>
+            <button onClick={noop}><PvIco d="redo" />一つ進む</button>
+            <button onClick={() => setPrintCode(String(Math.floor(1000 + Math.random() * 9000)))}><PvIco d="print" />印刷</button>
+          </div>
         </div>
       )}
+      {/* 印刷コード（実機と同じ画面）。OKで印刷プレビューに戻る */}
       {printCode && (
-        <div className="ot-print">
-          <div className="ot-print-card"><div className="ot-print-label">印刷番号</div><div className="ot-print-code">{printCode}</div></div>
-          <button className="ot-print-ok" onClick={() => setPrintCode('')}>OK</button>
+        <div className="ot-pc">
+          <div className="ot-pc-top">
+            <svg width="22" height="26" viewBox="0 0 22 26" aria-hidden="true"><rect x="2" y="11" width="18" height="13" rx="2" fill="#d7dce3" /><path d="M6 11V7a5 5 0 0110 0v4" fill="none" stroke="#d7dce3" strokeWidth="2.4" /></svg>
+            <span className="ot-pc-more" aria-hidden="true"><i /><i /><i /></span>
+          </div>
+          <div className="ot-pc-card" role="alertdialog" aria-label="印刷コード">
+            <b>印刷コード</b>
+            <p>指定されたプリンタにコードを入力してください。</p>
+            <div className="ot-pc-code">{printCode}</div>
+            <p>印刷枚数は1枚です。</p>
+            <button onClick={() => setPrintCode('')}>OK</button>
+          </div>
+          <div className="ot-pc-foot">
+            <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V4h12v5M6 17H4V9h16v8h-2M6 14h12v6H6z" fill="none" stroke="#333" strokeWidth="1.6" /></svg>
+            <div><b>［プリンタ名］</b><span>［プリンタのアドレス］</span></div>
+          </div>
         </div>
       )}
 
@@ -552,6 +572,19 @@ export default function Payment({ onClose, onMultitask, config, web, ctrl, previ
       <Toast msg={toast.msg} />
     </div>
   );
+}
+
+// 印刷プレビューのツールのアイコン
+function PvIco({ d }) {
+  const S = { stroke: '#2f6b2a', strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' };
+  const p = {
+    pen: <path d="M4 20l4-1 11-11-3-3L5 16z" {...S} />,
+    zoom: <><circle cx="11" cy="11" r="6" {...S} /><path d="M16 16l4 4M8.5 11h5M11 8.5v5" {...S} /></>,
+    undo: <path d="M9 7L4 12l5 5M4 12h11a5 5 0 010 10" {...S} />,
+    redo: <path d="M15 7l5 5-5 5M20 12H9a5 5 0 000 10" {...S} />,
+    print: <path d="M12 3c3 4 6 7 6 11a6 6 0 01-12 0c0-4 3-7 6-11z" {...S} />,
+  }[d];
+  return <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">{p}</svg>;
 }
 
 function PickField({ onClick, value }) {

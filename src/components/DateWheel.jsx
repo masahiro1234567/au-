@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 // ===== 日付の選択（iPhoneのようなホイール式）=====
 // 押すと下から「年・月・日」のホイールが出る。何も選んでいなければ今日が選ばれた状態で開く
@@ -63,7 +64,7 @@ export default function DateWheel({ value, onChange, min, style, className, disa
         <span className="dw-btn-text">{label(value) || placeholder || '日付を選ぶ'}</span>
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M4 10h16M9 3v4M15 3v4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
       </button>
-      {open && tmp && (
+      {open && tmp && createPortal(
         <div className="dw-ov" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
           <div className="dw-sheet" role="dialog" aria-label="日付を選ぶ">
             <div className="dw-head">
@@ -84,7 +85,8 @@ export default function DateWheel({ value, onChange, min, style, className, disa
             </div>
             {tooEarly && <div className="dw-note">開始日より前の日は選べません</div>}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

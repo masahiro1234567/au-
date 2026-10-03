@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import './ore.css';
-import { TopBar, Toast, useToast, StageContext } from './common.jsx';
+import { TopBar, Toast, useToast, StageContext, StaffContext } from './common.jsx';
 import Identity from './Identity.jsx';
 import Payment from './Payment.jsx';
 import AreaSearch from './AreaSearch.jsx';
 import DenkiInquiry from './DenkiInquiry.jsx';
+import OrangeMenu from './OrangeMenu.jsx';
+import OreLogin, { StaffDialog } from './OreLogin.jsx';
+import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
 import { Wallpaper, LockScreen, Passcode, HomeScreen, Browser } from './IPad.jsx';
 
 const W = 1024, H = 768;
-const TITLES = { portal: 'ポータルメニュー', identity: 'お客様照会', payment: 'お支払い目安額', area: 'エリア検索', denki: 'auでんき契約照会' };
-const SCREENS = { identity: Identity, payment: Payment, area: AreaSearch, denki: DenkiInquiry };
+const TITLES = { portal: 'ポータルメニュー', identity: 'お客様照会', payment: 'お支払い目安額', area: 'エリア検索', denki: 'auでんき契約照会', orange: 'Orange業務メニュー' };
+const SCREENS = { identity: Identity, payment: Payment, area: AreaSearch, denki: DenkiInquiry, orange: OrangeMenu };
 
 // ---- 端末サイズに合わせて 1024×768 を縮小。縦持ちなら90度回して横画面で表示 ----
 function useStage() {
@@ -57,7 +60,7 @@ const TILES = [
   ['お支払い目安額', 'payment', <><rect x="10" y="8" width="26" height="30" rx="3" {...T} /><path d="M15 16h6M18 13v6M26 16h6M15 28l5 5M20 28l-5 5" {...T} /><circle cx="34" cy="34" r="6" {...T} /><path d="M31 33h6M31 36h6" {...T} /></>],
   ['販促アプリ', null, <><circle cx="24" cy="26" r="14" {...T} /><path d="M24 12c2-4 6-5 9-4" {...T} /><path d="M17 24h14M17 29h14" {...T} /></>],
   ['機種比較', null, <><rect x="6" y="14" width="12" height="22" rx="2" {...T} /><rect x="18" y="8" width="14" height="30" rx="2" {...T} /><rect x="32" y="14" width="10" height="22" rx="2" {...T} /><path d="M35 20h4M35 25h4M35 30h4" {...T} /></>],
-  ['Orange', null, <><circle cx="24" cy="27" r="13" {...T} /><path d="M24 14c0-3 3-6 8-6" {...T} /><circle cx="29" cy="30" r="1" {...T} /><circle cx="32" cy="27" r="1" {...T} /><circle cx="30" cy="33" r="1" {...T} /></>],
+  ['Orange', 'orange', <><circle cx="24" cy="27" r="13" {...T} /><path d="M24 14c0-3 3-6 8-6" {...T} /><circle cx="29" cy="30" r="1" {...T} /><circle cx="32" cy="27" r="1" {...T} /><circle cx="30" cy="33" r="1" {...T} /></>],
   ['お支払い目安額(固定)', null, <><rect x="14" y="8" width="24" height="30" rx="3" {...T} /><path d="M19 16h6M22 13v6M29 16h6M19 28l5 5M24 28l-5 5" {...T} /><path d="M4 22h8M4 27h8" {...T} /></>],
   ['エリア検索', 'area', <><circle cx="30" cy="14" r="5" {...T} /><path d="M34 18l4 4" {...T} /><path d="M8 38v-8h8v8M18 38v-12h10v12M30 38v-6h8v6M6 38h36" {...T} /></>],
   ['ツール・リンク', null, <><path d="M14 6h20v34l-10-8-10 8z" {...T} /><path d="M24 14l2.4 5 5.3.6-4 3.6 1.1 5.3-4.8-2.8-4.8 2.8 1.1-5.3-4-3.6 5.3-.6z" {...T} /></>],
@@ -119,8 +122,14 @@ export default function OreTab({ onExit, payConfig }) {
   const [stageEl, setStageEl] = useState(null);
   // iPadの画面：lock（ロック画面）→ pass（パスコード）→ home（ホーム画面）→ app（オレタブ）／ browser（ブラウザ）
   const [ip, setIp] = useState('lock');
+  // オレタブにログイン中の担当者（{ id, name }）。ログアウトで消える
+  const [staff, setStaff] = useState(null);
+  const [staffDlg, setStaffDlg] = useState(false);
+  const { data: fpUsers } = useFirebaseList('fp_users');
+  const roster = Object.values(fpUsers || {});
+  const staffCtx = { staff, changeStaff: () => setStaffDlg(true) };
   // オレタブを閉じる（ポータルのログアウト）と、開いていた画面と入力はリセットしてホーム画面へ
-  const closeOreTab = () => { setOpen([]); setActive('portal'); setMulti(false); setIp('home'); };
+  const closeOreTab = () => { setOpen([]); setActive('portal'); setMulti(false); setStaff(null); setStaffDlg(false); setIp('home'); };
 
   const openScreen = (k) => { setOpen((o) => (o.includes(k) ? o : [...o, k])); setActive(k); setMulti(false); };
   const closeScreen = (k) => { setOpen((o) => o.filter((x) => x !== k)); setActive((a) => (a === k ? 'portal' : a)); };
@@ -155,6 +164,7 @@ export default function OreTab({ onExit, payConfig }) {
     <div className="ot-viewport">
       <div className="ot-stage" style={stageStyle} ref={setStageEl}>
         <StageContext.Provider value={stageEl}>
+        <StaffContext.Provider value={staffCtx}>
         {ip !== 'app' && (
           <div className="ip-root">
             <Wallpaper />
@@ -165,7 +175,7 @@ export default function OreTab({ onExit, payConfig }) {
             {ip === 'browser' && <Browser config={payConfig} onClose={() => setIp('home')} say={toast.say} />}
           </div>
         )}
-        {ip === 'app' && <>
+        {ip === 'app' && staff && <>
         <div className="ot-layer-screen" style={layerStyle('portal')}>
           <Portal onOpen={openScreen} onMultitask={() => setMulti(true)} onLogout={closeOreTab} say={toast.say} />
         </div>
@@ -198,7 +208,10 @@ export default function OreTab({ onExit, payConfig }) {
             onClick={() => { setActive(k); setMulti(false); }} />
         ))}
         </>}
+        {ip === 'app' && !staff && <OreLogin roster={roster} onLogin={(st) => { setStaff(st); setActive('portal'); }} say={toast.say} />}
+        {staffDlg && <StaffDialog roster={roster} onCancel={() => setStaffDlg(false)} onOk={(st) => { setStaff(st); setStaffDlg(false); toast.say(`担当者を ${st.name} さんに変更しました`); }} />}
         <Toast msg={toast.msg} />
+        </StaffContext.Provider>
         </StageContext.Provider>
       </div>
     </div>

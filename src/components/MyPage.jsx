@@ -104,6 +104,7 @@ export default function MyPage({ user, onBack, onGoKpi }) {
               {me.position && <span className="mp-bd pos">{me.position}</span>}
               {me.grade && <span className="mp-bd gr">等級{me.grade}</span>}
             </div>
+            <small>オレタブの担当者ID {me.oretabId || '未登録（管理者に登録を依頼してください）'}</small>
             {person && person.info.start && <small>稼働開始 {person.info.start}</small>}
           </div>
         </div>

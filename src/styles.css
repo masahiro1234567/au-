@@ -1200,3 +1200,7 @@ html,body{overscroll-behavior:none;}
   .ev-body-embedded .ev-plist,.ev-body .ev-plist{max-width:none;}
 }
 @media (min-width:1400px){.ev-plist{grid-template-columns:repeat(3,minmax(0,1fr));}}
+/* メンバー管理：オレタブの担当者ID */
+.mb-oreid{margin-top:10px;}
+.mb-oreid label{display:flex;flex-direction:column;gap:4px;font-size:.72rem;font-weight:700;color:var(--sub);max-width:260px;}
+.mb-oreid-ng{margin-top:4px;font-size:.75rem;font-weight:700;color:#dc2626;}

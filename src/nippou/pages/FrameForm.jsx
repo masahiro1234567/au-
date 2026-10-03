@@ -8,7 +8,7 @@ import { useToast } from '../contexts/ToastContext';
 import { parseLineBrief } from '../lib/lineParser';
 import { loadDraft, saveDraft, clearDraft } from '../lib/draft';
 import { useFirebaseList } from '../lib/useFirebaseList';
-import { kpiDirectors, canWriteDay } from '../lib/kpiLink';
+import { kpiDirectors, canWriteDay, editorsOf, dayEditors } from '../lib/kpiLink';
 import Layout from '../components/Layout';
 import {
   AU_L, UQ_L, FT_L, BR, AL_L, OT_L, useFrames, emptyDay, calcDay, dayFilled, datesBetween, addDays, md,
@@ -29,6 +29,9 @@ export default function FrameForm() {
   const navigate = useNavigate();
   const { user, canEditReport, isAdmin } = useAuth();
   const { data: kpiData } = useFirebaseList('fp_kpi');
+  const { data: fpUsers } = useFirebaseList('fp_users');
+  const [edPick, setEdPick] = useState(false);
+  const [edQ, setEdQ] = useState('');
   const showToast = useToast();
   const { frames, loading } = useFrames();
   const me = user?.name || '';
@@ -69,9 +72,17 @@ export default function FrameForm() {
     if (!canEditReport(f)) { showToast('この日報を編集する権限がありません'); navigate(-1); return; }
     loadedRef.current = true;
     const copy = JSON.parse(JSON.stringify(f));
+    // 以前の「日報枠まるごとの編集権限」は、各日の編集権限に移す（次の保存で日ごとの形になる）
+    const old = editorsOf(copy);
+    if (old.length) {
+      copy.days = copy.days.map((d) => ({ ...d, editors: [...new Set([...editorsOf(d), ...old])] }));
+      copy.editors = null;
+    }
     let at = Math.max(copy.days.findIndex((d) => d.date === sp.get('date')), 0);
     if (sp.get('append')) {
-      const empty = copy.days.findIndex((d) => !dayFilled(d));
+      // まだ入力していない日のうち、自分が書ける日を先に開く
+      const mine = copy.days.findIndex((d) => !dayFilled(d) && canWriteDay(kpiData, copy.store, d.date, me, isAdmin, editorsOf(d)));
+      const empty = mine >= 0 ? mine : copy.days.findIndex((d) => !dayFilled(d));
       if (empty >= 0) at = empty;
       else {
         copy.days.push({ ...emptyDay(addDays(copy.days[copy.days.length - 1].date, 1)), director: me });
@@ -126,9 +137,9 @@ export default function FrameForm() {
           <div className="card">
             <div className="card-title">日程</div>
             <div className="np-period">
-              <label className="form-group"><span>開始日</span><DateWheel className="inp" value={setup.start} onChange={(e) => setSetup({ ...setup, start: e.target.value, end: setup.end < e.target.value ? e.target.value : setup.end })} /></label>
+              <div className="form-group"><span>開始日</span><DateWheel className="inp" value={setup.start} onChange={(e) => setSetup({ ...setup, start: e.target.value, end: setup.end < e.target.value ? e.target.value : setup.end })} /></div>
               <span className="np-period-sep">〜</span>
-              <label className="form-group"><span>終了日</span><DateWheel className="inp" value={setup.end} min={setup.start} onChange={(e) => setSetup({ ...setup, end: e.target.value })} /></label>
+              <div className="form-group"><span>終了日</span><DateWheel className="inp" value={setup.end} min={setup.start} onChange={(e) => setSetup({ ...setup, end: e.target.value })} /></div>
             </div>
             <div className="ts">{days ? `${md(setup.start)}〜${md(setup.end)}　${days}日間の日報を作ります` : '期間を選んでください'}</div>
           </div>
@@ -179,8 +190,26 @@ export default function FrameForm() {
   });
   const getDay = (path) => path.reduce((o, k) => (o == null ? '' : o[k]), cur);
   // 日報を書けるのは、その日のKPIでディレクターに割り当てられている人（KPIが無い日は誰でも）
-  const writable = canWriteDay(kpiData, frame.store, cur.date, me, isAdmin);
+  const writable = canWriteDay(kpiData, frame.store, cur.date, me, isAdmin, dayEditors(frame, cur));
   const dayDirectors = kpiDirectors(kpiData, frame.store, cur.date);
+  // ---- 編集権限（日ごと）：この日の日報を追記・編集できる人を追加（土日でディレクターが変わるときなど） ----
+  const editors = editorsOf(cur);
+  const nnm = (s) => String(s || '').normalize('NFKC').replace(/[\s　]/g, '');
+  const candidates = Object.values(fpUsers || {})
+    .filter((u) => u && u.name && u.permission !== 'disabled' && u.permission !== 'pending' && u.permission !== 'readonly')
+    .map((u) => u.name)
+    .filter((n, i, a) => a.findIndex((x) => nnm(x) === nnm(n)) === i)
+    .filter((n) => nnm(n) !== nnm(me) && !editors.some((e) => nnm(e) === nnm(n)) && !dayDirectors.some((e) => nnm(e) === nnm(n)) && (!edQ || nnm(n).includes(nnm(edQ))))
+    .sort((a, b) => a.localeCompare(b, 'ja'));
+  const setEditors = async (list) => {
+    const date = cur.date;
+    setFrame((f) => ({ ...f, days: f.days.map((d) => (d.date === date ? { ...d, editors: list } : d)) }));
+    // 保存済みの日なら、その場で反映する（まだ保存していない日・新しい日報は、保存のときに一緒に保存）
+    const saved = frame.id && !frame.legacy && frames.some((x) => x.id === frame.id && x.days.some((d) => d.date === date));
+    if (saved) {
+      try { await set(ref(db, `fp_frames/${frame.id}/days/${date}/editors`), list); showToast(`${md(date)}の編集権限を更新しました`); } catch (e) { showToast('保存できませんでした：' + e.message); }
+    }
+  };
   const dc = calcDay(cur);
   const cum = frame.days.filter((d) => d.date <= cur.date).reduce((a, d) => { const c = calcDay(d); return { s: a.s + c.souhan, r: a.r + c.riku }; }, { s: 0, r: 0 });
   const rest = `${Math.max((+frame.ta || 0) - cum.s, 0)}/${Math.max((+frame.tb || 0) - cum.r, 0)}`;
@@ -206,7 +235,7 @@ export default function FrameForm() {
     try {
       const now = Date.now();
       // 入力のある日で記入者が空なら、保存する人の名前を入れる
-      const days = frame.days.map((d) => (dayFilled(d) && !d.director && canWriteDay(kpiData, frame.store, d.date, me, isAdmin) ? { ...d, director: me } : d));
+      const days = frame.days.map((d) => (dayFilled(d) && !d.director && canWriteDay(kpiData, frame.store, d.date, me, isAdmin, dayEditors(frame, d)) ? { ...d, director: me } : d));
       const data = toStored({ ...frame, days }, { createdBy: frame.createdBy || me, createdAt: frame.createdAt || now, updatedAt: now, updatedBy: me });
       let fid = frame.legacy || !frame.id ? null : frame.id;
       if (fid) await set(ref(db, `fp_frames/${fid}`), data);
@@ -222,8 +251,8 @@ export default function FrameForm() {
         }
       }
       clearDraft();
-      showToast('保存しました。続けてメンバーの実績を入力してください');
-      navigate(`/results/${fid}?date=${cur.date}`, { replace: true });
+      showToast('保存しました。メンバーの実績は日報確認から入力できます');
+      navigate('/', { replace: true });
     } catch (e) {
       showToast('保存できませんでした：' + e.message);
     }
@@ -309,7 +338,7 @@ export default function FrameForm() {
     return (
       <Layout title="プレビュー" footer={<>
         <button className="btn btn-outline" onClick={() => setPreview(false)}>入力に戻る</button>
-        <button className="btn btn-p" style={{ marginTop: 0 }} disabled={saving} onClick={save}>{saving ? '保存中…' : '保存する'}</button></>}>
+        <button className="btn btn-p" style={{ marginTop: 0 }} disabled={saving} onClick={save}>{saving ? '保存中…' : '保存して終了'}</button></>}>
         <div className="np-wrap">
           <button className="btn btn-gray" style={{ marginBottom: 10 }} onClick={() => { navigator.clipboard?.writeText(buildText(frame, cur.date)); showToast('日報テキストをコピーしました'); }}>コピー</button>
           <pre className="np-pre">{buildText(frame, cur.date)}</pre>
@@ -321,7 +350,7 @@ export default function FrameForm() {
   return (
     <Layout title={frame.id ? '日報編集' : '日報入力'} footer={<>
       <button className="btn btn-outline" onClick={() => setPreview(true)}>プレビューを確認</button>
-      <button className="btn btn-p" style={{ marginTop: 0 }} disabled={saving} onClick={save}>{saving ? '保存中…' : '保存する'}</button></>}>
+      <button className="btn btn-p" style={{ marginTop: 0 }} disabled={saving} onClick={save}>{saving ? '保存中…' : '保存して終了'}</button></>}>
       <div className="np-wrap">
         {restored && (
           <div className="np-draft">
@@ -349,7 +378,7 @@ export default function FrameForm() {
           </div>
           <div className="filter-bar" style={{ marginBottom: 0 }}>
             {frame.days.map((d, i) => (
-              <button key={d.date} className={`fchip np-daychip ${i === idx ? 'active' : ''}`} onClick={() => { setIdx(i); setDelAsk(false); }}>
+              <button key={d.date} className={`fchip np-daychip ${i === idx ? 'active' : ''}`} onClick={() => { setIdx(i); setDelAsk(false); setEdPick(false); }}>
                 {md(d.date)}{dayFilled(d) ? '' : '・未入力'}
               </button>
             ))}
@@ -365,6 +394,27 @@ export default function FrameForm() {
         <label className="form-group np-director"><span>この日のディレクター（記入者）{dayDirectors.length > 0 && `　KPIの割り当て：${dayDirectors.join('・')}`}</span>
           <input className="inp" disabled={!writable} value={cur.director || ''} placeholder={dayDirectors[0] || me} onChange={(e) => setFrame((f) => ({ ...f, days: f.days.map((d, i) => (i === idx ? { ...d, director: e.target.value } : d)) }))} />
         </label>
+        <div className="np-editors">
+          <div className="np-editors-head"><span>{md(cur.date)}の編集権限（日報確認から、この日の日報の追加・編集ができる人）</span></div>
+          <div className="np-editors-list">
+            {dayDirectors.length === 0 && editors.length === 0 && <span className="ts">この日のKPIにディレクターが登録されていません</span>}
+            {dayDirectors.map((n) => <span key={'k' + n} className="np-ed-chip auto">{n}<small>KPIから自動</small></span>)}
+            {editors.filter((n) => !dayDirectors.some((k) => nnm(k) === nnm(n))).map((n) => (
+              <span key={n} className="np-ed-chip">{n}{writable && <button type="button" onClick={() => setEditors(editors.filter((x) => x !== n))} aria-label={`${n}さんの${md(cur.date)}の編集権限を外す`}>×</button>}</span>
+            ))}
+          </div>
+          {writable && !edPick && <button type="button" className="btn btn-outline np-ed-add" onClick={() => { setEdPick(true); setEdQ(''); }}>＋ KPIに無い人を追加</button>}
+          {writable && edPick && (
+            <div className="np-ed-pick">
+              <input className="inp" value={edQ} onChange={(e) => setEdQ(e.target.value)} placeholder="名前でさがす" aria-label="名前でさがす" />
+              <div className="np-ed-cands">
+                {candidates.length === 0 && <span className="ts">該当する人がいません</span>}
+                {candidates.slice(0, 40).map((n) => <button type="button" key={n} className="fchip" onClick={() => { setEditors([...editors, n]); setEdPick(false); }}>{n}</button>)}
+              </div>
+              <button type="button" className="fchip" onClick={() => setEdPick(false)}>閉じる</button>
+            </div>
+          )}
+        </div>
 
         {!writable && (
           <div className="np-warn" style={{ marginBottom: 10 }}>

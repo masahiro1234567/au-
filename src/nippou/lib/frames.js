@@ -134,7 +134,8 @@ export function toStored(frame, extra) {
   // メンバーの実績記入（日付ごと）も消さずに持ち続ける
   const memberResults = {};
   frame.days.forEach((d) => { const r = frame.memberResults && frame.memberResults[d.date]; if (r) memberResults[d.date] = r; });
-  return { store: frame.store, channel: frame.channel, ta: frame.ta, tb: frame.tb, days, mikomi, memberResults, ...extra };
+  // 編集権限は日ごと（days/{日付}/editors）。以前の日報枠まるごとの形は、読み込むときに各日へ移している
+  return { store: frame.store, channel: frame.channel, ta: frame.ta, tb: frame.tb, days, mikomi, memberResults, editors: null, ...extra };
 }
 
 // ===== 日報テキスト =====

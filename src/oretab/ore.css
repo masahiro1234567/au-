@@ -302,3 +302,106 @@
 .ip-print-page{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;}
 .ip-print-page>span{font-size:12px;font-weight:700;color:#475569;background:#e2e8f0;border-radius:999px;padding:2px 10px;}
 .ip-print-paper{background:#fff;box-shadow:0 2px 8px rgba(15,40,90,.18);box-sizing:border-box;}
+
+/* ===== 担当者（上部バー）・お知らせダイアログ ===== */
+.ot-tb-staff{margin-left:6px;font-size:11.5px;line-height:1.5;color:#4a3528;font-weight:700;min-width:0;max-width:220px;}
+.ot-info{width:470px;background:#eeeef2;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25);}
+.ot-info-body{display:flex;gap:14px;padding:20px 22px 18px;font-size:15px;line-height:1.55;color:#1a0f08;}
+.ot-info-body svg{flex-shrink:0;}
+.ot-info-ok{width:100%;height:52px;border:none;border-top:1px solid #c9c9ce;background:none;color:#1e6fd9;font-size:17px;cursor:pointer;}
+.ot-info-btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid #c9c9ce;}
+.ot-info-btns button{height:52px;border:none;background:none;color:#1e6fd9;font-size:17px;cursor:pointer;}
+.ot-info-btns button:first-child{border-right:1px solid #c9c9ce;}
+.ot-info-row{display:flex;align-items:center;padding:6px 22px 6px 74px;font-size:15px;}
+.ot-info-row span{width:110px;flex-shrink:0;}
+.ot-info-row input{flex:1;height:40px;}
+.ot-info-err{padding:2px 22px 10px 74px;font-size:12px;font-weight:700;color:#c2261a;}
+
+/* ===== オレタブのログイン・パスワード変更 ===== */
+.ot-login{position:absolute;inset:0;background:#e6e1e4;display:flex;flex-direction:column;align-items:center;color:#1a0f08;}
+.ot-login h1{margin:110px 0 0;font-size:28px;font-weight:800;}
+.ot-login-warn{align-self:stretch;margin-top:30px;background:#dde2ea;padding:14px 0;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px;}
+.ot-login-warn div{display:flex;align-items:center;gap:10px;width:640px;}
+.ot-login-form{width:440px;margin-top:26px;display:flex;flex-direction:column;gap:12px;font-size:15px;}
+.ot-login-form label,.ot-login-form .row{display:flex;align-items:center;gap:16px;}
+.ot-login-form .lb{width:110px;flex-shrink:0;}
+.ot-login-form .ot-inp{flex:1;height:40px;font-size:15px;background:#f4f5f8;border-color:#b9bcc4;border-radius:4px;}
+.ot-login-red{width:200px;height:50px;border:none;border-radius:3px;background:#d6461c;color:#fff;font-size:18px;font-weight:700;cursor:pointer;}
+.ot-login-red:disabled{opacity:.6;}
+.ot-login-gray{width:200px;height:40px;border:none;border-radius:3px;background:#a5a9b0;color:#1a0f08;font-size:15px;cursor:pointer;}
+.ot-login-blue{width:220px;height:52px;border:none;border-radius:3px;background:#1652d6;color:#fff;font-size:18px;cursor:pointer;}
+.ot-pwc-form{width:580px;margin-top:26px;display:flex;flex-direction:column;gap:14px;font-size:15px;}
+.ot-pwc-form>div,.ot-pwc-form>label{display:flex;align-items:center;}
+.ot-pwc-form .lb{width:190px;flex-shrink:0;}
+.ot-pwc-form .ot-inp,.ot-pwc-form .ot-sel{width:340px;height:42px;font-size:15px;background:#f4f5f8;border-color:#b9bcc4;border-radius:4px;}
+.ot-pwc-rule{width:580px;margin-top:22px;font-size:13.5px;line-height:1.7;}
+
+/* ===== eo光契約照会（ブラウザで開く） ===== */
+.ot-screen.eo{background:#eef0f3;color:#1a0f08;}
+.eo-chrome{height:44px;flex-shrink:0;background:#1d1d1f;display:flex;align-items:center;gap:300px;padding:0 20px;}
+.eo-chrome button{width:44px;height:40px;border:none;background:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.eo-body{flex:1;min-height:0;overflow-y:auto;padding:6px 14px 10px 22px;}
+.eo-top{display:flex;justify-content:flex-end;align-items:center;gap:22px;font-size:12px;height:28px;}
+.eo-pill{height:22px;padding:0 14px;border:none;border-radius:11px;background:#dfe5ee;color:#1e6fd9;font-size:11.5px;cursor:pointer;}
+.eo-pill.lg{height:26px;padding:0 18px;font-size:13px;border-radius:13px;}
+.eo-band{background:#cfc77e;font-size:13px;font-weight:700;padding:3px 8px;margin-top:4px;}
+.eo-key{border:2px solid #e9a23a;}
+.eo-key-h{display:inline-block;background:#e9a23a;font-size:13px;font-weight:800;padding:2px 10px;}
+.eo-t{border-collapse:collapse;width:100%;}
+.eo-t th{background:#e1dca6;border:1px solid #a9a35c;padding:0 8px;font-size:12px;font-weight:400;height:30px;text-align:left;white-space:nowrap;}
+.eo-t th i{display:block;font-style:normal;color:#d0261a;font-size:10.5px;line-height:1.1;}
+.eo-t th i.b{color:#2a46c9;}
+.eo-t td{background:#f7f7f2;border:1px solid #bdb98a;padding:0 8px;height:30px;}
+.eo-inp{height:24px;border:1px solid #b9bcc4;border-radius:4px;background:#fff;font-family:inherit;font-size:12px;padding:0 6px;min-width:0;box-sizing:border-box;}
+.eo-r{border-collapse:collapse;width:100%;}
+.eo-r th{background:#e1dca6;border:1px solid #a9a35c;padding:0 8px;font-size:12px;font-weight:400;height:23px;text-align:left;white-space:nowrap;width:1%;}
+.eo-r td{background:#f5f5f2;border:1px solid #bdb98a;padding:0 8px;height:23px;font-size:12px;}
+.eo-r td.eo-ok{width:80px;text-align:center;}
+.eo-ok svg{display:block;margin:0 auto;}
+.eo-reason{border-collapse:collapse;font-size:11px;}
+.eo-reason td{background:#e1dca6;border:1px solid #a9a35c;padding:1px 6px;width:120px;height:auto;}
+
+/* ===== Orange業務メニュー ===== */
+.om-tabs{margin-top:20px;background:#d9d8dc;border-radius:4px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));padding:3px;flex-shrink:0;}
+.om-tabs button{height:40px;border:none;border-radius:4px;background:none;color:#333;font-size:14px;cursor:pointer;}
+.om-tabs button.on{background:#f6f5f7;color:#d0461a;font-weight:800;}
+.om-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding-top:40px;align-content:start;}
+.om-item{min-height:58px;background:#f3f2f4;border:1px solid #dddade;border-radius:4px;display:flex;align-items:center;gap:8px;padding:8px 14px;text-align:left;font-size:15px;color:#222;cursor:pointer;line-height:1.35;}
+.om-item span{flex:1;}
+.om-item:active{background:#fff2ea;}
+.om-full{position:absolute;inset:0;z-index:40;}
+.om-sheet{position:absolute;left:10px;right:10px;top:26px;bottom:0;z-index:40;border-radius:8px 8px 0 0;overflow:hidden;box-shadow:0 -4px 18px rgba(0,0,0,.25);}
+.om-sheet .ot-screen{width:100%;height:100%;}
+
+/* ===== iPadのホーム（実機の並び）・ブラウザ（黒いツールバー） ===== */
+.ip-badge{position:absolute;right:-6px;top:-6px;min-width:22px;height:22px;border-radius:11px;background:#e53935;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+.ip-dock-sep{width:1px;align-self:stretch;margin:6px 2px;background:rgba(0,0,0,.18);}
+.ip-b-bar{height:56px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 12px;background:#18181b;position:relative;z-index:25;}
+.ip-b-round{width:64px;height:36px;border:2px solid #556;border-radius:18px;background:#2a2a30;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+.ip-b-round:disabled{opacity:.45;cursor:default;}
+.ip-b-sq{width:40px;height:36px;border:2px solid #556;border-radius:10px;background:#2a2a30;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+.ip-b-sq.on{background:#3a3a44;border-color:#9cc3f0;}
+.ip-b-url{flex:1;min-width:0;height:36px;border-radius:6px;background:#d4d5d8;display:flex;align-items:center;gap:8px;padding:0 10px;font-size:14px;color:#222;}
+.ip-b-bar .ip-b-menu{top:52px;}
+.ip-browser .ip-b-body{background:#a8aaae;}
+.ip-b-blank{height:100%;}
+.ip-b-page{background:#f4efea;}
+
+/* ===== 印刷プレビューのツール・印刷コード ===== */
+.ot-pv-tools{position:absolute;left:92px;top:14px;display:flex;border:2px solid #6b6b70;border-radius:10px;overflow:hidden;background:#d9d9dc;box-shadow:0 3px 10px rgba(0,0,0,.18);}
+.ot-pv-tools button{height:42px;padding:0 14px;border:none;border-right:1px solid #9a9aa0;background:#e9e9ec;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:#1a0f08;cursor:pointer;}
+.ot-pv-tools button:last-child{border-right:none;}
+.ot-pv-tools button:active{background:#fff2ea;}
+.ot-pc{position:absolute;inset:0;z-index:55;background:#1e5aa6;background-image:linear-gradient(118deg,transparent 0 46%,rgba(255,255,255,.07) 46% 62%,transparent 62%),linear-gradient(62deg,transparent 0 40%,rgba(0,0,0,.08) 40% 100%);}
+.ot-pc-top{position:absolute;left:0;right:0;top:0;height:76px;background:#1d2b3a;display:flex;align-items:center;justify-content:space-between;padding:0 28px;}
+.ot-pc-more{display:flex;gap:4px;}
+.ot-pc-more i{width:7px;height:7px;border-radius:50%;border:1.5px solid #d7dce3;}
+.ot-pc-card{position:absolute;left:322px;top:190px;width:380px;background:#f2f2f4;border-radius:14px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3);overflow:hidden;}
+.ot-pc-card b{display:block;font-size:24px;padding-top:26px;}
+.ot-pc-card p{margin:0;font-size:19px;padding:18px 30px 0;line-height:1.5;}
+.ot-pc-code{font-size:46px;font-weight:800;letter-spacing:2px;padding-top:12px;}
+.ot-pc-card button{display:block;width:100%;height:62px;margin-top:22px;border:none;border-top:1px solid #d6d6da;background:none;color:#1e6fd9;font-size:22px;cursor:pointer;}
+.ot-pc-foot{position:absolute;left:0;right:0;bottom:0;height:72px;background:#d9dadd;display:flex;align-items:center;gap:16px;padding:0 16px;}
+.ot-pc-foot div{flex:1;height:50px;background:#c9cacd;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;}
+.ot-pc-foot span{font-size:12px;color:#444;}
+.ip-b-x{width:44px;height:36px;border:none;border-radius:8px;background:#3a3a44;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex-shrink:0;}

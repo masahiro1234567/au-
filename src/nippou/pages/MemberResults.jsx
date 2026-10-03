@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Layout from '../components/Layout';
 import { useFrames, md } from '../lib/frames';
-import { findKpis, kpiMembers, resultKey, getSavedResult, isOther, canWriteDay, kpiDirectors } from '../lib/kpiLink';
+import { findKpis, kpiMembers, resultKey, getSavedResult, isOther, canWriteDay, kpiDirectors, dayEditors } from '../lib/kpiLink';
 
 const ROLES = ['ディレクター', 'クローザー', 'キャッチャー'];
 
@@ -94,7 +94,7 @@ export default function MemberResults() {
   };
 
   const label = (m) => (isOther(m.member, registered) ? '他社' : m.member);
-  const writable = canWriteDay(kpiData, f.store, d, user?.name, isAdmin);
+  const writable = canWriteDay(kpiData, f.store, d, user?.name, isAdmin, dayEditors(f, f.days.find((x) => x.date === d)));
   return (
     <Layout title="メンバーの実績記入" footer={<>
       <button className="btn btn-gray" onClick={() => navigate(`/frames/${f.id}?date=${d}`, { replace: true })}>あとで入力</button>

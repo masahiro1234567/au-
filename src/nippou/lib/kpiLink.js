@@ -50,9 +50,23 @@ export function kpiDirectors(kpiData, store, date) {
   findKpis(kpiData, store, date).forEach(([, k]) => kpiMembers(k, date).forEach((m) => { if (m.role === 'ディレクター' && m.member) names.push(m.member); }));
   return [...new Set(names)];
 }
-// 日報を書けるか：管理者、KPIが無い日、またはその日のディレクターに割り当てられている人
-export const canWriteDay = (kpiData, store, date, userName, isAdmin) => {
+// 日報を書けるか：管理者、KPIが無い日、その日のディレクターに割り当てられている人、またはその日の「編集権限」に追加された人
+// editors：その日に追加された人の名前（日ごと）
+export const canWriteDay = (kpiData, store, date, userName, isAdmin, editors) => {
   if (isAdmin) return true;
+  if (userName && editorsOf({ editors }).some((n) => nn(n) === nn(userName))) return true;
   const ds = kpiDirectors(kpiData, store, date);
   return !ds.length || ds.includes(userName);
 };
+
+// 「編集権限」に追加された人の名前の一覧。日（day）にも、以前の形の日報枠（frame）にも使える
+// （保存の形が配列でもオブジェクトでも扱えるように）
+export const editorsOf = (f) => {
+  const e = f && f.editors;
+  if (!e) return [];
+  return (Array.isArray(e) ? e : Object.values(e)).filter(Boolean);
+};
+// その日に書ける追加の人：その日の編集権限（＋以前の、日報枠まるごとの編集権限）
+export const dayEditors = (frame, day) => [...editorsOf(day), ...editorsOf(frame)];
+// 日報枠のどこかの日に編集権限がある人（日報確認から開けるかの判定用）
+export const anyDayEditors = (frame) => [...editorsOf(frame), ...((frame && frame.days) || []).flatMap((d) => editorsOf(d))];

@@ -118,6 +118,8 @@ export default function Kpi() {
   };
   const ours = (name) => !!name && name !== '他社' && [...registeredNames].some((r) => nn(r) === nn(name));
   const selfMode = (ms) => !ms.some((m) => m.role === 'ディレクター' && ours(m.member));
+  // その日のディレクターに割り当てられている本人は、メンバー全員の実績を直せる
+  const isDir = (ms) => ms.some((m) => m.role === 'ディレクター' && isMe(m.member));
   const saveMine = async (kid, dt, mi, m) => {
     const k = `${kid}_${dt}_${mi}`;
     const v = drafts[k];
@@ -127,7 +129,7 @@ export default function Kpi() {
     await set(ref(db, `fp_kpi_results/${resultKey(kid, dt, mi)}`), {
       kpiId: kid, date: dt, memberIndex: mi, memberName: m.member, role: m.role, target, actual,
       ach: target > 0 ? Math.round((actual / target) * 100) : 0, store: kpiData[kid]?.store || '', channel: kpiData[kid]?.channel || '',
-      selfEntered: true, enteredBy: user?.name || '', updatedAt: Date.now(),
+      selfEntered: isMe(m.member), enteredBy: user?.name || '', updatedAt: Date.now(),
     });
     setDrafts((d) => { const x = { ...d }; delete x[k]; return x; });
     showToast('実績を保存しました');
@@ -379,7 +381,7 @@ export default function Kpi() {
                             <span className="kp-grow" style={{ fontWeight: me ? 900 : 500 }}>{me ? 'あなた' : (m.member || '－')}</span>
                             <span className={`kp-role ${m.member === '他社' ? 'oth' : ROLE_CLS[m.role] || ''}`}>{ROLE_SHORT[m.role] || m.role}</span>
                             <b className="kp-t">{res && res.actual !== undefined && res.actual !== '' ? <small>{res.actual}/</small> : null}{target || 0}<small>{cat ? '組' : '件'}</small></b>
-                            {selfMode(ms) && dt <= todayStr && (me || isAdmin) && m.member !== '他社' && (() => {
+                            {dt <= todayStr && m.member !== '他社' && (isAdmin || isDir(ms) || (selfMode(ms) && me)) && (() => {
                               const dk = `${id}_${dt}_${mi}`;
                               return (
                                 <span className="kp-in">

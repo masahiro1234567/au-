@@ -181,6 +181,7 @@ export default function MemberAdmin({ profiles, results, terms }) {
                 <label>等級<select className="mb-inp" value={cur.u?.grade || ''} onChange={(e) => saveFp({ grade: e.target.value })}><option value="">－</option>{GRADES.map((g) => <option key={g}>{g}</option>)}</select></label>
                 <label>クローザーランク<select className="mb-inp" value={cur.p?.closerRank || ''} onChange={(e) => saveProf({ closerRank: e.target.value })}><option value="">－</option>{RANKS.map((r) => <option key={r}>{r}</option>)}</select></label>
               </div>
+              <OreIdField key={cur.uid} value={cur.u?.oretabId || ''} others={Object.entries(fpUsers || {}).filter(([id, u]) => id !== cur.uid && u && u.oretabId).map(([, u]) => u)} onSave={(v) => saveFp({ oretabId: v || null })} />
               {cur.perm === 'pending' ? (
                 <div className="mb-btns">
                   <button className="mb-btn g" onClick={() => saveFp({ permission: 'edit', approvedAt: Date.now() })}>承認して登録</button>
@@ -276,6 +277,26 @@ export default function MemberAdmin({ profiles, results, terms }) {
           {renderDetail()}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---- オレタブの担当者ID（AUK＋数字5桁）。オレタブ練習のログインに使う ----
+function OreIdField({ value, others, onSave }) {
+  const [v, setV] = useState(value);
+  const norm = (x) => String(x || '').normalize('NFKC').replace(/\s/g, '').toUpperCase();
+  const cur = norm(v);
+  const bad = cur && !/^AUK\d{5}$/.test(cur);
+  const dup = cur && others.filter((u) => norm(u.oretabId) === cur).map((u) => u.name);
+  const save = () => { if (!bad && cur !== norm(value)) onSave(cur); };
+  return (
+    <div className="mb-oreid">
+      <label>オレタブの担当者ID
+        <input className="mb-inp" value={v} placeholder="例：AUK40212" autoCapitalize="characters" autoComplete="off" spellCheck={false}
+          onChange={(e) => setV(norm(e.target.value))} onBlur={save} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+      </label>
+      {bad && <div className="mb-oreid-ng">AUK＋数字5桁で入力してください（保存されていません）</div>}
+      {!bad && dup && dup.length > 0 && <div className="mb-oreid-ng">同じ担当者IDの人がいます：{dup.join('・')}</div>}
     </div>
   );
 }

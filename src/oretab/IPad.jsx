@@ -45,20 +45,41 @@ export const BrowserIcon = () => (
   </svg>
 );
 const G = { fill: 'none', stroke: '#fff', strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round' };
+const GB = { ...G, stroke: '#2b6fd6' };
+// 実機のホーム画面と同じ並び（アイコンはオリジナルの線画）
 const APPS = [
-  ['設定', '#6b7280', <><circle cx="24" cy="24" r="7" {...G} /><path d="M24 9v5M24 34v5M9 24h5M34 24h5M13.4 13.4l3.5 3.5M31.1 31.1l3.5 3.5M13.4 34.6l3.5-3.5M31.1 16.9l3.5-3.5" {...G} /></>],
-  ['カメラ', '#374151', <><rect x="9" y="15" width="30" height="21" rx="4" {...G} /><circle cx="24" cy="25.5" r="6" {...G} /><path d="M18 15l2-4h8l2 4" {...G} /></>],
-  ['写真', '#f59e0b', <><rect x="10" y="12" width="28" height="24" rx="3" {...G} /><path d="M10 31l8-8 6 6 5-5 9 9" {...G} /><circle cx="31" cy="19" r="2.5" {...G} /></>],
-  ['時計', '#111827', <><circle cx="24" cy="24" r="14" {...G} /><path d="M24 16v9l6 4" {...G} /></>],
-  ['ファイル', '#2563eb', <path d="M10 15h11l3 4h14v17H10z" {...G} />],
-  ['計算機', '#1f2937', <><rect x="13" y="9" width="22" height="30" rx="3" {...G} /><path d="M17 15h14M18 23h2M24 23h2M18 29h2M24 29h2M30 29v4" {...G} /></>],
-  ['天気', '#0ea5e9', <><circle cx="20" cy="20" r="6" {...G} /><path d="M16 34h16a6 6 0 000-12 8 8 0 00-15 3" {...G} /></>],
-  ['地図', '#10b981', <><path d="M9 13l10-4 10 4 10-4v26l-10 4-10-4-10 4z" {...G} /><path d="M19 9v26M29 13v26" {...G} /></>],
-  ['メール', '#3b82f6', <><rect x="9" y="13" width="30" height="22" rx="3" {...G} /><path d="M9 15l15 11 15-11" {...G} /></>],
-  ['連絡先', '#9ca3af', <><circle cx="24" cy="20" r="6" {...G} /><path d="M13 37c1-6 5-9 11-9s10 3 11 9" {...G} /></>],
-  ['カレンダー', '#dc2626', <><rect x="10" y="12" width="28" height="25" rx="3" {...G} /><path d="M10 19h28M17 9v6M31 9v6" {...G} /></>],
-  ['音楽', '#ef4444', <><path d="M19 33V14l16-4v19" {...G} /><circle cx="16" cy="33" r="3.5" {...G} /><circle cx="32" cy="29" r="3.5" {...G} /></>],
+  ['ファイル', '#eef2f8', <path d="M8 15h12l3 4h17v17H8z" {...GB} />],
+  ['マップ', '#6fbf6a', <path d="M24 8l9 28-9-6-9 6z" {...G} />],
+  ['ホーム', '#f4f1ee', <path d="M8 24l16-14 16 14M13 20v18h22V20" fill="none" stroke="#f08a2c" strokeWidth="2.6" strokeLinejoin="round" />],
+  ['App Store', '#1f86f0', <path d="M17 34l12-22M31 34L19 12M13 28h22" {...G} />],
+  ['ブック', '#f28a1c', <path d="M8 12h12a4 4 0 014 4v20a4 4 0 00-4-4H8zM40 12H28a4 4 0 00-4 4v20a4 4 0 014-4h12z" {...G} />],
+  ['ポッドキャスト', '#9a4fe0', <><circle cx="24" cy="20" r="4" {...G} /><path d="M24 26v12M14 30a13 13 0 1120 0" {...G} /></>],
+  ['設定', '#8e9097', <><circle cx="24" cy="24" r="7" {...G} /><path d="M24 8v6M24 34v6M8 24h6M34 24h6M13 13l4 4M31 31l4 4M13 35l4-4M31 17l4-4" {...G} /></>, 1],
+  ['Orangeポータル', 'oretab'],
+  ['USB連携用フォルダ', 'usb'],
+  ['簡単復旧', '#2fae4e', <><text x="24" y="21" fontSize="10" textAnchor="middle" fill="#fff" fontWeight="700">i-Filter</text><text x="24" y="34" fontSize="10" textAnchor="middle" fill="#fff" fontWeight="700">再取得</text></>],
+  ['install.iFilter', '#f4f6f8', <><rect x="14" y="8" width="20" height="28" rx="2" fill="none" stroke="#2fae4e" strokeWidth="2" /><path d="M18 16h12M18 21h12M18 26h8" stroke="#2fae4e" strokeWidth="2" /></>],
 ];
+const DOCK = [
+  ['メッセージ', '#3fc457', <path d="M10 22c0-7 6-12 14-12s14 5 14 12-6 12-14 12c-2 0-4 0-6-1l-7 3 2-6c-2-2-3-5-3-8z" fill="#fff" />],
+  ['ミュージック', '#f2384a', <><path d="M20 34V14l14-4v20" {...G} /><circle cx="17" cy="34" r="3.5" {...G} /><circle cx="31" cy="30" r="3.5" {...G} /></>],
+  ['メール', '#2a8cf0', <><rect x="8" y="13" width="32" height="22" rx="3" {...G} /><path d="M8 15l16 12 16-12" {...G} /></>],
+  ['カレンダー', '#fff', 'cal'],
+  ['メモ', '#fff8dc', <><path d="M8 14h32" stroke="#f2c200" strokeWidth="5" /><path d="M12 24h24M12 30h24M12 36h16" stroke="#c9c9c9" strokeWidth="1.5" /></>],
+  null,
+  ['USB連携用フォルダ', 'usb'],
+  ['プリント', '#1f6fb8', <><rect x="10" y="10" width="28" height="18" rx="2" {...G} /><rect x="16" y="22" width="16" height="14" rx="1" fill="#1f6fb8" stroke="#fff" strokeWidth="2.2" /></>],
+  ['Orangeポータル', 'oretab'],
+  ['ブラウザ', 'browser'],
+];
+export const UsbIcon = () => (
+  <svg width="100%" height="100%" viewBox="0 0 100 100" aria-hidden="true">
+    <rect width="100" height="100" fill="#f6f2f0" />
+    <rect x="16" y="20" width="68" height="60" rx="8" fill="none" stroke="#d2441b" strokeWidth="4.5" />
+    <path d="M16 35h68M30 48h18l4 6h18v16H30z" fill="none" stroke="#d2441b" strokeWidth="4" strokeLinejoin="round" />
+    <circle cx="64" cy="64" r="8" fill="#fff" stroke="#d2441b" strokeWidth="3.5" />
+  </svg>
+);
 const AppGlyph = ({ color, children, size = 76 }) => (
   <span className="ip-ico" style={{ width: size, height: size, borderRadius: size * 0.235, background: color }}>
     <svg width={size * 0.58} height={size * 0.58} viewBox="0 0 48 48" aria-hidden="true">{children}</svg>
@@ -109,7 +130,21 @@ export function Passcode({ onOk, onCancel }) {
 export function HomeScreen({ onOpenOreTab, onOpenBrowser, onLock, onExit, say }) {
   const c = useClock();
   const no = () => say('練習用では開けません');
-  const dock = [APPS[8], APPS[10], APPS[2], APPS[3]];
+  const icon = (a, size) => {
+    const [n, col, g, badge] = a;
+    const r = Math.round(size * 0.23);
+    const inner = col === 'oretab' ? <span className="ip-ico" style={{ width: size, height: size, borderRadius: r }}><OreTabIcon /></span>
+      : col === 'usb' ? <span className="ip-ico" style={{ width: size, height: size, borderRadius: r }}><UsbIcon /></span>
+      : col === 'browser' ? <span className="ip-ico" style={{ width: size, height: size, borderRadius: r }}><BrowserIcon /></span>
+        : g === 'cal' ? (
+          <span className="ip-ico" style={{ width: size, height: size, borderRadius: r, background: col, flexDirection: 'column', color: '#222' }}>
+            <span style={{ fontSize: size * 0.18, color: '#e53935', lineHeight: 1 }}>{DOWS[new Date().getDay()]}</span>
+            <span style={{ fontSize: size * 0.42, lineHeight: 1.05 }}>{new Date().getDate()}</span>
+          </span>)
+          : <AppGlyph color={col} size={size}>{g}</AppGlyph>;
+    return <span style={{ position: 'relative', display: 'inline-flex' }}>{inner}{badge && <span className="ip-badge">{badge}</span>}</span>;
+  };
+  const tap = (a) => (a[1] === 'oretab' ? onOpenOreTab : a[1] === 'browser' ? onOpenBrowser : no);
   return (
     <div className="ip-screen ip-home">
       <div className="ip-home-time">{c.time}</div>
@@ -118,15 +153,15 @@ export function HomeScreen({ onOpenOreTab, onOpenBrowser, onLock, onExit, say })
         <button onClick={onExit}>練習を終える</button>
       </div>
       <div className="ip-grid">
-        {APPS.map(([n, col, g]) => (
-          <button key={n} className="ip-app" onClick={no}><AppGlyph color={col}>{g}</AppGlyph><span>{n}</span></button>
+        {APPS.map((a) => (
+          <button key={a[0]} className="ip-app" onClick={tap(a)}>{icon(a, 76)}<span>{a[0]}</span></button>
         ))}
       </div>
       <div className="ip-pages"><span className="on" /><span /></div>
       <div className="ip-dock">
-        {dock.map(([n, col, g]) => <button key={n} className="ip-dockapp" onClick={no} aria-label={n}><AppGlyph color={col} size={64}>{g}</AppGlyph></button>)}
-        <button className="ip-dockapp" onClick={onOpenOreTab} aria-label="オレタブ"><span className="ip-ico" style={{ width: 64, height: 64, borderRadius: 15 }}><OreTabIcon /></span></button>
-        <button className="ip-dockapp" onClick={onOpenBrowser} aria-label="ブラウザ"><span className="ip-ico" style={{ width: 64, height: 64, borderRadius: 15 }}><BrowserIcon /></span></button>
+        {DOCK.map((a, i) => (a ? (
+          <button key={i} className="ip-dockapp" onClick={tap(a)} aria-label={a[0]}>{icon(a, 64)}</button>
+        ) : <span key={i} className="ip-dock-sep" />))}
       </div>
     </div>
   );
@@ -150,6 +185,7 @@ const MARGIN = 20, CW = 1024, CH = WEB_PAY_H, PF = 0.2;
 
 export function Browser({ config, onClose, say }) {
   const [page, setPage] = useState('');
+  const [fwd, setFwd] = useState(''); // ◀で戻ったページ（▶で開き直す）
   const [menu, setMenu] = useState(''); // bm / share
   const [bmGroup, setBmGroup] = useState(false);
   const [print, setPrint] = useState(false);
@@ -166,29 +202,31 @@ export function Browser({ config, onClose, say }) {
 
   return (
     <div className="ip-screen ip-browser">
-      <div className="ip-b-title"><b>ブラウザ{page ? '　Web版お支払い目安額' : ''}</b>
-        <button onClick={onClose} aria-label="ブラウザを閉じる"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" /></svg></button>
-      </div>
-      <div className="ip-b-tools">
-        <button className={menu === 'bm' ? 'on' : ''} onClick={() => setMenu(menu === 'bm' ? '' : 'bm')} aria-label="ブックマーク"><Bi k="book" /></button>
-        <button onClick={() => say('練習用では使えません')} aria-label="フォルダ"><Bi k="folder" /></button>
-        <button onClick={() => say('練習用では使えません')} aria-label="ダウンロード"><Bi k="down" /></button>
-        <button className={menu === 'share' ? 'on' : ''} onClick={() => setMenu(menu === 'share' ? '' : 'share')} aria-label="共有"><Bi k="share" /></button>
+      <div className="ip-b-bar">
+        <button className="ip-b-round" onClick={() => { if (page) { setFwd(page); setPage(''); setMenu(''); } }} aria-label="戻る" disabled={!page}><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 4L6 12l11 8z" fill="#9aa4b4" /></svg></button>
+        <button className="ip-b-round" onClick={() => { if (!page && fwd) { setPage(fwd); setFwd(''); setMenu(''); } }} aria-label="進む" disabled={!!page || !fwd}><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l11 8-11 8z" fill="#9aa4b4" /></svg></button>
+        <button className="ip-b-sq" onClick={() => { if (page) { setFwd(page); setPage(''); } setMenu(''); }} aria-label="ホーム"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12l9-8 9 8M6 10v10h12V10" fill="none" stroke="#9cc3f0" strokeWidth="2" strokeLinejoin="round" /></svg></button>
+        <button className={`ip-b-sq ${menu === 'share' ? 'on' : ''}`} onClick={() => setMenu(menu === 'share' ? '' : 'share')} aria-label="共有"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19c0-6 4-9 10-9V6l6 6-6 6v-4c-4 0-7 1-10 5z" fill="#9cc3f0" /></svg></button>
+        <button className={`ip-b-sq ${menu === 'bm' ? 'on' : ''}`} onClick={() => setMenu(menu === 'bm' ? '' : 'bm')} aria-label="ブックマーク"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h7a2 2 0 012 2v13a2 2 0 00-2-2H3zM21 5h-7a2 2 0 00-2 2v13a2 2 0 012-2h7z" fill="none" stroke="#9cc3f0" strokeWidth="1.8" /></svg></button>
+        <button className="ip-b-sq" onClick={() => say('練習用では使えません')} aria-label="タブ一覧"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="3" fill="none" stroke="#9cc3f0" strokeWidth="1.6" /><rect x="7" y="7" width="14" height="14" rx="3" fill="#2a2a30" stroke="#9cc3f0" strokeWidth="1.6" /><text x="14" y="17.5" fontSize="9" textAnchor="middle" fill="#9cc3f0">1</text></svg></button>
+        <div className="ip-b-url"><span className="ot-ellipsis" style={{ flex: 1 }}>{page ? 'Web版お支払い目安額' : 'about:blank'}</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" /></svg></div>
+        <button className="ip-b-x" onClick={onClose} aria-label="ブラウザを閉じる"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" /></svg></button>
         {menu === 'bm' && (
-          <div className="ip-b-menu" style={{ left: 10, width: 300 }}>
+          <div className="ip-b-menu" style={{ left: 250, width: 300 }}>
             <div className="ip-b-menu-h">ブックマーク</div>
             <button className="ip-b-group" onClick={() => setBmGroup(!bmGroup)}><Bi k="folder" s={20} /><span>配信されたブックマーク</span><em>{bmGroup ? '▲' : '▼'}</em></button>
-            {bmGroup && <button className="ip-b-link" onClick={() => { setPage('webpay'); setMenu(''); }}><Bi k="book" s={18} />Web版お支払い目安額</button>}
+            {bmGroup && <button className="ip-b-link" onClick={() => { setPage('webpay'); setFwd(''); setMenu(''); }}><Bi k="book" s={18} />Web版お支払い目安額</button>}
           </div>
         )}
         {menu === 'share' && (
-          <div className="ip-b-menu" style={{ left: 118, width: 220 }}>
+          <div className="ip-b-menu" style={{ left: 196, width: 220 }}>
             <button className="ip-b-item" onClick={() => { setMenu(''); if (!page) return say('先にブックマークからページを開いてください'); setPrint(true); }}><Bi k="print" s={20} />プリント</button>
           </div>
         )}
       </div>
       <div className="ip-b-body" onClick={() => menu && setMenu('')}>
-        {!page && <div className="ip-b-empty"><Bi k="book" s={40} />左上のブックマークからページを開いてください</div>}
+        {!page && <div className="ip-b-blank" />}
         {page === 'webpay' && <div className="ip-b-page"><Payment web ctrl={ctrl} config={config} /></div>}
       </div>
 
