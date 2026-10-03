@@ -1,4 +1,5 @@
 import React from 'react';
+import { showToast } from '../utils.js';
 
 const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
 const ICONS = {
@@ -13,6 +14,7 @@ const ICONS = {
   search: <><circle cx="11" cy="11" r="6.5" {...S} /><path d="M16 16l4 4" {...S} /></>,
   lock: <><rect x="5" y="11" width="14" height="9" rx="2" {...S} /><path d="M8 11V8a4 4 0 018 0v3" {...S} /></>,
   out: <path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4M10 16l-4-4 4-4M6 12h10" {...S} />,
+  list: <><path d="M9 6h11M9 12h11M9 18h11" {...S} /><circle cx="4.5" cy="6" r="1" {...S} /><circle cx="4.5" cy="12" r="1" {...S} /><circle cx="4.5" cy="18" r="1" {...S} /></>,
   x: <path d="M6 6l12 12M18 6L6 18" {...S} />,
 };
 const Icon = ({ k, size = 22 }) => <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">{ICONS[k]}</svg>;
@@ -32,6 +34,8 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
     ['テスト', 'ランク別・全範囲・未出題で理解度をチェック', 'check', onGoTest],
     ['評価一覧', 'メンバーの評価・育成計画・月次KPIを見る', 'chart', onGoEval],
     ['マイページ', '自分の評価・目標・稼働の記録', 'user', onGoMyPage],
+    // カリキュラム：中身はまだ無い（未実装）。押すと案内だけ出す
+    ['カリキュラム', '未実装・アップデートで追加予定です', 'list', () => showToast('カリキュラムは未実装です。アップデートで追加予定です')],
   ];
   const search = (e) => { e.preventDefault(); onOpenFiltered({ q: q.trim() }); };
   const go = (fn) => () => { setMenuOpen(false); fn && fn(); };
