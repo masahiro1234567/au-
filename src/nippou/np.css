@@ -206,3 +206,26 @@
 .np .np-ed-cands{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;}
 .np .np-ed-chip.auto{background:#f3f4f6;border-color:#e5e7eb;color:#374151;padding-right:12px;}
 .np .np-ed-chip small{font-size:.66rem;font-weight:700;color:var(--sub);margin-left:4px;}
+
+/* 個人実績：一覧 */
+.np .ps-tools{display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px;}
+.np .ps-group{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.np .ps-group>*{flex-shrink:0;}
+.np .ps-ghead{display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:800;color:var(--sub);padding:0 4px;}
+.np .ps-ghead span{font-weight:600;}
+.np .ps-ghead i{flex:1;height:1px;background:var(--border);}
+.np .ps-card{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.np .ps-row{width:100%;min-height:56px;display:flex;align-items:center;gap:10px;padding:10px 12px;border:none;background:#fff;font-family:inherit;text-align:left;color:var(--text);cursor:pointer;}
+.np .ps-name{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.np .ps-name b{font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.np .ps-bds{display:flex;gap:4px;flex-wrap:wrap;}
+.np .ps-bd{font-size:.66rem;font-weight:800;border-radius:6px;padding:2px 7px;}
+.np .ps-bd.pos{background:var(--pl);color:var(--pd);}
+.np .ps-bd.gr{background:#f3f4f6;color:#374151;}
+.np .ps-nums{display:flex;gap:14px;margin-left:auto;flex-shrink:0;}
+.np .ps-nums>span{display:flex;flex-direction:column;align-items:flex-end;font-size:.62rem;font-weight:700;color:var(--sub);}
+.np .ps-nums b{font-size:1rem;color:var(--text);}
+.np .ps-nums b.or{color:var(--pd);}
+.np .ps-arw{width:20px;text-align:center;font-size:.7rem;color:var(--sub);flex-shrink:0;}
+.np .ps-det{border-top:1px solid #fbe7da;background:#fffaf6;padding:8px 10px 10px;}
+@media (max-width:380px){.np .ps-nums{gap:9px;}}
