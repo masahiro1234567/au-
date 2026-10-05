@@ -6,6 +6,7 @@ import Payment from './Payment.jsx';
 import AreaSearch from './AreaSearch.jsx';
 import DenkiInquiry from './DenkiInquiry.jsx';
 import OrangeMenu from './OrangeMenu.jsx';
+import { ManualButton } from '../manual/Manual.jsx';
 import OreLogin, { StaffDialog } from './OreLogin.jsx';
 import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
 import { Wallpaper, LockScreen, Passcode, HomeScreen, Browser } from './IPad.jsx';
@@ -15,11 +16,13 @@ const TITLES = { portal: 'ポータルメニュー', identity: 'お客様照会'
 const SCREENS = { identity: Identity, payment: Payment, area: AreaSearch, denki: DenkiInquiry, orange: OrangeMenu };
 
 // ---- 端末サイズに合わせて 1024×768 を縮小。縦持ちなら90度回して横画面で表示 ----
+const EXIT_BAR = 52;
 function useStage() {
   const calc = () => {
     const vw = window.innerWidth, vh = window.innerHeight;
     const portrait = vh > vw;
-    const scale = portrait ? Math.min(vh / W, vw / H) : Math.min(vw / W, vh / H);
+    // au naviに戻る×ボタンの場所（EXIT_BAR）をあけて、残りにiPadを収める
+    const scale = portrait ? Math.min(vh / W, (vw - EXIT_BAR) / H) : Math.min(vw / W, (vh - EXIT_BAR) / H);
     return { portrait, scale };
   };
   const [st, setSt] = useState(calc);
@@ -157,11 +160,18 @@ export default function OreTab({ onExit, payConfig }) {
 
   const stageStyle = {
     width: W, height: H,
+    // ×ボタンの帯の分だけずらす（横持ち：下へ／縦持ち＝回転表示：左へ）
+    ...(stage.portrait ? { left: `calc(50% - ${EXIT_BAR / 2}px)` } : { top: `calc(50% + ${EXIT_BAR / 2}px)` }),
     transform: `translate(-50%, -50%) ${stage.portrait ? 'rotate(90deg) ' : ''}scale(${stage.scale})`,
   };
 
   return (
     <div className="ot-viewport">
+      {/* いつでも au navi のホームに戻れる×（iPadの右上の外側。縦持ちのときは回転表示に合わせる） */}
+      <div className={`ot-man ${stage.portrait ? 'rot' : ''}`}><ManualButton screen="oretab" dark rotate={stage.portrait} /></div>
+      <button className={`ot-exit ${stage.portrait ? 'rot' : ''}`} onClick={() => { exitLandscape(); onExit(); }} aria-label="au naviのホームに戻る">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" /></svg>
+      </button>
       <div className="ot-stage" style={stageStyle} ref={setStageEl}>
         <StageContext.Provider value={stageEl}>
         <StaffContext.Provider value={staffCtx}>

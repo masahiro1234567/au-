@@ -1,3 +1,4 @@
+import { ManualButton } from '../manual/Manual.jsx';
 import React from 'react';
 import { showToast } from '../utils.js';
 
@@ -46,6 +47,7 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
         <div className="logo"><div className="logo-mark">au</div><h1>au navi</h1></div>
         <div className="hdr-right">
           {testUser?.name && (onGoMyPage ? <button className="user-chip" style={{ cursor: 'pointer', border: 'none', fontFamily: 'inherit' }} onClick={onGoMyPage} aria-label="マイページを開く">{testUser.name}</button> : <div className="user-chip">{testUser.name}</div>)}
+          <ManualButton screen="home" />
           <button className={`btn-toggle ${menuOpen ? 'active' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label="メニュー" aria-expanded={menuOpen}>
             <span /><span /><span />
           </button>

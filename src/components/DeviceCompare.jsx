@@ -1,3 +1,4 @@
+import { ManualButton } from '../manual/Manual.jsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { OS_LIST, MARK_O, MARK_X, getDeviceData, seriesOf } from '../devices.js';
 
@@ -101,7 +102,7 @@ export default function DeviceCompare({ devices, onBack }) {
           <div className="logo-mark">au</div>
           <h1>機種比較</h1>
         </div>
-        <button className="btn-back" onClick={onBack}>← ホーム</button>
+        <div className="hdr-right"><button className="btn-back" onClick={onBack}>← ホーム</button><ManualButton screen="devices" /></div>
       </header>
 
       {view === 'table' && (

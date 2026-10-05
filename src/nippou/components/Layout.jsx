@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNpShell } from '../NippouApp';
+import { ManualButton, nippouManualKey } from '../../manual/Manual.jsx';
 
 // au navi と同じ見た目のヘッダー。日報のトップで「戻る」を押すと au navi のホームへ戻る
 export default function Layout({ title, children, footer }) {
@@ -17,6 +18,7 @@ export default function Layout({ title, children, footer }) {
         <div className="hdr-right">
           {isAdmin && <span className="np-badge-admin">管理者</span>}
           <button className="btn-back" onClick={() => (atRoot ? onExit() : navigate(-1))}>← {atRoot ? exitLabel : '戻る'}</button>
+          <ManualButton screen={nippouManualKey(location.pathname, title)} />
         </div>
       </header>
       <div className="np np-body">{children}</div>

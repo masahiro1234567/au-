@@ -1,3 +1,4 @@
+import { ManualButton } from '../manual/Manual.jsx';
 import React, { useMemo, useState } from 'react';
 import { RANK_COLORS, RANKS, esc } from '../utils.js';
 import { buildPeople, progressOf, weeklyRanking, weekRange, normName } from '../testStats.js';
@@ -154,7 +155,7 @@ export default function TestHome({ user, terms, results, profiles, activity, onB
     <div className="page">
       <div className="hdr">
         <div className="logo"><div className="logo-mark">au</div><h1>テスト</h1></div>
-        <div className="hdr-right"><button className="btn-back" onClick={onBack}>← ホーム</button></div>
+        <div className="hdr-right"><button className="btn-back" onClick={onBack}>← ホーム</button><ManualButton screen="test" /></div>
       </div>
       <div className="tq-tabs">
         {[['test', 'テスト'], ['progress', 'メンバー進捗'], ['ranking', 'ランキング']].map(([k, l]) => (

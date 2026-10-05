@@ -1,3 +1,4 @@
+import { ManualButton } from '../manual/Manual.jsx';
 import { isUnread, isFlagged, markSeen, flagTerm } from '../termNotify.js';
 import { useDbCollection } from '../useFirebase.js';
 import { ym } from '../testStats.js';
@@ -105,6 +106,7 @@ export default function Glossary({ terms, isAdmin, initialCat, initialQuery, ini
         </div>
         <div className="hdr-right">
           {onBackHome && <button className="btn-back" onClick={onBackHome}>← ホーム</button>}
+          <ManualButton screen="glossary" />
           <button
             className={`btn-toggle ${sidebarOpen ? 'active' : ''}`}
             onClick={() => setSidebarOpen((o) => !o)}

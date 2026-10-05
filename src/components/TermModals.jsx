@@ -1,3 +1,4 @@
+import { ManualButton } from '../manual/Manual.jsx';
 import React, { useMemo, useState, useEffect } from 'react';
 import { CATEGORIES_BASE, CATEGORY_COLORS, RANKS, showToast, suggestRelatedTerms, suggestByCategory, getTermPaths, normalizePaths, pathsToDbFields } from '../utils.js';
 import { ConfirmButton } from './ConfirmButton.jsx';
@@ -378,6 +379,7 @@ export function TermDetailModal({ open, term, currentId, allTerms, isAdmin, onCl
         <div className="modal-hdr">
           {onBack && <button className="btn-back-detail" onClick={onBack}>← 戻る</button>}
           <h3>{term.name}</h3>
+          <ManualButton screen="term" />
           <button className="btn-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">

@@ -1,3 +1,5 @@
+import AdminManualTab from '../manual/AdminManualTab.jsx';
+import { ManualButton } from '../manual/Manual.jsx';
 import AdminDevicesTab from './AdminDevicesTab.jsx';
 import AdminOreTabTab from './AdminOreTabTab.jsx';
 import MemberAdmin from './MemberAdmin.jsx';
@@ -237,6 +239,7 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
         <div className="hdr-right">
           <button className="btn-ghost" onClick={onLogout}>ログアウト</button>
           <button className="btn-back" onClick={onBack}>← ホーム</button>
+          <ManualButton screen={`admin_${area === 'member' ? 'member' : area}`} />
         </div>
       </div>
       <div className="t-body">
@@ -250,7 +253,9 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
           <button className={`tab ${area === 'glossary' ? 'active' : ''}`} onClick={() => setArea('glossary')}>用語集管理{flagCount > 0 && <span className="tn-badge red">{flagCount}</span>}</button>
           <button className={`tab ${area === 'member' ? 'active' : ''}`} onClick={() => setArea('member')}>メンバー管理</button>
           <button className={`tab ${area === 'eval' ? 'active' : ''}`} onClick={() => setArea('eval')}>評価一覧</button>
+          <button className={`tab ${area === 'manual' ? 'active' : ''}`} onClick={() => setArea('manual')}>マニュアル</button>
         </div>
+        {area === 'manual' && <AdminManualTab user={user} />}
         {area === 'member' && <MemberAdmin profiles={profiles} results={results} terms={terms} />}
         {area === 'eval' && <EvalPage embedded isAdmin user={user} />}
         {area === 'nippou' && <React.Suspense fallback={<div className="loading"><div className="spinner" /></div>}><NippouAdmin user={user} /></React.Suspense>}

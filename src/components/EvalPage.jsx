@@ -1,3 +1,4 @@
+import { ManualButton } from '../manual/Manual.jsx';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDbCollection, dbSet } from '../useFirebase.js';
 import { keepPlace } from '../keepPlace.js';
@@ -291,6 +292,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
           <div className="hdr-right">
             {sheetId && !appMode && <button className="btn-ghost" onClick={load} disabled={loading}>{loading ? '読み込み中…' : '最新にする'}</button>}
             <button className="btn-back" onClick={onBack}>← ホーム</button>
+            <ManualButton screen="eval" />
           </div>
         </header>
       )}

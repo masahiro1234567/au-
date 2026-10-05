@@ -1,3 +1,4 @@
+import { ManualButton } from '../manual/Manual.jsx';
 import React, { useMemo, useState } from 'react';
 import { useDbCollection } from '../useFirebase.js';
 import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
@@ -93,7 +94,7 @@ export default function MyPage({ user, onBack, onGoKpi }) {
     <div className="page">
       <header className="hdr">
         <div className="logo"><div className="logo-mark">au</div><h1>マイページ</h1></div>
-        <div className="hdr-right"><button className="btn-back" onClick={onBack}>← ホーム</button></div>
+        <div className="hdr-right"><button className="btn-back" onClick={onBack}>← ホーム</button><ManualButton screen="mypage" /></div>
       </header>
       <div className="t-body mp">
         <div className="mp-card mp-prof">
