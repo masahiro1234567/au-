@@ -13,7 +13,7 @@ export const SCREENS = [
   { group: '一般の画面', keys: ['home', 'glossary', 'term', 'devices', 'bravepost', 'test', 'eval', 'mypage'] },
   { group: '日報・KPI', keys: ['nippou_home', 'nippou_new', 'nippou_form', 'nippou_preview', 'nippou_list', 'nippou_pick', 'nippou_detail', 'nippou_results', 'nippou_stats', 'nippou_stores', 'kpi', 'personal'] },
   { group: 'オレタブ（タブで切り替え）', keys: ['oretab_can', 'oretab_login', 'oretab_map', 'oretab_cond'], oretab: true },
-  { group: '管理画面', keys: ['admin_nippou', 'admin_glossary', 'admin_member', 'admin_eval', 'admin_manual'] },
+  { group: '管理画面', keys: ['admin_nippou', 'admin_glossary', 'admin_member', 'admin_eval', 'admin_rtest', 'admin_manual'] },
 ];
 
 export const DEFAULT_MANUALS = {
@@ -42,6 +42,7 @@ export const DEFAULT_MANUALS = {
   test: { title: 'テスト', sections: [
     CAN(['用語のテストができます。結果はすべて記録されます', '自分とメンバーの進み具合（一度でも正解した用語の割合）とランキングが見られます']),
     HOW(['出題範囲を選びます。ランク別は5問、全範囲は10問、未出題はまだ正解していない用語から出ます', '説明を読んで、合う用語を4つの中から選びます', '終わると結果と解説が出ます', 'メンバー進捗で名前を押すと、その人の進み具合が開きます']),
+    S('定期テスト', 'steps', ['【定期テスト】のタブで、トレーナーが出したテストを受けられます', '編ごとのタブで進めます。【途中で保存】で続きから解けます', '最後の編で【提出する】。提出したら答えは直せません', '〇×・穴埋めなどはすぐ採点され、記述はトレーナーの採点後に結果が届きます']),
   ] },
   eval: { title: '評価一覧', sections: [
     CAN(['メンバーの評価（キャッチ・クローズ・ディレクション）、目標、アクションプランを見られます']),
@@ -133,6 +134,10 @@ export const DEFAULT_MANUALS = {
   admin_eval: { title: '評価一覧（管理）', sections: [
     CAN(['評価・稼働評価・振り返り・月次KPI・評価基準を編集できます']),
     HOW(['個人別で名前を押して開き、【このまとまりを編集】でその場で直します', '稼働評価は【追加】で、KPIから直近の週の現場が提案されます', 'メンバーの追加・表示/非表示・並べ替え・削除、CSV書き出しもここからできます']),
+  ] },
+  admin_rtest: { title: '定期テスト（管理）', sections: [
+    CAN(['定期テストを作って公開し、提出された答えを採点できます', '答え方は、穴埋め・〇×・ひとこと・いくつか答える・並び替え・記述・ケース問題の7種類です']),
+    HOW(['【＋ 新しいテストを作る】で下書きを作ります（知識試験のひな形からも作れます）', '【問題を作る】で、名前・期間・受ける人・編・問題・正解・配点を入れます', '穴埋めは、文章に {①} のように書いたところが空欄になります', '【メンバーの画面で確認】で見え方を確かめてから【公開する】', '【採点・結果】で、記述とケース問題に〇・△・×と点数・ひとことを付けて【結果を本人に公開】']),
   ] },
   admin_manual: { title: 'マニュアル（管理）', sections: [
     CAN(['各画面の右上〔マニュアル〕で開く文章を、追加・編集・削除できます', '直しながら、スマホで開いたときの見え方をプレビューで確認できます']),

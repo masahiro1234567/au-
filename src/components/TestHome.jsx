@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { RANK_COLORS, RANKS, esc } from '../utils.js';
 import { buildPeople, progressOf, weeklyRanking, weekRange, normName } from '../testStats.js';
 import { useFirebaseList } from '../nippou/lib/useFirebaseList.js';
+import RegularTests from '../rtest/TakeTest.jsx';
 import { keepPlace } from '../keepPlace.js';
 
 // 進捗の円グラフ：円全体＝全用語。正解できた用語をランクごとの色で順に並べ、残りは薄いグレー
@@ -158,7 +159,7 @@ export default function TestHome({ user, terms, results, profiles, activity, onB
         <div className="hdr-right"><button className="btn-back" onClick={onBack}>← ホーム</button><ManualButton screen="test" /></div>
       </div>
       <div className="tq-tabs">
-        {[['test', 'テスト'], ['progress', 'メンバー進捗'], ['ranking', 'ランキング']].map(([k, l]) => (
+        {[['test', 'テスト'], ['rtest', '定期テスト'], ['progress', 'メンバー進捗'], ['ranking', 'ランキング']].map(([k, l]) => (
           <button key={k} className={`tq-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -209,6 +210,7 @@ export default function TestHome({ user, terms, results, profiles, activity, onB
         )}
         {tab === 'progress' && <ProgressTab people={people} terms={terms} />}
         {tab === 'ranking' && <RankingTab people={people} activity={activity} user={user} />}
+        {tab === 'rtest' && <RegularTests user={user} />}
       </div>
     </div>
   );
