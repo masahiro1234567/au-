@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDbCollection } from '../useFirebase.js';
 import { DEFAULT_MANUALS, SCREENS } from './defaults.js';
+import { onAppBack } from '../backStack.js';
 
 // ===== 操作マニュアル =====
 // 各画面の右上の〔？〕ボタン（ManualButton）で開く。文章は管理画面「マニュアル」で直せる（manuals/{キー}）
@@ -99,8 +100,9 @@ function ManualSheet({ screen, onClose, rotate }) {
   const m = pickManual(saved, tabs.includes(tab) ? tab : tabs[0]);
   useEffect(() => {
     const k = (e) => { if (e.key === 'Escape') onClose(); };
+    const off = onAppBack(() => { onClose(); return true; }); // ブラウザの「戻る」ではマニュアルだけ閉じる
     window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
+    return () => { window.removeEventListener('keydown', k); off(); };
   }, [onClose]);
   const panel = (
     <div className={`mn-overlay ${rotate || isOre ? 'side' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>

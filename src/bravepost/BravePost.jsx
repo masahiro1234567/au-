@@ -1,9 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDbCollection, dbSet, dbPush, dbRemove, dbUpdateMany } from '../useFirebase.js';
 import { nameKey } from '../testStats.js';
 import { showToast, CATEGORIES_BASE } from '../utils.js';
 import { AutoTA } from '../components/EvalEditors.jsx';
 import { ManualButton } from '../manual/Manual.jsx';
+import { onAppBack } from '../backStack.js';
 
 // ===== Brave X：質問・情報共有の投稿（Twitterのようなスレッド） =====
 // 保存先（au-data-base）
@@ -98,6 +99,16 @@ export default function BravePost({ user, onBack }) {
       setEdit(null); showToast('直しました');
     } catch (e) { showToast('保存できませんでした：' + e.message); }
   };
+
+  // ブラウザの「戻る」：開いているものを閉じる → 投稿の中なら一覧へ。タイムラインならホームへ（au navi に任せる）
+  const backRef = useRef(null);
+  backRef.current = () => {
+    if (saveFor) { setSaveFor(null); return true; }
+    if (menu) { setMenu(false); return true; }
+    if (scr !== 'tl') { back(); return true; }
+    return false;
+  };
+  useEffect(() => onAppBack(() => backRef.current()), []);
 
   // 左から右へのスワイプでサイドバー（感度は低め。横にしっかり動かしたときだけ）
   const onDown = (e) => {

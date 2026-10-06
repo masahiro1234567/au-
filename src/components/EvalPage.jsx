@@ -7,6 +7,7 @@ import { showToast } from '../utils.js';
 import { parseBook, RANK_STYLE, RANKS5, normName } from '../evalSheets.js';
 import { AutoTA, PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS, WorkList, SelfTable, SectionEdit } from './EvalEditors.jsx';
 import { dbPush, dbUpdateMany } from '../useFirebase.js';
+import EvalCreate from './EvalCreate.jsx';
 
 // ===== 評価一覧（Googleスプレッドシートを読み取って表示）=====
 // 編集はスプレッドシートで行い、ここは表示だけ。誰でも誰の評価でも見られる
@@ -271,6 +272,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
     book && book.persons.length > 0 && ['person', '個人別'],
     book && book.kpi && ['kpi', '月次KPI'],
     book && book.standard && ['standard', '評価基準'],
+    isAdmin && appMode && book && book.persons.length > 0 && ['create', '評価作成'],
     ...((book && book.tables) || []).map((tb, i) => [`t${i}`, tb.title]),
   ].filter(Boolean);
   const curTab = tabs.find((x) => x[0] === tab) ? tab : (tabs[0] && tabs[0][0]);
@@ -343,6 +345,9 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
           <div className="tq-tabs ev-tabs">
             {tabs.map(([k, l]) => <button key={k} className={`tq-tab ${curTab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}
           </div>
+
+          {/* ---- 評価作成（管理者だけ）：1人を選んで、今のステータスを見ながら次の評価をつける ---- */}
+          {curTab === 'create' && isAdmin && <EvalCreate list={people.filter(visible)} user={user} standard={book.standard} />}
 
           {/* ---- 評価サマリ：キャッチ・クローズ・ディレクションの総合評価だけ ---- */}
           {curTab === 'summary' && (

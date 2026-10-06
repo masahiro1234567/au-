@@ -1,10 +1,11 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useDbCollection } from './useFirebase.js';
 import { ref as npRef, onValue as npOnValue } from 'firebase/database';
 import { db as npDb, ensureAnonAuth } from './nippou/lib/firebase.js';
 import { loadDraft, draftPath, draftLabel } from './nippou/lib/draft.js';
 import { useSeen, isUnread } from './termNotify.js';
 import { recordOpen, loginStreak } from './testStats.js';
+import { runAppBack } from './backStack.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
 import DeviceCompare from './components/DeviceCompare.jsx';
 // オレタブ：押した瞬間に全画面＋横向き固定を試す（Androidなど。iPhoneは回転表示で対応）
@@ -98,6 +99,40 @@ export default function App() {
   }, [testUser?.uid, testUser?.permission]);
 
   const [page, setPage] = useState(testUser ? 'home' : 'login');
+
+  // ---- ブラウザの「戻る」（PCのタッチパッドの2本指スワイプ・スマホの戻る）でサイトの外に出ないようにする ----
+  // 画面を切り替えるたびにブラウザの履歴にも残し、「戻る」が来たら、右上の「← 戻る」と同じようにアプリの中で1つ前に戻る。
+  // 画面の中で先に戻る処理がある（日報の中の画面・Brave X の投稿・開いているマニュアルなど）ときは、その画面が onAppBack で受け取って処理する
+  const fromPop = useRef(false);
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  useEffect(() => {
+    try {
+      window.history.replaceState({ aunavi: 'guard' }, '');
+      window.history.pushState({ aunavi: pageRef.current }, '');
+    } catch (e) { /* 履歴が使えないブラウザでは何もしない */ }
+    const push = (p) => { try { window.history.pushState({ aunavi: p }, ''); } catch (e) { /* 無視 */ } };
+    const onPop = (e) => {
+      const st = e.state || {};
+      // 1) 画面の中で戻れるなら、そちらで戻る（ブラウザの履歴は今の画面のまま足し直す）
+      if (runAppBack()) { push(pageRef.current); return; }
+      // 2) これ以上戻れない（最初の入口まで来た）：サイトから出ずに、ホームに戻る（ホームならそのまま）
+      if (!st.aunavi || st.aunavi === 'guard') {
+        const to = pageRef.current === 'login' ? 'login' : 'home';
+        if (to !== pageRef.current) { fromPop.current = true; setPage(to); }
+        push(to);
+        return;
+      }
+      // 3) 1つ前の画面へ
+      if (st.aunavi !== pageRef.current) { fromPop.current = true; setPage(st.aunavi); }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  useEffect(() => {
+    if (fromPop.current) { fromPop.current = false; return; }
+    try { if (!window.history.state || window.history.state.aunavi !== page) window.history.pushState({ aunavi: page }, ''); } catch (e) { /* 無視 */ }
+  }, [page]);
   const [glossaryCat, setGlossaryCat] = useState('all');
   const [glossaryQuery, setGlossaryQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(sessionStorage.getItem('isAdmin') === '1');
