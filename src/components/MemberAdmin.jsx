@@ -292,8 +292,9 @@ function OreIdField({ value, others, onSave }) {
   return (
     <div className="mb-oreid">
       <label>オレタブの担当者ID
-        <input className="mb-inp" value={v} placeholder="例：AUK40212" autoCapitalize="characters" autoComplete="off" spellCheck={false}
-          onChange={(e) => setV(norm(e.target.value))} onBlur={save} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+        {/* 打っている途中は大文字に直さない（iPhoneの日本語キーボードで「AUAUK」のように重なるため）。欄を離れたときに直して保存 */}
+        <input className="mb-inp" value={v} placeholder="例：AUK40212" autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck={false}
+          onChange={(e) => setV(e.target.value)} onBlur={() => { setV(cur); save(); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) e.currentTarget.blur(); }} />
       </label>
       {bad && <div className="mb-oreid-ng">AUK＋数字5桁で入力してください（保存されていません）</div>}
       {!bad && dup && dup.length > 0 && <div className="mb-oreid-ng">同じ担当者IDの人がいます：{dup.join('・')}</div>}

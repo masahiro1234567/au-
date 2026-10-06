@@ -262,3 +262,107 @@ export function InfoDialog({ title, text, onOk }) {
     </div>
   );
 }
+
+// ===== 文字の入力欄（オレタブ用）=====
+// ・スマホ・タブレット（指で操作する端末）：端末のキーボードは出さず、オレタブの画面の中に横画面用のキーボードを出す
+//   （縦持ちで回転表示していると、端末のキーボードが横向きにならず入力しにくいため）
+// ・PC：ふつうに入力できる。日本語入力の変換中は大文字にしない（「AUAUK」のように重ならないように）
+// upper：英字を大文字にする（担当者IDなど）。password：伏せ字
+const isTouch = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+let kbSeq = 0;
+export function OtTextField({ value, onChange, upper, password, label, onEnter, className = 'ot-inp', style, autoComplete = 'off' }) {
+  const stage = React.useContext(StageContext);
+  const [open, setOpen] = useState(false);
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState(null); // 変換中の文字（PC）
+  const id = useRef(++kbSeq);
+  const touch = isTouch();
+  const fix = (v) => { let x = String(v || '').normalize('NFKC'); if (upper) x = x.toUpperCase().replace(/[^A-Z0-9]/g, ''); return x; };
+  // ほかの欄のキーボードが開いたら閉じる
+  useEffect(() => {
+    const h = (e) => { if (e.detail !== id.current) setOpen(false); };
+    window.addEventListener('ot-kb-open', h);
+    return () => window.removeEventListener('ot-kb-open', h);
+  }, []);
+  const openKb = () => { window.dispatchEvent(new CustomEvent('ot-kb-open', { detail: id.current })); setOpen(true); };
+  if (touch) {
+    return (
+      <>
+        <input className={`${className} ${open ? 'ot-inp-on' : ''}`} style={style} aria-label={label} readOnly inputMode="none"
+          type={password ? 'password' : 'text'} value={value || ''} onFocus={(e) => { e.target.blur(); openKb(); }} onClick={openKb} />
+        {open && stage && ReactDOM.createPortal(
+          <OtKeyboard label={label} value={value || ''} password={password} upper={upper}
+            onChange={(v) => onChange(fix(v))} onClose={() => setOpen(false)}
+            onEnter={() => { setOpen(false); if (onEnter) onEnter(); }} />, stage)}
+      </>
+    );
+  }
+  return (
+    <input className={className} style={style} aria-label={label} type={password ? 'password' : 'text'}
+      value={composing && draft != null ? draft : value || ''} autoCapitalize={upper ? 'characters' : 'off'} autoComplete={autoComplete} autoCorrect="off" spellCheck={false}
+      onCompositionStart={() => { setComposing(true); setDraft(value || ''); }}
+      onCompositionEnd={(e) => { setComposing(false); setDraft(null); onChange(fix(e.target.value)); }}
+      onChange={(e) => { if (composing) setDraft(e.target.value); else onChange(fix(e.target.value)); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' && !composing && onEnter) onEnter(); }} />
+  );
+}
+
+// 横画面用のキーボード（オレタブの画面の下に出る）
+const KB_ROWS = [
+  ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+  ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+];
+const KB_SYM = ['-', '_', '.', '@', '!', '#', '$', '%', '&', '*', '+', '=', '?', '/', '(', ')', ':', ';'];
+export function OtKeyboard({ label, value, password, upper, onChange, onClose, onEnter }) {
+  const [shift, setShift] = useState(false);
+  const [caps, setCaps] = useState(false);
+  const [sym, setSym] = useState(false);
+  const [show, setShow] = useState(false);
+  const big = upper || shift || caps;
+  const put = (ch) => { onChange(value + ch); if (shift && !caps) setShift(false); };
+  const tapShift = () => { if (upper) return; if (caps) { setCaps(false); setShift(false); } else if (shift) setCaps(true); else setShift(true); };
+  const masked = password && !show ? '●'.repeat(value.length) : value;
+  const K = ({ k, w, fn, onPress, aria, on, children }) => (
+    <button type="button" className={`ot-vk ${fn ? 'fn' : ''} ${on ? 'on' : ''}`} style={w ? { flex: w } : undefined} aria-label={aria || k}
+      onPointerDown={(e) => e.preventDefault()} onClick={onPress || (() => put(big ? k.toUpperCase() : k))}>{children || (big ? k.toUpperCase() : k)}</button>
+  );
+  return (
+    <div className="ot-vkb-wrap" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="ot-vkb" role="dialog" aria-label={`${label}のキーボード`}>
+        <div className="ot-vkb-head">
+          <span className="ot-vkb-lb">{label}</span>
+          <div className="ot-vkb-disp">{masked}<i className="ot-vkb-caret" /></div>
+          {password && <button type="button" className="ot-vk fn sm" onClick={() => setShow(!show)}>{show ? '隠す' : '表示'}</button>}
+          <button type="button" className="ot-vk fn sm" onClick={onClose}>閉じる</button>
+        </div>
+        {!sym ? (
+          <>
+            {KB_ROWS.slice(0, 3).map((row, i) => (
+              <div className="ot-vkb-row" key={i} style={i === 2 ? { padding: '0 26px' } : undefined}>{row.map((k) => <K key={k} k={k} />)}</div>
+            ))}
+            <div className="ot-vkb-row">
+              <K k="shift" w={1.5} fn on={shift || caps || upper} aria="大文字" onPress={tapShift}>{caps || upper ? '⇪' : '⇧'}</K>
+              {KB_ROWS[3].map((k) => <K key={k} k={k} />)}
+              <K k="bs" w={1.5} fn aria="1文字消す" onPress={() => onChange(value.slice(0, -1))}>⌫</K>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="ot-vkb-row">{KB_ROWS[0].map((k) => <K key={k} k={k} />)}</div>
+            <div className="ot-vkb-row">{KB_SYM.slice(0, 9).map((k) => <K key={k} k={k} onPress={() => onChange(value + k)} />)}</div>
+            <div className="ot-vkb-row">{KB_SYM.slice(9).map((k) => <K key={k} k={k} onPress={() => onChange(value + k)} />)}</div>
+            <div className="ot-vkb-row"><span style={{ flex: 8 }} /><K k="bs" w={1.5} fn aria="1文字消す" onPress={() => onChange(value.slice(0, -1))}>⌫</K></div>
+          </>
+        )}
+        <div className="ot-vkb-row">
+          <K k="sym" w={1.6} fn aria={sym ? '英字' : '記号'} onPress={() => setSym(!sym)}>{sym ? 'ABC' : '記号'}</K>
+          <K k="clear" w={1.6} fn aria="全部消す" onPress={() => onChange('')}>クリア</K>
+          <K k=" " w={4} aria="空白" onPress={() => onChange(value + ' ')}>{' '}</K>
+          <button type="button" className="ot-vk ok" style={{ flex: 2.2 }} onPointerDown={(e) => e.preventDefault()} onClick={onEnter}>完了</button>
+        </div>
+      </div>
+    </div>
+  );
+}

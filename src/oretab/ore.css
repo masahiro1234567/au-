@@ -415,3 +415,19 @@
 /* オレタブのマニュアル（×の左、いつも表示） */
 .ot-man{position:fixed;z-index:200;top:calc(4px + env(safe-area-inset-top,0px));right:calc(60px + env(safe-area-inset-right,0px));}
 .ot-man.rot{top:auto;right:calc(4px + env(safe-area-inset-right,0px));bottom:calc(60px + env(safe-area-inset-bottom,0px));transform:rotate(90deg);}
+/* ===== 横画面用キーボード ===== */
+.ot-vkb-wrap{position:absolute;inset:0;z-index:60;display:flex;align-items:flex-end;}
+.ot-vkb{width:100%;background:#d3d6dc;border-top:1px solid #b9bcc2;padding:8px 8px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 -6px 20px rgba(0,0,0,.12);}
+.ot-vkb-head{display:flex;align-items:center;gap:8px;background:#fff;border-radius:8px;padding:6px 8px;}
+.ot-vkb-lb{font-size:13px;font-weight:700;color:#666;white-space:nowrap;}
+.ot-vkb-disp{flex:1;min-width:0;height:34px;display:flex;align-items:center;font-size:19px;letter-spacing:.04em;overflow:hidden;white-space:nowrap;color:#111;padding:0 6px;border:1px solid #c9ccd2;border-radius:6px;background:#f9fafb;}
+.ot-vkb-caret{display:inline-block;width:2px;height:22px;background:#2f7dd8;margin-left:2px;animation:ot-caret 1s steps(1) infinite;}
+@keyframes ot-caret{50%{opacity:0}}
+.ot-vkb-row{display:flex;gap:6px;}
+.ot-vk{flex:1;height:46px;border:none;border-radius:7px;background:#fff;color:#111;font-size:20px;box-shadow:0 1px 0 #8e9196;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;padding:0;}
+.ot-vk:active{background:#e3e5e9;}
+.ot-vk.fn{background:#aeb3bc;font-size:15px;font-weight:700;}
+.ot-vk.fn.on{background:#fff;color:#2f7dd8;}
+.ot-vk.sm{flex:none;height:34px;padding:0 12px;font-size:13px;}
+.ot-vk.ok{background:#2f7dd8;color:#fff;font-size:16px;font-weight:700;}
+.ot-inp-on{outline:3px solid #8fb8ef;}

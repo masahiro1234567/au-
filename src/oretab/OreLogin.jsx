@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { InfoDialog, OtSelect } from './common.jsx';
+import { InfoDialog, OtSelect, OtTextField } from './common.jsx';
 import { normId, findStaff, checkPassword, savePassword, pwRuleError } from './staff.js';
 
 // ===== オレタブのログイン =====
@@ -77,11 +77,9 @@ export default function OreLogin({ roster, onLogin, say }) {
             <label className="ot-radio"><input type="radio" name="ot-place" checked={place === 'shop'} onChange={() => setPlace('shop')} />店頭</label>
             <label className="ot-radio"><input type="radio" name="ot-place" checked={place === 'event'} onChange={() => setPlace('event')} />イベント</label>
           </div>
-          <label><span className="lb">拠点コード</span><input className="ot-inp" value={shopCode} onChange={(e) => setShopCode(e.target.value)} /></label>
-          <label><span className="lb">担当者ID</span><input className="ot-inp" value={id} autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck={false}
-            onChange={(e) => setId(e.target.value.normalize('NFKC').toUpperCase())} /></label>
-          <label><span className="lb">パスワード</span><input className="ot-inp" type="password" value={pw} autoCapitalize="off" autoComplete="off"
-            onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') login(); }} /></label>
+          <label><span className="lb">拠点コード</span><OtTextField label="拠点コード" value={shopCode} onChange={setShopCode} /></label>
+          <label><span className="lb">担当者ID</span><OtTextField label="担当者ID" upper value={id} onChange={setId} /></label>
+          <label><span className="lb">パスワード</span><OtTextField label="パスワード" password value={pw} onChange={setPw} onEnter={login} /></label>
         </div>
         <button className="ot-login-red" style={{ marginTop: 24 }} disabled={busy} onClick={login}>ログイン</button>
         <div style={{ display: 'flex', gap: 36, marginTop: 22 }}>
@@ -93,8 +91,8 @@ export default function OreLogin({ roster, onLogin, say }) {
         <div className="ot-pwc-form">
           <div><span className="lb">拠点名</span>［拠点コード］　［店舗名］</div>
           <div><span className="lb">担当者</span>{staff.id}　{staff.name}</div>
-          <label><span className="lb">新パスワード</span><input className="ot-inp" type="password" value={p1} autoCapitalize="off" autoComplete="new-password" onChange={(e) => setP1(e.target.value)} /></label>
-          <label><span className="lb">新パスワードの確認</span><input className="ot-inp" type="password" value={p2} autoCapitalize="off" autoComplete="new-password" onChange={(e) => setP2(e.target.value)} /></label>
+          <label><span className="lb">新パスワード</span><OtTextField label="新パスワード" password value={p1} onChange={setP1} autoComplete="new-password" /></label>
+          <label><span className="lb">新パスワードの確認</span><OtTextField label="新パスワードの確認" password value={p2} onChange={setP2} autoComplete="new-password" /></label>
           <div><span className="lb">秘密の質問</span>
             <OtSelect className="ot-sel" aria-label="秘密の質問" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 340, height: 42 }}>
               <option value="">選択してください</option>
@@ -139,9 +137,8 @@ export function StaffDialog({ roster, onOk, onCancel }) {
           <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#1e5fd0" /><path d="M20 17v12M20 11v1" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" /></svg>
           <div><div>(ORCMI7023D)</div><div>担当者IDを入力して下さい。</div></div>
         </div>
-        <label className="ot-info-row"><span>担当者ID</span><input className="ot-inp" value={id} autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck={false}
-          onChange={(e) => setId(e.target.value.normalize('NFKC').toUpperCase())} /></label>
-        <label className="ot-info-row" style={{ paddingBottom: 12 }}><span>パスワード</span><input className="ot-inp" type="password" value={pw} autoCapitalize="off" autoComplete="off" onChange={(e) => setPw(e.target.value)} /></label>
+        <label className="ot-info-row"><span>担当者ID</span><OtTextField label="担当者ID" upper value={id} onChange={setId} /></label>
+        <label className="ot-info-row" style={{ paddingBottom: 12 }}><span>パスワード</span><OtTextField label="パスワード" password value={pw} onChange={setPw} /></label>
         {msg && <div className="ot-info-err">{msg}</div>}
         <div className="ot-info-btns"><button disabled={busy} onClick={ok}>OK</button><button onClick={onCancel}>キャンセル</button></div>
       </div>

@@ -26,6 +26,21 @@ function blankQuestion(type) {
   return normQuestion({ ...base, points: 2 });
 }
 
+// 正解・配点が入っていない問題（公開の前に知らせる）
+function missingAnswers(t) {
+  const out = [];
+  t.sections.forEach((s) => s.questions.forEach((q, i) => {
+    const name = `${s.name} ${i + 1}`;
+    const none = (q.type === 'blank' && q.blanks.some((b) => !String(b.answers || '').trim()))
+      || (q.type === 'ox' && q.items.some((it) => !it.ans))
+      || (q.type === 'short' && q.fields.some((f) => !String(f.answers || '').trim()))
+      || (q.type === 'multi' && !String(q.answers || '').trim())
+      || (q.type === 'order' && q.options.length < 2);
+    if (none) out.push(name);
+  }));
+  return out;
+}
+
 // ===== 1問の編集 =====
 function QuestionEditor({ q, onChange, onRemove, onMove, idx, count }) {
   const set = (k, v) => onChange(normQuestion({ ...q, [k]: v }));
@@ -144,6 +159,10 @@ function TestEditor({ id, saved, users, hasAnswers, onPreview }) {
   const save = async (status) => {
     if (status === 'open' && !t.title.trim()) return showToast('テストの名前を入れてください');
     if (status === 'open' && !allQuestions(t).length) return showToast('問題がありません');
+    if (status === 'open') {
+      const miss = missingAnswers(t);
+      if (miss.length && !window.confirm(`正解が入っていない問題が${miss.length}問あります（${miss.slice(0, 5).join('、')}${miss.length > 5 ? ' など' : ''}）。\nこのまま公開すると、その問題は全員不正解になります。公開しますか？`)) return;
+    }
     if (hasAnswers && dirty && !window.confirm('すでに答えている人がいます。問題を変えると、その人の採点にも反映されます。保存しますか？')) return;
     const data = clean({ ...t, status: status || t.status, updatedAt: Date.now() });
     await dbSet(`rtests/${id}`, data); setDirty(false);
@@ -160,7 +179,8 @@ function TestEditor({ id, saved, users, hasAnswers, onPreview }) {
         <label className="ra-fld"><span>受ける人</span><select className="ra-sel" value={tg.mode} onChange={(e) => up((x) => ({ ...x, target: { ...x.target, mode: e.target.value } }))}><option value="all">全員</option><option value="roles">役職で選ぶ</option><option value="people">1人ずつ選ぶ</option></select></label>
         {tg.mode === 'roles' && <div className="ra-wrap ra-full">{POSITIONS.map((r) => <label key={r} className="ra-check"><input type="checkbox" checked={tg.roles.includes(r)} onChange={(e) => up((x) => ({ ...x, target: { ...x.target, roles: e.target.checked ? [...x.target.roles, r] : x.target.roles.filter((y) => y !== r) } }))} />{r}</label>)}</div>}
         {tg.mode === 'people' && <div className="ra-wrap ra-full">{people.map((n) => { const on = tg.people.some((p) => normName(p) === normName(n)); return <label key={n} className="ra-check"><input type="checkbox" checked={on} onChange={(e) => up((x) => ({ ...x, target: { ...x.target, people: e.target.checked ? [...x.target.people, n] : x.target.people.filter((p) => normName(p) !== normName(n)) } }))} />{n}</label>; })}</div>}
-        <div className="ra-full ra-note">全{allQuestions(t).length}問・{testMax(t)}点　状態：{STATUS[t.status]}</div>
+        <div className="ra-full ra-note">全{allQuestions(t).length}問・{testMax(t)}点　状態：{STATUS[t.status]}{t.status === 'draft' ? '（メンバーにはまだ見えません）' : ''}
+          {missingAnswers(t).length > 0 && <b className="ra-warn">　正解がまだの問題：{missingAnswers(t).length}問（{missingAnswers(t).slice(0, 6).join('、')}{missingAnswers(t).length > 6 ? ' など' : ''}）</b>}</div>
       </div>
 
       {t.sections.map((s, si) => (
@@ -329,6 +349,18 @@ export default function AdminRTest({ user }) {
   const users = useMemo(() => Object.values(fpUsers || {}).filter((u) => u && u.name && u.permission !== 'pending'), [fpUsers]);
   const list = Object.entries(tests || {}).filter(([, t]) => t).map(([id, t]) => ({ id, ...normTest(t) })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const cur = list.find((x) => x.id === sel) || list[0];
+  // 最初の1回だけ：今回の知識試験（問題用紙）を下書きとして入れておく
+  const [cfg, cfgLoaded] = useDbCollection('rtest_config');
+  useEffect(() => {
+    if (!loaded || !cfgLoaded || (cfg && cfg.seeded)) return;
+    (async () => {
+      await dbSet('rtest_config/seeded', Date.now());
+      if (!Object.keys(tests || {}).length) {
+        const r = await dbPush('rtests', clean({ ...knowledgeTemplate(), status: 'draft', createdAt: Date.now(), updatedAt: Date.now(), by: user?.name || '管理者' }));
+        setSel(r.key);
+      }
+    })();
+  }, [loaded, cfgLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const create = async (tpl) => {
     const base = tpl === 'knowledge' ? knowledgeTemplate() : normTest({ title: '新しいテスト', sections: [{ id: uid(), name: '', questions: [] }] });
