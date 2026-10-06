@@ -1,4 +1,6 @@
 import AdminManualTab from '../manual/AdminManualTab.jsx';
+import AdminTermRequests from '../bravepost/AdminTermRequests.jsx';
+import { useDbCollection } from '../useFirebase.js';
 import { ManualButton } from '../manual/Manual.jsx';
 import AdminDevicesTab from './AdminDevicesTab.jsx';
 import AdminOreTabTab from './AdminOreTabTab.jsx';
@@ -231,6 +233,9 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
   const [tab, setTab] = useState('summary');
   // 日報管理（日報アプリの管理画面）と用語集管理を切り替える。最初は日報管理
   const [area, setArea] = useState('nippou');
+  // Brave X から届いた、用語集への追加の申請（確認待ちの件数をタブに出す）
+  const [termReqs] = useDbCollection('bp_term_requests');
+  const reqCount = Object.values(termReqs || {}).filter((r) => r && r.name && (r.status || 'pending') === 'pending').length;
 
   return (
     <div className="page">
@@ -250,7 +255,7 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
         )}
         <div className="tab-bar adm-top">
           <button className={`tab ${area === 'nippou' ? 'active' : ''}`} onClick={() => setArea('nippou')}>日報管理</button>
-          <button className={`tab ${area === 'glossary' ? 'active' : ''}`} onClick={() => setArea('glossary')}>用語集管理{flagCount > 0 && <span className="tn-badge red">{flagCount}</span>}</button>
+          <button className={`tab ${area === 'glossary' ? 'active' : ''}`} onClick={() => setArea('glossary')}>用語集管理{flagCount + reqCount > 0 && <span className="tn-badge red">{flagCount + reqCount}</span>}</button>
           <button className={`tab ${area === 'member' ? 'active' : ''}`} onClick={() => setArea('member')}>メンバー管理</button>
           <button className={`tab ${area === 'eval' ? 'active' : ''}`} onClick={() => setArea('eval')}>評価一覧</button>
           <button className={`tab ${area === 'manual' ? 'active' : ''}`} onClick={() => setArea('manual')}>マニュアル</button>
@@ -267,6 +272,7 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
           <button className={`tab ${tab === 'knowledge' ? 'active' : ''}`} onClick={() => setTab('knowledge')}>用語管理{flagCount > 0 && <span className="tn-badge red">{flagCount}</span>}</button>
           <button className={`tab ${tab === 'devices' ? 'active' : ''}`} onClick={() => setTab('devices')}>機種比較</button>
           <button className={`tab ${tab === 'oretab' ? 'active' : ''}`} onClick={() => setTab('oretab')}>オレタブ設定</button>
+          <button className={`tab ${tab === 'requests' ? 'active' : ''}`} onClick={() => setTab('requests')}>用語の申請{reqCount > 0 && <span className="tn-badge red">{reqCount}</span>}</button>
         </div>
         {tab === 'summary' && <SummaryTab results={results} />}
         {tab === 'log' && <LogTab results={results} />}
@@ -274,6 +280,7 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
         {tab === 'knowledge' && <AdminKnowledgeTab terms={terms} knowledgeTypes={knowledgeTypes} flags={flags} />}
         {tab === 'devices' && <AdminDevicesTab devices={devices} />}
         {tab === 'oretab' && <AdminOreTabTab payConfig={payConfig} />}
+        {tab === 'requests' && <AdminTermRequests terms={terms} knowledgeTypes={knowledgeTypes} user={user} />}
         </>}
       </div>
     </div>

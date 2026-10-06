@@ -29,6 +29,7 @@ import Quiz from './components/Quiz.jsx';
 import Result from './components/Result.jsx';
 import AdminLogin from './components/AdminLogin.jsx';
 import Admin from './components/Admin.jsx';
+import BravePost from './bravepost/BravePost.jsx';
 
 export default function App() {
   const [terms, termsLoaded] = useDbCollection('terms');
@@ -150,6 +151,7 @@ export default function App() {
       onGoKpi={() => { setNpStart('/kpi'); setPage('nippou'); }}
       onGoEval={() => setPage('eval')}
       onGoMyPage={() => setPage('mypage')}
+      onGoBravePost={() => setPage('bravepost')}
       onLogout={handleLogout}
       onAdminLogin={() => setPage('admin-login')}
     />
@@ -166,6 +168,9 @@ export default function App() {
           <OreTab onExit={() => setPage('home')} payConfig={payConfig} />
         </Suspense>
       );
+      break;
+    case 'bravepost':
+      content = <BravePost user={testUser} onBack={() => setPage('home')} />;
       break;
     case 'mypage':
       content = <MyPage user={testUser} onBack={() => setPage('home')} onGoKpi={() => { setNpStart('/kpi'); setPage('nippou'); }} />;

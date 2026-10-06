@@ -10,7 +10,7 @@ const TIP = (text) => S('ヒント', 'tip', [text]);
 
 // 画面の一覧（管理画面の左の並び）。group＝見出し
 export const SCREENS = [
-  { group: '一般の画面', keys: ['home', 'glossary', 'term', 'devices', 'test', 'eval', 'mypage'] },
+  { group: '一般の画面', keys: ['home', 'glossary', 'term', 'devices', 'bravepost', 'test', 'eval', 'mypage'] },
   { group: '日報・KPI', keys: ['nippou_home', 'nippou_new', 'nippou_form', 'nippou_preview', 'nippou_list', 'nippou_pick', 'nippou_detail', 'nippou_results', 'nippou_stats', 'nippou_stores', 'kpi', 'personal'] },
   { group: 'オレタブ（タブで切り替え）', keys: ['oretab_can', 'oretab_login', 'oretab_map', 'oretab_cond'], oretab: true },
   { group: '管理画面', keys: ['admin_nippou', 'admin_glossary', 'admin_member', 'admin_eval', 'admin_manual'] },
@@ -33,6 +33,11 @@ export const DEFAULT_MANUALS = {
   devices: { title: '機種比較', sections: [
     CAN(['機種のスペックや価格を並べて比べられます']),
     HOW(['比べたい機種を選びます', '項目ごとに並んだ内容を見比べます', '【← ホーム】でホームに戻ります']),
+  ] },
+  bravepost: { title: 'Brave X', sections: [
+    CAN(['分からないことを「質問」、施策やプランの変更・現場の気づきを「共有」として投稿できます', 'みんなの質問と回答を見返せるので、同じことで困ったときにまず探せます', 'いいね・リポスト・保存（タグ付き）ができます。投稿にも回答にも名前が出ます']),
+    HOW(['右下の【＋ 投稿する】で、種類（質問・共有）と「何についての投稿か」を選んで書きます', '投稿を押すと、回答・コメントが開きます。下の欄に書いて【回答する】', '用語集に載せたほうがいい内容なら【送って用語集に申請】。管理者が確認すると用語集に載ります', 'リポストすると、その投稿は7日間、全員のタイムラインの一番上に出ます', '保存マークで保存し、タグを付けて整理できます。保存とタグは自分にだけ見えます', '右上の〔メニュー〕か、画面を左から右へスワイプすると、自分のポスト・保存済みのポスト・申請した用語が開きます']),
+    TIP('自分の投稿・回答は、【編集】【削除】から直したり消したりできます。'),
   ] },
   test: { title: 'テスト', sections: [
     CAN(['用語のテストができます。結果はすべて記録されます', '自分とメンバーの進み具合（一度でも正解した用語の割合）とランキングが見られます']),

@@ -22,7 +22,7 @@ const Icon = ({ k, size = 22 }) => <svg width={size} height={size} viewBox="0 0 
 
 // ホーム画面（案C）：中央に「au navi」と用語検索、その下にメニューのタイル
 // PC（900px以上）は3列×2段のタイル、スマホは1列のカード。右上のボタンで右側からメニューが開く（最初は閉じている）
-export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft, unreadCount = 0, streak, onGoEval, onGoMyPage }) {
+export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft, unreadCount = 0, streak, onGoEval, onGoMyPage, onGoBravePost }) {
   const count = Object.keys(terms || {}).length;
   const [q, setQ] = React.useState('');
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -32,6 +32,7 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
     ['オレタブ', '本番前にオレタブの操作を練習する（横画面）', 'tab', onGoOreTab],
     ['KPI', '現場全体の目標と、メンバーごとの実績', 'target', onGoKpi],
     ['日報', '日報の登録・確認、実績確認・店舗特徴・個人実績', 'pen', onGoNippou],
+    ['Brave X', '質問・情報共有を投稿する。みんなの回答も見られる', 'bx', onGoBravePost],
     ['テスト', 'ランク別・全範囲・未出題で理解度をチェック', 'check', onGoTest],
     ['評価一覧', 'メンバーの評価・育成計画・月次KPIを見る', 'chart', onGoEval],
     ['マイページ', '自分の評価・目標・稼働の記録', 'user', onGoMyPage],
@@ -88,7 +89,7 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
         <section className="hm2-tiles">
           {MENU.map(([title, desc, icon, fn]) => (
             <button key={title} className="hm2-tile" onClick={fn}>
-              <span className="hm2-ico"><Icon k={icon} size={28} />{title === '用語一覧' && unreadCount > 0 && <span className="tn-badge" aria-label={`更新された用語 ${unreadCount}件`}>{unreadCount > 99 ? '99+' : unreadCount}</span>}</span>
+              <span className={`hm2-ico ${icon === 'bx' ? 'bx' : ''}`}>{icon === 'bx' ? <img src="/bx-logo-white.png" alt="" /> : <Icon k={icon} size={28} />}{title === '用語一覧' && unreadCount > 0 && <span className="tn-badge" aria-label={`更新された用語 ${unreadCount}件`}>{unreadCount > 99 ? '99+' : unreadCount}</span>}</span>
               <span className="hm2-tile-text"><span className="hm2-tile-title">{title}</span><span className="hm2-tile-desc">{desc}</span></span>
               <Arrow />
             </button>

@@ -1204,3 +1204,22 @@ html,body{overscroll-behavior:none;}
 .mb-oreid{margin-top:10px;}
 .mb-oreid label{display:flex;flex-direction:column;gap:4px;font-size:.72rem;font-weight:700;color:var(--sub);max-width:260px;}
 .mb-oreid-ng{margin-top:4px;font-size:.75rem;font-weight:700;color:#dc2626;}
+/* ホームの Brave X のタイル（ロゴ） */
+.hm2-ico.bx{background:#1a0f08 !important;}
+.hm2-ico.bx img{width:30px;height:30px;object-fit:contain;}
+/* 管理画面：用語の申請（Brave X から） */
+.tr-wrap{display:flex;flex-direction:column;gap:10px;padding:4px 0 20px;max-width:760px;}
+.tr-wrap>*{flex-shrink:0;}
+.tr-head{font-size:.8rem;font-weight:800;color:var(--sub);}
+.tr-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;}
+.tr-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.tr-top b{font-size:.95rem;}
+.tr-cat{font-size:.68rem;font-weight:800;background:#f3f4f6;color:#374151;border-radius:6px;padding:2px 7px;}
+.tr-st{font-size:.68rem;font-weight:800;border-radius:6px;padding:2px 7px;}
+.tr-st.ok{background:#e9f7ef;color:#166534;}
+.tr-st.ng{background:#f3f4f6;color:#4b5563;}
+.tr-desc{font-size:.85rem;line-height:1.65;white-space:pre-wrap;}
+.tr-from{font-size:.75rem;color:var(--sub);background:#fffaf6;border-radius:8px;padding:6px 8px;line-height:1.55;}
+.tr-meta{font-size:.72rem;color:var(--sub);}
+.tr-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.tr-empty{font-size:.8rem;color:var(--sub);padding:12px 0;}
