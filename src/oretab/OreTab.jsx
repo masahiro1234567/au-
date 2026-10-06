@@ -15,15 +15,15 @@ const W = 1024, H = 768;
 const TITLES = { portal: 'ポータルメニュー', identity: 'お客様照会', payment: 'お支払い目安額', area: 'エリア検索', denki: 'auでんき契約照会', orange: 'Orange業務メニュー' };
 const SCREENS = { identity: Identity, payment: Payment, area: AreaSearch, denki: DenkiInquiry, orange: OrangeMenu };
 
-// ---- 端末サイズに合わせて 1024×768 を縮小。縦持ちなら90度回して横画面で表示 ----
-const EXIT_BAR = 52;
+// ---- 端末の画面いっぱいに表示。高さは768のまま、横は端末の縦横の比に合わせて広げる（最低1024）。縦持ちなら90度回して横画面で表示 ----
 function useStage() {
   const calc = () => {
     const vw = window.innerWidth, vh = window.innerHeight;
     const portrait = vh > vw;
-    // au naviに戻る×ボタンの場所（EXIT_BAR）をあけて、残りにiPadを収める
-    const scale = portrait ? Math.min(vh / W, (vw - EXIT_BAR) / H) : Math.min(vw / W, (vh - EXIT_BAR) / H);
-    return { portrait, scale };
+    const long = portrait ? vh : vw, short = portrait ? vw : vh;
+    const w = Math.max(W, Math.round((H * long) / short)); // 舞台の横幅
+    const scale = Math.min(long / w, short / H);
+    return { portrait, scale, w };
   };
   const [st, setSt] = useState(calc);
   useEffect(() => {
@@ -138,7 +138,8 @@ export default function OreTab({ onExit, payConfig }) {
   const closeScreen = (k) => { setOpen((o) => o.filter((x) => x !== k)); setActive((a) => (a === k ? 'portal' : a)); };
 
   // マルチタスク：画面を縮尺そのまま小さくして、縦2つずつ・右詰め（サイズ固定）
-  const S = 0.26, TW = Math.round(W * S), TH = Math.round(H * S), GAP = 26, LABEL = 30, RIGHT = 40;
+  const SW = stage.w;
+  const S = 0.26, TW = Math.round(SW * S), TH = Math.round(H * S), GAP = 26, LABEL = 30, RIGHT = 40;
   const items = ['portal', ...open];
   const cols = Math.ceil(items.length / 2);
   const top = Math.round((H - (2 * (TH + LABEL) + GAP)) / 2) + 20;
@@ -146,7 +147,7 @@ export default function OreTab({ onExit, payConfig }) {
   items.forEach((k, i) => {
     const col = Math.floor(i / 2), row = i % 2;
     pos[k] = {
-      x: W - RIGHT - (cols - col) * TW - (cols - col - 1) * GAP,
+      x: SW - RIGHT - (cols - col) * TW - (cols - col - 1) * GAP,
       y: top + row * (TH + LABEL + GAP) + LABEL,
     };
   });
@@ -159,19 +160,14 @@ export default function OreTab({ onExit, payConfig }) {
   };
 
   const stageStyle = {
-    width: W, height: H,
-    // ×ボタンの帯の分だけずらす（横持ち：下へ／縦持ち＝回転表示：左へ）
-    ...(stage.portrait ? { left: `calc(50% - ${EXIT_BAR / 2}px)` } : { top: `calc(50% + ${EXIT_BAR / 2}px)` }),
+    width: SW, height: H, '--otw': `${SW}px`,
     transform: `translate(-50%, -50%) ${stage.portrait ? 'rotate(90deg) ' : ''}scale(${stage.scale})`,
   };
+  const [side, setSide] = useState(false); // ×とマニュアルのサイドバー
+  const grip = React.useRef(null);
 
   return (
     <div className="ot-viewport">
-      {/* いつでも au navi のホームに戻れる×（iPadの右上の外側。縦持ちのときは回転表示に合わせる） */}
-      <div className={`ot-man ${stage.portrait ? 'rot' : ''}`}><ManualButton screen="oretab" dark rotate={stage.portrait} /></div>
-      <button className={`ot-exit ${stage.portrait ? 'rot' : ''}`} onClick={() => { exitLandscape(); onExit(); }} aria-label="au naviのホームに戻る">
-        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" /></svg>
-      </button>
       <div className="ot-stage" style={stageStyle} ref={setStageEl}>
         <StageContext.Provider value={stageEl}>
         <StaffContext.Provider value={staffCtx}>
@@ -221,6 +217,26 @@ export default function OreTab({ onExit, payConfig }) {
         {ip === 'app' && !staff && <OreLogin roster={roster} onLogin={(st) => { setStaff(st); setActive('portal'); }} say={toast.say} />}
         {staffDlg && <StaffDialog roster={roster} onCancel={() => setStaffDlg(false)} onOk={(st) => { setStaff(st); setStaffDlg(false); toast.say(`担当者を ${st.name} さんに変更しました`); }} />}
         <Toast msg={toast.msg} />
+
+        {/* 右のはしのつまみ：押すか左へスワイプで、au naviに戻る×とマニュアルのサイドバーが出る */}
+        {!side && (
+          <button className="ot-grip" aria-label="メニューを開く（au naviに戻る・マニュアル）" ref={grip}
+            onPointerDown={(e) => { grip.current.sx = e.clientX; grip.current.sy = e.clientY; }}
+            onPointerMove={(e) => { const g = grip.current; if (g.sx == null) return; if (Math.hypot(e.clientX - g.sx, e.clientY - g.sy) > 18) { g.sx = null; setSide(true); } }}
+            onPointerUp={() => { grip.current.sx = null; }}
+            onClick={() => setSide(true)}><i /></button>
+        )}
+        {side && (
+          <div className="ot-side-wrap" onPointerDown={(e) => { if (e.target === e.currentTarget) setSide(false); }}>
+            <div className="ot-side" role="dialog" aria-label="メニュー">
+              <button className="ot-side-btn" onClick={() => { exitLandscape(); onExit(); }}>
+                <span className="ot-side-ic"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" /></svg></span>au naviに戻る
+              </button>
+              <div className="ot-side-btn as-div"><ManualButton screen="oretab" dark rotate={stage.portrait} /><span>マニュアル</span></div>
+              <button className="ot-side-close" onClick={() => setSide(false)}>閉じる ›</button>
+            </div>
+          </div>
+        )}
         </StaffContext.Provider>
         </StageContext.Provider>
       </div>

@@ -13,7 +13,7 @@ const useClock = () => {
 // 壁紙（オリジナルの抽象柄）
 export function Wallpaper() {
   return (
-    <svg className="ip-wall" width="1024" height="768" viewBox="0 0 1024 768" aria-hidden="true">
+    <svg className="ip-wall" viewBox="0 0 1024 768" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <rect width="1024" height="768" fill="#1f3c94" />
       <path d="M0 0H760C700 170 640 330 470 440S120 600 0 768Z" fill="#2c7fd6" />
       <path d="M0 768C160 610 330 520 520 470S880 330 1024 120V768Z" fill="#4b36a8" />
