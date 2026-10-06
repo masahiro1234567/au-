@@ -15,19 +15,27 @@ const W = 1024, H = 768;
 const TITLES = { portal: 'ポータルメニュー', identity: 'お客様照会', payment: 'お支払い目安額', area: 'エリア検索', denki: 'auでんき契約照会', orange: 'Orange業務メニュー' };
 const SCREENS = { identity: Identity, payment: Payment, area: AreaSearch, denki: DenkiInquiry, orange: OrangeMenu };
 
-// ---- 端末の画面いっぱいに表示。高さは768のまま、横は端末の縦横の比に合わせて広げる（最低1024）。縦持ちなら90度回して横画面で表示 ----
+// ---- iPadと同じ 1024×768 のまま、短い辺いっぱいまで拡大（余るのは長い辺の両はしだけ＝黒）。縦持ちなら90度回して横画面で表示 ----
+// 大きさは、ブラウザの窓の数字ではなく、実際に表示している枠（.ot-viewport）の大きさで決める（iPhoneの上のバーでずれないように）
 function useStage() {
   const calc = () => {
-    const vw = window.innerWidth, vh = window.innerHeight;
+    const el = document.querySelector('.ot-viewport');
+    const vw = (el && el.clientWidth) || window.innerWidth, vh = (el && el.clientHeight) || window.innerHeight;
     const portrait = vh > vw;
     const long = portrait ? vh : vw, short = portrait ? vw : vh;
-    const w = Math.max(W, Math.round((H * long) / short)); // 舞台の横幅
-    const scale = Math.min(long / w, short / H);
-    return { portrait, scale, w };
+    const scale = Math.min(long / W, short / H);
+    return { portrait, scale, w: W };
   };
   const [st, setSt] = useState(calc);
   useEffect(() => {
     const on = () => setSt(calc());
+    on(); // 枠ができたあとに測り直す
+    // iPhoneの上のバー（時刻の所）の色も黒にそろえる
+    const prevBg = document.body.style.background, prevHtml = document.documentElement.style.background;
+    document.body.style.background = '#1a0f08'; document.documentElement.style.background = '#1a0f08';
+    const ro = window.ResizeObserver ? new ResizeObserver(on) : null;
+    const vp = document.querySelector('.ot-viewport');
+    if (ro && vp) ro.observe(vp);
     window.addEventListener('resize', on);
     window.addEventListener('orientationchange', on);
     // 対応端末（Androidなど）では横向きに固定する。iPhoneは非対応なので回転表示で対応
@@ -35,6 +43,8 @@ function useStage() {
     return () => {
       window.removeEventListener('resize', on);
       window.removeEventListener('orientationchange', on);
+      if (ro) ro.disconnect();
+      document.body.style.background = prevBg; document.documentElement.style.background = prevHtml;
       try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch { /* 非対応 */ }
     };
   }, []);
