@@ -89,7 +89,7 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
         <section className="hm2-tiles">
           {MENU.map(([title, desc, icon, fn]) => (
             <button key={title} className="hm2-tile" onClick={fn}>
-              <span className={`hm2-ico ${icon === 'bx' ? 'bx' : ''}`}>{icon === 'bx' ? <img src="/bx-logo-white.png" alt="" /> : <Icon k={icon} size={28} />}{title === '用語一覧' && unreadCount > 0 && <span className="tn-badge" aria-label={`更新された用語 ${unreadCount}件`}>{unreadCount > 99 ? '99+' : unreadCount}</span>}</span>
+              <span className={`hm2-ico ${icon === 'bx' ? 'bx' : ''}`}>{icon === 'bx' ? <img src="/bx-logo-orange.png" alt="" /> : <Icon k={icon} size={28} />}{title === '用語一覧' && unreadCount > 0 && <span className="tn-badge" aria-label={`更新された用語 ${unreadCount}件`}>{unreadCount > 99 ? '99+' : unreadCount}</span>}</span>
               <span className="hm2-tile-text"><span className="hm2-tile-title">{title}</span><span className="hm2-tile-desc">{desc}</span></span>
               <Arrow />
             </button>

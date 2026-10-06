@@ -1,7 +1,7 @@
 /* ===== Brave X ===== */
 .bp{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;overscroll-behavior:none;position:relative;}
 .bp .hdr{flex-shrink:0;}
-.bp-logo{width:34px;height:34px;border-radius:9px;background:#1a0f08;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.bp-logo{width:32px;height:32px;border-radius:8px;background:var(--grad);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .bp-logo img{width:24px;height:24px;object-fit:contain;}
 .bp .logo h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bp-burger{color:var(--pd);}

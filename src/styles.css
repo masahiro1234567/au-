@@ -1204,8 +1204,7 @@ html,body{overscroll-behavior:none;}
 .mb-oreid{margin-top:10px;}
 .mb-oreid label{display:flex;flex-direction:column;gap:4px;font-size:.72rem;font-weight:700;color:var(--sub);max-width:260px;}
 .mb-oreid-ng{margin-top:4px;font-size:.75rem;font-weight:700;color:#dc2626;}
-/* ホームの Brave X のタイル（ロゴ） */
-.hm2-ico.bx{background:#1a0f08 !important;}
+/* ホームの Brave X のタイル（ロゴ）：ほかのタイルと同じ薄いオレンジの地に、オレンジのロゴ */
 .hm2-ico.bx img{width:30px;height:30px;object-fit:contain;}
 /* 管理画面：用語の申請（Brave X から） */
 .tr-wrap{display:flex;flex-direction:column;gap:10px;padding:4px 0 20px;max-width:760px;}
