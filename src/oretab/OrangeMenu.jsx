@@ -1,4 +1,5 @@
-import React, { useContext, useRef, useState } from 'react';
+import { onAppBack, onAppSwipe } from '../backStack.js';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { TopBar, Toast, useToast, StaffContext } from './common.jsx';
 import EoInquiry from './EoInquiry.jsx';
 import { KoteiInquiry, DenkiInquiry } from './Inquiry.jsx';
@@ -32,6 +33,16 @@ export default function OrangeMenu({ onClose, onMultitask }) {
     if (window.innerHeight > window.innerWidth) { const t = dx; dx = dy; dy = -t; } // 縦持ち（90度回して表示）
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped.current = true; go(tab + (dx < 0 ? 1 : -1)); setTimeout(() => { swiped.current = false; }, 300); }
   };
+  // PCのタッチパッドの横スワイプでもタブを切り替える。ブラウザの「戻る」ではメニューを閉じる
+  const tabRef = useRef(tab); tabRef.current = tab;
+  const subRef = useRef(sub); subRef.current = sub;
+  useEffect(() => onAppSwipe((dir) => {
+    if (subRef.current) return dir === 'left'; // 照会画面の上では、戻る（右）だけ通す
+    const t = tabRef.current, n = t + (dir === 'left' ? 1 : -1);
+    if (n < 0 || n > TABS.length - 1) return dir === 'left';
+    setTab(n); return true;
+  }), []);
+  useEffect(() => onAppBack(() => { if (subRef.current) { setSub(''); return true; } onClose(); return true; }), [onClose]);
   const items = TABS[tab][1];
   return (
     <div className="ot-screen" style={{ background: '#e8e6ea' }}>

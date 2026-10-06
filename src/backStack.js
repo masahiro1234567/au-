@@ -12,3 +12,44 @@ export function runAppBack() {
   }
   return false;
 }
+
+// ===== PCのタッチパッドの2本指スワイプ（横） =====
+// タッチパッドの横スワイプは「指で触る操作」ではなく「横スクロール」として届くので、ここでまとめて受け取る。
+// 開いている画面が onAppSwipe で受け取り口を登録していれば、そちらを優先（Brave X のサイドバー・オレタブのタブ切り替えなど）。
+// どこも受け取らなかった「左から右」は、アプリの中の「戻る」として扱う
+const swipes = [];
+export function onAppSwipe(fn) {
+  swipes.push(fn);
+  return () => { const i = swipes.lastIndexOf(fn); if (i >= 0) swipes.splice(i, 1); };
+}
+// 横にスクロールできる場所（表・タブの帯など）の上では、スワイプとして扱わない
+function canScrollX(el, dir) {
+  for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) {
+    const st = getComputedStyle(n);
+    if ((st.overflowX === 'auto' || st.overflowX === 'scroll') && n.scrollWidth > n.clientWidth + 2) {
+      if (dir === 'right' ? n.scrollLeft > 0 : n.scrollLeft + n.clientWidth < n.scrollWidth - 1) return true;
+    }
+  }
+  return false;
+}
+export function installTrackpadSwipe(onBack, onHandled) {
+  let sx = 0, sy = 0, timer = null, fired = false, target = null;
+  const reset = () => { sx = 0; sy = 0; fired = false; target = null; };
+  const onWheel = (e) => {
+    if (e.ctrlKey) return; // ピンチでの拡大は対象外
+    clearTimeout(timer);
+    timer = setTimeout(reset, 260); // 指を離して少したったら、次のスワイプとして数え直す
+    if (!target) target = e.target;
+    sx += e.deltaX; sy += e.deltaY;
+    if (fired || Math.abs(sx) < 110 || Math.abs(sx) < Math.abs(sy) * 1.8) return;
+    const dir = sx < 0 ? 'right' : 'left'; // 指を左から右へ動かすと deltaX はマイナス
+    if (canScrollX(target, dir)) { fired = true; return; }
+    fired = true;
+    for (let i = swipes.length - 1; i >= 0; i--) {
+      try { if (swipes[i](dir) === true) { if (onHandled) onHandled(); return; } } catch (er) { /* 次へ */ }
+    }
+    if (dir === 'right') onBack();
+  };
+  window.addEventListener('wheel', onWheel, { passive: true });
+  return () => window.removeEventListener('wheel', onWheel);
+}

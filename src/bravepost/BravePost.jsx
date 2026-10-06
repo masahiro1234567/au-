@@ -4,7 +4,7 @@ import { nameKey } from '../testStats.js';
 import { showToast, CATEGORIES_BASE } from '../utils.js';
 import { AutoTA } from '../components/EvalEditors.jsx';
 import { ManualButton } from '../manual/Manual.jsx';
-import { onAppBack } from '../backStack.js';
+import { onAppBack, onAppSwipe } from '../backStack.js';
 
 // ===== Brave X：質問・情報共有の投稿（Twitterのようなスレッド） =====
 // 保存先（au-data-base）
@@ -109,6 +109,14 @@ export default function BravePost({ user, onBack }) {
     return false;
   };
   useEffect(() => onAppBack(() => backRef.current()), []);
+  // PCのタッチパッドの横スワイプ：タイムラインで「左から右」→ サイドバーを開く、開いていれば「右から左」で閉じる
+  const swipeRef = useRef(null);
+  swipeRef.current = (dir) => {
+    if (dir === 'right' && !menu && scr === 'tl' && !saveFor) { setMenu(true); return true; }
+    if (dir === 'left' && menu) { setMenu(false); return true; }
+    return false;
+  };
+  useEffect(() => onAppSwipe((d) => swipeRef.current(d)), []);
 
   // 左から右へのスワイプでサイドバー（感度は低め。横にしっかり動かしたときだけ）
   const onDown = (e) => {

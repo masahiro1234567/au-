@@ -5,7 +5,7 @@ import { db as npDb, ensureAnonAuth } from './nippou/lib/firebase.js';
 import { loadDraft, draftPath, draftLabel } from './nippou/lib/draft.js';
 import { useSeen, isUnread } from './termNotify.js';
 import { recordOpen, loginStreak } from './testStats.js';
-import { runAppBack } from './backStack.js';
+import { runAppBack, installTrackpadSwipe } from './backStack.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
 import DeviceCompare from './components/DeviceCompare.jsx';
 // オレタブ：押した瞬間に全画面＋横向き固定を試す（Androidなど。iPhoneは回転表示で対応）
@@ -112,8 +112,15 @@ export default function App() {
       window.history.pushState({ aunavi: pageRef.current }, '');
     } catch (e) { /* 履歴が使えないブラウザでは何もしない */ }
     const push = (p) => { try { window.history.pushState({ aunavi: p }, ''); } catch (e) { /* 無視 */ } };
+    // タッチパッドの「左から右」スワイプ → 戻る。ブラウザ自体のスワイプでの戻る（Safari など）と重なったときは、1回分だけにする
+    let swipeAt = 0, popCount = 0;
+    const offSwipe = installTrackpadSwipe(
+      () => { swipeAt = Date.now(); popCount = 0; window.history.back(); },
+      () => { swipeAt = Date.now(); popCount = 1; }, // 画面の中で使ったスワイプ（サイドバー・タブ切り替え）：ブラウザ側の戻るは無視する
+    );
     const onPop = (e) => {
       const st = e.state || {};
+      if (Date.now() - swipeAt < 900 && ++popCount > 1) { push(pageRef.current); return; }
       // 1) 画面の中で戻れるなら、そちらで戻る（ブラウザの履歴は今の画面のまま足し直す）
       if (runAppBack()) { push(pageRef.current); return; }
       // 2) これ以上戻れない（最初の入口まで来た）：サイトから出ずに、ホームに戻る（ホームならそのまま）
@@ -127,7 +134,7 @@ export default function App() {
       if (st.aunavi !== pageRef.current) { fromPop.current = true; setPage(st.aunavi); }
     };
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    return () => { window.removeEventListener('popstate', onPop); offSwipe(); };
   }, []);
   useEffect(() => {
     if (fromPop.current) { fromPop.current = false; return; }
