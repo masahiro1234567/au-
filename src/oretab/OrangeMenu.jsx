@@ -37,9 +37,9 @@ export default function OrangeMenu({ onClose, onMultitask }) {
   const tabRef = useRef(tab); tabRef.current = tab;
   const subRef = useRef(sub); subRef.current = sub;
   useEffect(() => onAppSwipe((dir) => {
-    if (subRef.current) return dir === 'left'; // 照会画面の上では、戻る（右）だけ通す
+    if (subRef.current) return dir === 'right'; // 照会画面の上では、戻る（右から左）だけ通す
     const t = tabRef.current, n = t + (dir === 'left' ? 1 : -1);
-    if (n < 0 || n > TABS.length - 1) return dir === 'left';
+    if (n < 0 || n > TABS.length - 1) return true; // 端のタブでは何もしない（うっかり閉じないように）
     setTab(n); return true;
   }), []);
   useEffect(() => onAppBack(() => { if (subRef.current) { setSub(''); return true; } onClose(); return true; }), [onClose]);

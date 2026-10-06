@@ -106,21 +106,39 @@ export default function App() {
   const fromPop = useRef(false);
   const pageRef = useRef(page);
   pageRef.current = page;
+  const histIdx = useRef(0); // 今いる履歴の位置（戻る／進むの区別に使う）
   useEffect(() => {
     try {
-      window.history.replaceState({ aunavi: 'guard' }, '');
-      window.history.pushState({ aunavi: pageRef.current }, '');
+      window.history.replaceState({ aunavi: 'guard', i: 0 }, '');
+      window.history.pushState({ aunavi: pageRef.current, i: 1 }, '');
+      histIdx.current = 1;
     } catch (e) { /* 履歴が使えないブラウザでは何もしない */ }
-    const push = (p) => { try { window.history.pushState({ aunavi: p }, ''); } catch (e) { /* 無視 */ } };
-    // タッチパッドの「左から右」スワイプ → 戻る。ブラウザ自体のスワイプでの戻る（Safari など）と重なったときは、1回分だけにする
-    let swipeAt = 0, popCount = 0;
+    const push = (p) => { try { const i = histIdx.current + 1; window.history.pushState({ aunavi: p, i }, ''); histIdx.current = i; } catch (e) { /* 無視 */ } };
+    // タッチパッドの横スワイプ：「右から左」→ 戻る、「左から右」→ さっきの画面に進む
+    // ブラウザ自体のスワイプ（Safari など）と重なったときは、こちらの向きを優先する
+    let swipeAt = 0, expect = '';
     const offSwipe = installTrackpadSwipe(
-      () => { swipeAt = Date.now(); popCount = 0; window.history.back(); },
-      () => { swipeAt = Date.now(); popCount = 1; }, // 画面の中で使ったスワイプ（サイドバー・タブ切り替え）：ブラウザ側の戻るは無視する
+      () => { swipeAt = Date.now(); expect = 'back'; window.history.back(); },
+      () => { swipeAt = Date.now(); expect = 'fwd'; window.history.forward(); },
+      () => { swipeAt = Date.now(); expect = 'none'; }, // 画面の中で使ったスワイプ（サイドバー・タブ切り替え）
     );
     const onPop = (e) => {
       const st = e.state || {};
-      if (Date.now() - swipeAt < 900 && ++popCount > 1) { push(pageRef.current); return; }
+      const i = typeof st.i === 'number' ? st.i : 0;
+      const dir = i > histIdx.current ? 'fwd' : 'back';
+      if (Date.now() - swipeAt < 900 && expect && expect !== dir) {
+        // スワイプと逆向きにブラウザが動いた：元の位置に戻して無視する
+        const d = histIdx.current - i; if (d) { try { window.history.go(d); } catch (er) { /* 無視 */ } }
+        return;
+      }
+      if (Date.now() - swipeAt < 900) expect = ''; // 1回のスワイプで動くのは1回だけ
+      // 進む：さっき開いていた画面をもう一度開く
+      if (dir === 'fwd') {
+        histIdx.current = i;
+        if (st.aunavi && st.aunavi !== 'guard' && st.aunavi !== pageRef.current) { fromPop.current = true; setPage(st.aunavi); }
+        return;
+      }
+      histIdx.current = i;
       // 1) 画面の中で戻れるなら、そちらで戻る（ブラウザの履歴は今の画面のまま足し直す）
       if (runAppBack()) { push(pageRef.current); return; }
       // 2) これ以上戻れない（最初の入口まで来た）：サイトから出ずに、ホームに戻る（ホームならそのまま）
@@ -136,9 +154,19 @@ export default function App() {
     window.addEventListener('popstate', onPop);
     return () => { window.removeEventListener('popstate', onPop); offSwipe(); };
   }, []);
+  // オレタブ以外の画面に移ったら、全画面表示と横向き固定を必ず解除する（×・← 戻る・スワイプ、どの戻り方でも）
+  useEffect(() => {
+    if (page === 'oretab') return;
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch { /* 非対応 */ }
+    try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch { /* 非対応 */ }
+  }, [page]);
   useEffect(() => {
     if (fromPop.current) { fromPop.current = false; return; }
-    try { if (!window.history.state || window.history.state.aunavi !== page) window.history.pushState({ aunavi: page }, ''); } catch (e) { /* 無視 */ }
+    try {
+      if (!window.history.state || window.history.state.aunavi !== page) {
+        const i = histIdx.current + 1; window.history.pushState({ aunavi: page, i }, ''); histIdx.current = i;
+      }
+    } catch (e) { /* 無視 */ }
   }, [page]);
   const [glossaryCat, setGlossaryCat] = useState('all');
   const [glossaryQuery, setGlossaryQuery] = useState('');

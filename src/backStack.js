@@ -16,7 +16,7 @@ export function runAppBack() {
 // ===== PCのタッチパッドの2本指スワイプ（横） =====
 // タッチパッドの横スワイプは「指で触る操作」ではなく「横スクロール」として届くので、ここでまとめて受け取る。
 // 開いている画面が onAppSwipe で受け取り口を登録していれば、そちらを優先（Brave X のサイドバー・オレタブのタブ切り替えなど）。
-// どこも受け取らなかった「左から右」は、アプリの中の「戻る」として扱う
+// どこも受け取らなかった「右から左」は「戻る」、「左から右」は「進む（さっき開いていた画面）」として扱う
 const swipes = [];
 export function onAppSwipe(fn) {
   swipes.push(fn);
@@ -32,7 +32,7 @@ function canScrollX(el, dir) {
   }
   return false;
 }
-export function installTrackpadSwipe(onBack, onHandled) {
+export function installTrackpadSwipe(onBack, onForward, onHandled) {
   let sx = 0, sy = 0, timer = null, fired = false, target = null;
   const reset = () => { sx = 0; sy = 0; fired = false; target = null; };
   const onWheel = (e) => {
@@ -48,7 +48,7 @@ export function installTrackpadSwipe(onBack, onHandled) {
     for (let i = swipes.length - 1; i >= 0; i--) {
       try { if (swipes[i](dir) === true) { if (onHandled) onHandled(); return; } } catch (er) { /* 次へ */ }
     }
-    if (dir === 'right') onBack();
+    if (dir === 'left') onBack(); else onForward();
   };
   window.addEventListener('wheel', onWheel, { passive: true });
   return () => window.removeEventListener('wheel', onWheel);
