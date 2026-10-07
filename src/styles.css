@@ -1376,3 +1376,8 @@ html,body{overscroll-behavior:none;}
 .sw-bubble.on{background:var(--primary,#ff6600);color:#fff;}
 @keyframes sw-pop{0%{transform:scale(1)}45%{transform:scale(1.18)}100%{transform:scale(1);opacity:0}}
 .sw-bubble.pop{animation:sw-pop .32s ease forwards;}
+
+/* 横にずれないように：画面全体は横にスクロールさせない（スワイプ中の動きで、ホームが左にずれて戻らなくなるのを防ぐ） */
+html,body{overflow-x:hidden;overflow-x:clip;}
+.nav-wrap{overflow-x:clip;}
+.hm2>*{flex-shrink:0;}

@@ -372,7 +372,7 @@ export default function App() {
   const navCls = navAnim ? `nav-in-${navAnim.dir}${navAnim.n % 2 ? 'a' : 'b'}` : '';
   return (
     <>
-      <div className={`nav-wrap ${navCls}`} onAnimationEnd={(e) => { if (e.target === e.currentTarget) setNavAnim(null); }}>
+      <div className={`nav-wrap ${navCls}`} onAnimationEnd={(e) => { if (e.target === e.currentTarget) { setNavAnim(null); if (window.scrollX) window.scrollTo(0, window.scrollY); } }}>
         {content}
       </div>
       <SwipeIndicator />

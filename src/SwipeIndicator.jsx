@@ -8,6 +8,7 @@ export default function SwipeIndicator() {
   const [st, setSt] = useState({ p: 0, done: '' });
   useEffect(() => onSwipeProgress((p, done) => {
     setSt({ p, done: done || '' });
+    if (window.scrollX) window.scrollTo(0, window.scrollY); // 画面全体が横にずれていたら戻す
     const w = document.querySelector('.nav-wrap');
     if (!w) return;
     if (p && !done) { w.style.transition = 'none'; w.style.transform = `translateX(${Math.round(p * 46)}px)`; }
