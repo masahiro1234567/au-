@@ -14,6 +14,7 @@ export function AutoTA({ value, onChange, rows = 1, style, ...rest }) {
 import { dbSet, dbPush, dbRemove, dbUpdateMany } from '../useFirebase.js';
 import { showToast } from '../utils.js';
 import { RANKS5 } from '../evalSheets.js';
+import { autoTotals, totalsFromSkills, DeltaTag, deltaRowClass } from '../evalScore.jsx';
 
 // ===== 評価一覧の編集（au navi を正にする）=====
 // 保存先：eval_data/persons/{名前のキー}（1人分）、eval_data/kpi、eval_data/standard
@@ -31,7 +32,8 @@ export function normPerson(p) {
   return {
     ...p,
     info: p.info || { name: p.name || '' },
-    totals: arr(p.totals), goalsSheet: arr(p.goalsSheet), skills: arr(p.skills), reviews: arr(p.reviews),
+    // 総合評価は、項目のランクから自動で計算する（スプレッドシートと同じ計算。項目が無い区分は今までの値）
+    totals: totalsFromSkills(arr(p.skills), arr(p.totals), TOTAL_LABELS), goalsSheet: arr(p.goalsSheet), skills: arr(p.skills), reviews: arr(p.reviews),
     goals: tb(p.goals, GOAL_HEADS), actions: tb(p.actions, ACTION_HEADS), logs: tb(p.logs, LOG_HEADS),
     // 稼働評価：1件ずつ残す（新しい順）。まだ無い人は、取り込んだ「具体評価」を表示用に使う
     works: Object.entries(p.works || {}).filter(([, w]) => w).map(([id, w]) => ({ id, ...w })).sort((a, b) => (b.sortKey || b.at || 0) - (a.sortKey || a.at || 0)),
@@ -92,6 +94,9 @@ export async function savePerson(before, after, userName) {
   await dbPush('eval_history', { key: after.key, name: after.info.name, by: userName || '管理者', at: Date.now(), summary: diffSummary(before, after).slice(0, 12).join('、') });
 }
 
+// ランクの札（EvalPage の Rank と同じ見た目。不可は文字なしのグレー）
+const RK_COL = { 秀: ['#e53935', '#fff'], 優: ['#f6ad6b', '#fff'], 良: ['#fde68a', '#7a5b00'], 可: ['#a7d38f', '#245c12'], 不可: ['#9ca3af', '#fff'] };
+export const Rank5 = ({ v }) => (RK_COL[v] ? <span className="ev-rank" style={{ background: RK_COL[v][0], color: RK_COL[v][1] }} aria-label={v} title={v}>{v === '不可' ? '' : v}</span> : <span className="ev-plain">－</span>);
 const RankSel = ({ value, onChange, label }) => (
   <select className="ev-inp ev-rsel" value={value || ''} onChange={(e) => onChange(e.target.value)} aria-label={label}>
     <option value="">－</option>{RANKS5.map((r) => <option key={r}>{r}</option>)}
@@ -387,18 +392,24 @@ export function SectionEdit({ person, section, userName, onDone }) {
   const base = normPerson(person);
   const [skills, setSkills] = useState(() => clone(base.skills));
   const totalLabel = SEC_TOTAL[section];
-  const [total, setTotal] = useState(() => (base.totals.find((t) => t.label === totalLabel) || {}).rank || '');
   const [saving, setSaving] = useState(false);
+  const auto = (autoTotals(skills) || {})[totalLabel];
   const set = (i, k, v) => setSkills(skills.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
   const save = async () => {
     setSaving(true);
-    const totals = TOTAL_LABELS.map((l) => ({ label: l, rank: l === totalLabel ? total : ((base.totals.find((t) => t.label === l) || {}).rank || '') }));
-    try { await savePerson(base, { ...base, skills, totals: totalLabel ? totals : base.totals }, userName); showToast('保存しました'); onDone(); } catch (e) { showToast('保存できませんでした：' + e.message); }
+    const totals = totalsFromSkills(skills, base.totals, TOTAL_LABELS);
+    try { await savePerson(base, { ...base, skills, totals }, userName); showToast('保存しました'); onDone(); } catch (e) { showToast('保存できませんでした：' + e.message); }
     setSaving(false);
   };
   return (
     <div className="ev-secedit">
-      {totalLabel && <div className="ev-srow"><b>総合（{totalLabel}）</b><span><RankSel label={`総合（${totalLabel}）`} value={total} onChange={setTotal} /></span><span /></div>}
+      {totalLabel && auto && (
+        <div className="ev-autototal">
+          <b>総合（{totalLabel}）</b><span className="ev-note">自動で計算</span>
+          <span className="ev-autoscore">{auto.score} / {auto.max}点</span>
+          <Rank5 v={auto.rank} /><DeltaTag now={auto.rank} prev={auto.prevRank} />
+        </div>
+      )}
       <div className="ev-srow head"><span>評価項目</span><span>ランク</span><span>前回</span></div>
       {skills.map((s, i) => ((s.section || 'その他') === section ? (
         <div key={i} className="ev-edit-skill">

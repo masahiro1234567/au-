@@ -6,6 +6,7 @@ import { getSavedResult, resultFromFrames, kpiMembers } from '../nippou/lib/kpiL
 import { RANK_STYLE, RANKS5, normName } from '../evalSheets.js';
 import { AutoTA, savePerson, TOTAL_LABELS } from './EvalEditors.jsx';
 import { showToast } from '../utils.js';
+import { autoTotals, totalsFromSkills, DeltaTag } from '../evalScore.jsx';
 
 // ===== 評価作成（管理者だけ）：1人を選んで、今のステータスを見ながら次の評価をつける =====
 // 下書き：eval_drafts/{名前のキー} = { next: { 't:キャッチャー': '良', s0: '優', ... }, cmt: { s0: '...' }, work: { date, store, text }, at, by }
@@ -117,11 +118,13 @@ export default function EvalCreate({ list, user, standard }) {
   const totals = TOTAL_LABELS.map((l) => ({ label: l, rank: ((p.totals || []).find((t) => t.label === l) || {}).rank || '' }));
   const skills = p.skills || [];
   const sections = [...new Set(skills.map((s) => s.section || 'その他'))];
-  const doneCount = Object.keys(next).length, allCount = totals.length + skills.length;
+  const doneCount = Object.keys(next).filter((k) => k.startsWith('s')).length, allCount = skills.length;
+  // 総合評価：今回選んだランク（まだ選んでいない項目は今のランク）で自動計算
+  const autoNow = autoTotals(skills.map((s, i) => ({ ...s, prev: s.rank, rank: next[`s${i}`] || s.rank })));
 
   // 変更点（前回→今回）
   const changes = [];
-  totals.forEach((t) => { const v = next[`t:${t.label}`]; if (v && v !== t.rank) changes.push(`総合（${t.label}）${t.rank || '－'}→${v}`); });
+  totals.forEach((t) => { const a = autoNow[t.label]; if (a && a.rank && a.rank !== t.rank) changes.push(`総合（${t.label}）${t.rank || '－'}→${a.rank}`); });
   skills.forEach((s, i) => { const v = next[`s${i}`]; if (v && v !== s.rank) changes.push(`${s.item}：${s.rank || '－'}→${v}`); });
 
   const saveDraft = async () => {
@@ -137,15 +140,11 @@ export default function EvalCreate({ list, user, standard }) {
     try {
       const before = JSON.parse(JSON.stringify(p));
       const after = JSON.parse(JSON.stringify(p));
-      after.totals = TOTAL_LABELS.map((l) => {
-        const old = (arr(p.totals).find((t) => t.label === l) || { label: l, rank: '' });
-        const v = next[`t:${l}`];
-        return v ? { ...old, label: l, prev: old.rank || '', rank: v } : { ...old, label: l };
-      });
       after.skills = skills.map((s, i) => {
         const v = next[`s${i}`], c = String(cmt[`s${i}`] || '').trim();
         return { ...s, ...(v ? { prev: s.rank || '', rank: v } : {}), ...(c ? { comment: c } : {}) };
       });
+      after.totals = totalsFromSkills(after.skills, p.totals, TOTAL_LABELS);
       await savePerson(before, after, user?.name);
       if (work.text.trim()) {
         await dbPush(`eval_data/persons/${curKey}/works`, { date: work.date || '', store: work.store || '', text: work.text.trim(), at: Date.now(), by: user?.name || '管理者', sortKey: work.date ? new Date(work.date + 'T00:00:00').getTime() : Date.now() });
@@ -211,25 +210,26 @@ export default function EvalCreate({ list, user, standard }) {
 
         {/* 真ん中：今回の評価 */}
         <div className="ec-col">
-          <div className="ec-card"><h3>総合評価<i /></h3>
-            <div className="ec-trow head"><span>区分</span><span>前回</span><span>今回</span><span /></div>
-            {totals.map((t) => (
+          <div className="ec-card"><h3>総合評価（自動で計算）<i /></h3>
+            <div className="ec-trow head"><span>区分</span><span>前回</span><span>今回</span><span>点数</span></div>
+            {totals.map((t) => { const a = autoNow[t.label]; return (
               <div className="ec-trow" key={t.label}>
                 <b>{t.label}</b><RankChip v={t.rank} />
-                <RankPicker value={next[`t:${t.label}`]} prev={t.rank} label={`${t.label}の今回の評価`} onPick={(v) => pick(`t:${t.label}`, v)} />
-                <button className="ec-mini" onClick={() => pick(`t:${t.label}`, t.rank || undefined)} disabled={!t.rank}>前回と同じ</button>
+                <span className="ec-row">{a ? <RankChip v={a.rank} /> : <span className="ec-small">項目なし</span>}{a && <DeltaTag now={a.rank} prev={t.rank} />}</span>
+                <span className="ec-small">{a ? `${a.score} / ${a.max}点` : ''}</span>
               </div>
-            ))}
+            ); })}
+            <div className="ec-small sm" style={{ marginTop: 6 }}>項目（秀5・優4・良3・可2・不可1）の合計＋現場評価（キャッチ×3・クローズ×6・ディレクター×3）。点数は管理者の画面だけに出ます。</div>
           </div>
           {sections.map((sec) => (
             <div className="ec-card" key={sec}>
               <h3>{sec}<i /><button className="ec-mini" onClick={() => { setNext((n) => { const o = { ...n }; skills.forEach((s, i) => { if ((s.section || 'その他') === sec && s.rank) o[`s${i}`] = s.rank; }); return o; }); setDirty(true); }}>この区分をすべて前回と同じに</button></h3>
               <div className="ec-srow head"><span>項目・観点</span><span>前回</span><span>今回</span><span>コメント</span></div>
               {skills.map((s, i) => ((s.section || 'その他') !== sec ? null : (
-                <div className={`ec-srow ${next[`s${i}`] && next[`s${i}`] !== s.rank ? 'chg' : ''}`} key={i}>
+                <div className={`ec-srow ${next[`s${i}`] && s.rank && next[`s${i}`] !== s.rank ? ({ 秀: 5, 優: 4, 良: 3, 可: 2, 不可: 1 }[next[`s${i}`]] > ({ 秀: 5, 優: 4, 良: 3, 可: 2, 不可: 1 }[s.rank] || 0) ? 'dt-up' : 'dt-down') : ''}`} key={i}>
                   <div><b>{s.item}</b>{s.view && <div className="ec-small sm">{s.view}</div>}</div>
                   <div><RankChip v={s.rank} /></div>
-                  <RankPicker value={next[`s${i}`]} prev={s.rank} label={`${s.item}の今回の評価`} onPick={(v) => pick(`s${i}`, v)} />
+                  <div className="ec-pickcol"><RankPicker value={next[`s${i}`]} prev={s.rank} label={`${s.item}の今回の評価`} onPick={(v) => pick(`s${i}`, v)} />{next[`s${i}`] && <DeltaTag now={next[`s${i}`]} prev={s.rank} />}</div>
                   <div className="ec-cmt">
                     <AutoTA className="ec-ta" value={cmt[`s${i}`] || ''} placeholder="今回のコメント（空なら前回のまま）" aria-label={`${s.item}のコメント`} onChange={(e) => { const v = e.target.value; setCmt((c) => ({ ...c, [`s${i}`]: v })); setDirty(true); }} />
                     {s.comment && <div className="ec-small sm">前回：{s.comment}</div>}

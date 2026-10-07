@@ -1285,3 +1285,23 @@ html,body{overscroll-behavior:none;}
 @media (max-width:820px){.ec-grid{grid-template-columns:minmax(0,1fr);}.ec-sticky{position:static;max-height:none;}.ec-srow{grid-template-columns:minmax(0,1fr) 50px;}.ec-srow .ec-picks,.ec-srow .ec-cmt{grid-column:1 / -1;}.ec-trow{grid-template-columns:100px 50px 1fr;}.ec-trow .ec-mini{grid-column:1 / -1;}}
 .ev-body>.ec{max-width:1560px;}
 .t-body .ec-bar{top:-14px;padding-top:22px;}
+
+/* ===== 総合評価の自動計算・前回との比較（▲ 上昇／▼ 低下／➖ 維持）===== */
+.ev-srow.dt{grid-template-columns:minmax(0,1fr) 44px 44px 74px;}
+.dt-up{background:#fff1e6;}
+.dt-down{background:#eef4ff;}
+.ev-dt{display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 7px;border-radius:11px;font-size:.62rem;font-weight:900;white-space:nowrap;}
+.ev-dt.up{background:#ff6600;color:#fff;}
+.ev-dt.down{background:#2557b8;color:#fff;}
+.ev-dt.same{background:#f3f4f6;color:#555;}
+.ev-dt.none{background:none;}
+.ev-autoscore{font-size:.7rem;font-weight:800;color:var(--pd);background:#fff2ea;border-radius:8px;padding:2px 7px;white-space:nowrap;}
+.ev-autototal{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;background:#fff8f3;border-bottom:1px solid #fbe7da;}
+.ev-autototal b{font-size:.84rem;}
+.ev-secbtn .ev-dt{flex-shrink:0;}
+.mp-totals .ev-dt{margin-top:2px;}
+
+.ec-row{display:flex;align-items:center;gap:6px;}
+.ec-pickcol{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
+.ec-srow.dt-up{background:#fff1e6;}
+.ec-srow.dt-down{background:#eef4ff;}

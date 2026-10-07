@@ -7,6 +7,7 @@ import { getSavedResult, resultFromFrames, kpiMembers, storeMatch } from '../nip
 import { normName } from '../evalSheets.js';
 import { normPerson, WorkList, SelfTable, TOTAL_LABELS } from './EvalEditors.jsx';
 import { GoalEditor, Rank } from './EvalPage.jsx';
+import { DeltaTag, deltaRowClass } from '../evalScore.jsx';
 import { keepPlace } from '../keepPlace.js';
 
 // ===== マイページ（自分の評価・稼働の記録）=====
@@ -119,13 +120,13 @@ export default function MyPage({ user, onBack, onGoKpi }) {
         )}
 
         {Sec({ k: 'eval', title: '自分の評価', hint: '総合・スキル', children: !person ? <div className="ev-note">まだ評価が登録されていません</div> : (<>
-          <div className="mp-totals">{TOTAL_LABELS.map((l) => <div key={l}><small>{l}</small><Rank v={(person.totals.find((x) => x.label === l) || {}).rank} big /></div>)}</div>
+          <div className="mp-totals">{TOTAL_LABELS.map((l) => { const t = person.totals.find((x) => x.label === l) || {}; return <div key={l}><small>{l}</small><Rank v={t.rank} big /><DeltaTag now={t.rank} prev={t.prev} /></div>; })}</div>
           {sections.map((sec) => (
             <div key={sec}>
               <div className="ev-sec">{sec}</div>
-              <div className="ev-srow head"><span>評価項目</span><span>ランク</span><span>前回</span></div>
+              <div className="ev-srow dt head"><span>評価項目</span><span>前回</span><span>今回</span><span>比較</span></div>
               {person.skills.filter((x) => (x.section || 'その他') === sec).map((x) => (
-                <div key={x.item}><div className="ev-srow"><span>{x.item}</span><span><Rank v={x.rank} /></span><span><Rank v={x.prev} /></span></div>
+                <div key={x.item} className={deltaRowClass(x.rank, x.prev)}><div className="ev-srow dt"><span>{x.item}</span><span><Rank v={x.prev} /></span><span><Rank v={x.rank} /></span><span><DeltaTag now={x.rank} prev={x.prev} /></span></div>
                   {x.comment && <div className="ev-skill-c" style={{ padding: '0 12px 8px' }}>{x.comment}</div>}</div>
               ))}
             </div>

@@ -8,6 +8,8 @@ import { parseBook, RANK_STYLE, RANKS5, normName } from '../evalSheets.js';
 import { AutoTA, PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS, WorkList, SelfTable, SectionEdit } from './EvalEditors.jsx';
 import { dbPush, dbUpdateMany } from '../useFirebase.js';
 import EvalCreate from './EvalCreate.jsx';
+import { autoTotals, DeltaTag, deltaRowClass } from '../evalScore.jsx';
+const SEC_LABEL = { キャッチ力: 'キャッチャー', クローズ力: 'クローズ', ディレクション力: 'ディレクター' };
 
 // ===== 評価一覧（Googleスプレッドシートを読み取って表示）=====
 // 編集はスプレッドシートで行い、ここは表示だけ。誰でも誰の評価でも見られる
@@ -399,18 +401,22 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                           {p.reviews.map((x) => <div key={x.label} className="ev-review"><small>{x.label}{x.store ? `（${x.store}）` : ''}</small>{x.text && <p>{x.text}</p>}</div>)}</>)}
                         {p.secs.map((sec) => {
                           const k = p.key + '|' + sec.name, so = !!openSec[k];
+                          const at = p.person ? autoTotals(p.person.skills)[SEC_LABEL[sec.name]] : null;
                           return (
                             <div key={sec.name} className="ev-secbox">
                               <button className="ev-secbtn" onClick={(e) => keepPlace(e.currentTarget, () => setOpenSec({ ...openSec, [k]: !so }))} aria-expanded={so}>
-                                <b>{sec.name}</b>{sec.total && <Rank v={sec.total} />}<span className="ev-arrow">{so ? '▲' : '▼'}</span>
+                                <b>{sec.name}</b>
+                                {isAdmin && at && <span className="ev-autoscore">{at.score} / {at.max}点</span>}
+                                {sec.total && <Rank v={sec.total} />}{at && <DeltaTag now={at.rank} prev={at.prevRank} />}
+                                <span className="ev-arrow">{so ? '▲' : '▼'}</span>
                               </button>
                               {so && isAdmin && appMode && p.person && secEdit === k && <SectionEdit person={p.person} section={sec.name} userName={user && user.name} onDone={() => setSecEdit(null)} />}
                               {so && secEdit !== k && (<>
                                 {isAdmin && appMode && p.person && <div className="ev-secedit-bar"><button className="ev-btn p" onClick={() => setSecEdit(k)}>このまとまりを編集</button></div>}
-                                <div className="ev-srow head"><span>評価項目</span><span>ランク</span><span>前回</span></div>
+                                <div className="ev-srow dt head"><span>評価項目</span><span>前回</span><span>今回</span><span>比較</span></div>
                                 {sec.items.map((x) => (
-                                  <div key={x.item}>
-                                    <div className="ev-srow"><span>{x.item}</span><span><Rank v={x.rank} /></span><span><Rank v={x.prev} /></span></div>
+                                  <div key={x.item} className={deltaRowClass(x.rank, x.prev)}>
+                                    <div className="ev-srow dt"><span>{x.item}</span><span><Rank v={x.prev} /></span><span><Rank v={x.rank} /></span><span><DeltaTag now={x.rank} prev={x.prev} /></span></div>
                                     {x.comment && <div className="ev-skill-c" style={{ padding: '0 4px 8px' }}>{x.comment}</div>}
                                   </div>
                                 ))}
