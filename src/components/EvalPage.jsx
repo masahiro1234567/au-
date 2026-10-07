@@ -180,7 +180,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
   const [openSec, setOpenSec] = useState({});
   const [secEdit, setSecEdit] = useState(null); // その場で編集しているまとまり（人のキー|まとまり名）
   const TOTAL3 = ['キャッチ', 'クローズ', 'ディレクション'];
-  const people = useMemo(() => {
+  const buildPeople = (book) => {
     if (!book) return [];
     const S = book.summary;
     const START = { キャッチ: 'キャッチ力', クローズ: 'クローズ力', ディレクション: 'ディレクション力', ディレクター: 'ディレクション力' };
@@ -221,7 +221,8 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
       return { ...m, tot3, secs, reviews: (m.person && m.person.reviews) || [] };
     });
     return sortKeys(list);
-  }, [book, cfg, memberInfo]);
+  };
+  const people = useMemo(() => buildPeople(book), [book, cfg, memberInfo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allKeys = useMemo(() => {
     const seen = new Map();
@@ -229,26 +230,43 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
     return sortKeys([...seen.values()]);
   }, [persons, summaryRows, people]);
 
-  // ---- スプレッドシートから取り込む（最初の1回。やり直しもできる）----
+  // ---- スプレッドシートから読み込む（いつでも。最新のスプレッドシートを読み直して、au navi に上書き）----
+  // 上書きするのは：基本情報・総合評価・スキル評価・具体評価・振り返り・月次KPI・評価基準
+  // そのまま残すのは：稼働評価（1件ずつ追加したもの）・ランクの変化の記録・本人が書いた目標とアクションプラン
   const doImport = async () => {
-    if (!sheetBook) return showToast('先にスプレッドシートを読み込んでください');
-    if (appMode && !window.confirm('au navi に記録している評価を、スプレッドシートの内容で上書きします。よろしいですか？')) return;
-    setImporting(true);
+    if (!sheetId) { setShowSetting(true); return showToast('先にスプレッドシートを登録してください'); }
+    if (appMode && !window.confirm('スプレッドシートの最新の内容を読み込んで、au navi の評価を上書きします。\n（稼働評価・ランクの変化の記録・本人が書いた目標は残ります）\nよろしいですか？')) return;
+    setImporting(true); setErr('');
     try {
+      const r = await fetch(`/api/sheets?id=${encodeURIComponent(sheetId)}&t=${Date.now()}`);
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `読み取りに失敗しました（${r.status}）`);
+      const sb = parseBook(j);
+      setSheetBook(sb);
+      const list = buildPeople(sb);
+      const cur = (evalData && evalData.persons) || {};
       const up = {};
-      people.forEach((m) => {
+      list.forEach((m) => {
         const base = m.person ? normPerson(m.person) : normPerson({ key: m.key, info: { name: m.name, role: m.role } });
         const totals = TOTAL_LABELS.map((l, i) => ({ label: l, rank: m.tot3[i] || '' }));
         const skills = base.skills.length ? base.skills : m.secs.flatMap((sec) => sec.items.map((x) => ({ section: sec.name, item: x.item, view: '', rank: x.rank || '', prev: x.prev || '', comment: '' })));
-        up[`eval_data/persons/${m.key}`] = JSON.parse(JSON.stringify({ ...base, key: m.key, info: { ...base.info, name: m.name, role: base.info.role || m.role || '' }, totals, skills, updatedAt: Date.now(), updatedBy: (user && user.name) || '管理者' }));
+        const old = cur[m.key] ? normPerson({ ...cur[m.key], key: m.key }) : null;
+        const data = JSON.parse(JSON.stringify({
+          key: m.key, info: { ...((old && old.info) || {}), ...base.info, name: m.name, role: base.info.role || m.role || (old && old.info.role) || '' },
+          totals, skills, reviews: base.reviews, logs: base.logs, goalsSheet: base.goalsSheet,
+          updatedAt: Date.now(), updatedBy: (user && user.name) || '管理者',
+        }));
+        // まだ au navi に無い人は、目標・アクションプランもスプレッドシートから入れる
+        if (!old) { data.goals = JSON.parse(JSON.stringify(base.goals)); data.actions = JSON.parse(JSON.stringify(base.actions)); }
+        Object.entries(data).forEach(([k, v]) => { up[`eval_data/persons/${m.key}/${k}`] = v; });
       });
-      if (sheetBook.kpi) up['eval_data/kpi'] = JSON.parse(JSON.stringify(sheetBook.kpi));
-      if (sheetBook.standard) up['eval_data/standard'] = JSON.parse(JSON.stringify(sheetBook.standard));
+      if (sb.kpi) up['eval_data/kpi'] = JSON.parse(JSON.stringify(sb.kpi));
+      if (sb.standard) up['eval_data/standard'] = JSON.parse(JSON.stringify(sb.standard));
       up['eval_data/importedAt'] = Date.now();
       await dbUpdateMany(up);
-      await dbPush('eval_history', { key: '__import', name: 'スプレッドシートから取り込み', by: (user && user.name) || '管理者', at: Date.now(), summary: `${people.length}人分を取り込み` });
-      showToast(`${people.length}人分を取り込みました。これからは au navi で記録します`);
-    } catch (e) { showToast('取り込めませんでした：' + e.message); }
+      await dbPush('eval_history', { key: '__import', name: 'スプレッドシートから読み込み', by: (user && user.name) || '管理者', at: Date.now(), summary: `${list.length}人分を読み込み` });
+      showToast(`${list.length}人分をスプレッドシートから読み込みました`);
+    } catch (e) { setErr(e.message); showToast('読み込めませんでした：' + e.message); }
     setImporting(false);
   };
   const addMember = async (name) => {
@@ -304,13 +322,13 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
         {embedded && sheetId && !appMode && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}><button className="btn-ghost" onClick={load} disabled={loading}>{loading ? '読み込み中…' : '最新にする'}</button></div>}
         {isAdmin && (
           <div className="ev-admin">
-            <span>{appMode ? `au navi で記録中（${fmtAt(evalData.importedAt)} にスプレッドシートから取り込み）。編集は各メンバーの「編集する」から` : 'スプレッドシートを表示中です。「au navi に取り込む」を押すと、これからは au navi で記録できます'}</span>
-            {!appMode && sheetBook && <button className="ev-btn p" disabled={importing} onClick={doImport}>{importing ? '取り込み中…' : 'au navi に取り込む'}</button>}
+            <span>{appMode ? `au navi で記録中（最後にスプレッドシートから読み込んだのは ${fmtAt(evalData.importedAt) || '－'}）` : 'スプレッドシートを表示中です。「スプレッドシートから読み込む」を押すと、au navi に取り込みます'}</span>
+            <button className="ev-btn p" disabled={importing} onClick={doImport}>{importing ? '読み込み中…' : 'スプレッドシートから読み込む'}</button>
             {appMode && <button className="ev-btn" onClick={() => setAdding(!adding)}>＋ メンバーを追加</button>}
             <button className="ev-btn" onClick={() => exportCsv('summary')}>CSV（サマリ）</button>
             <button className="ev-btn" onClick={() => exportCsv('skills')}>CSV（スキル評価）</button>
             <button className="ev-btn" onClick={() => setShowHist(!showHist)}>変更履歴</button>
-            {!appMode && <button className="btn-ghost" onClick={() => setShowSetting(!showSetting)}>スプレッドシートの設定</button>}
+            <button className="btn-ghost" onClick={() => setShowSetting(!showSetting)}>スプレッドシートの設定</button>
           </div>
         )}
         {isAdmin && adding && (
@@ -329,7 +347,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
             {!Object.keys(history || {}).length && <div className="ev-note">まだ変更はありません</div>}
           </div>
         )}
-        {!appMode && (showSetting || !sheetId) && isAdmin && (
+        {isAdmin && (showSetting || (!sheetId && !appMode)) && (
           <div className="ev-card">
             <div className="ev-h">スプレッドシートを登録</div>
             <div className="ev-note">評価一覧のスプレッドシートのURLを貼り付けてください。スプレッドシートの共有に、読み取り用のアカウント（サービスアカウント）を「閲覧者」で追加しておく必要があります。{sheetId && `　今の登録：…${sheetId.slice(-8)}`}</div>
