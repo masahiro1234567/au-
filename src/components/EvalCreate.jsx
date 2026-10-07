@@ -142,7 +142,7 @@ export default function EvalCreate({ list, user, standard }) {
       const after = JSON.parse(JSON.stringify(p));
       after.skills = skills.map((s, i) => {
         const v = next[`s${i}`], c = String(cmt[`s${i}`] || '').trim();
-        return { ...s, ...(v ? { prev: s.rank || '', rank: v } : {}), ...(c ? { comment: c } : {}) };
+        return { ...s, ...(v ? { prev: s.rank || '', rank: v } : {}), comment: c }; // コメントは毎回書き直し（空なら空のまま）
       });
       after.totals = totalsFromSkills(after.skills, p.totals, TOTAL_LABELS);
       await savePerson(before, after, user?.name);
@@ -231,7 +231,7 @@ export default function EvalCreate({ list, user, standard }) {
                   <div><RankChip v={s.rank} /></div>
                   <div className="ec-pickcol"><RankPicker value={next[`s${i}`]} prev={s.rank} label={`${s.item}の今回の評価`} onPick={(v) => pick(`s${i}`, v)} />{next[`s${i}`] && <DeltaTag now={next[`s${i}`]} prev={s.rank} />}</div>
                   <div className="ec-cmt">
-                    <AutoTA className="ec-ta" value={cmt[`s${i}`] || ''} placeholder="今回のコメント（空なら前回のまま）" aria-label={`${s.item}のコメント`} onChange={(e) => { const v = e.target.value; setCmt((c) => ({ ...c, [`s${i}`]: v })); setDirty(true); }} />
+                    <AutoTA className="ec-ta" value={cmt[`s${i}`] || ''} placeholder="コメント（必要なときだけ）" aria-label={`${s.item}のコメント`} onChange={(e) => { const v = e.target.value; setCmt((c) => ({ ...c, [`s${i}`]: v })); setDirty(true); }} />
                     {s.comment && <div className="ec-small sm">前回：{s.comment}</div>}
                   </div>
                 </div>
