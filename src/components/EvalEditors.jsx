@@ -15,6 +15,7 @@ import { dbSet, dbPush, dbRemove, dbUpdateMany } from '../useFirebase.js';
 import { showToast } from '../utils.js';
 import { RANKS5 } from '../evalSheets.js';
 import { autoTotals, totalsFromSkills, DeltaTag, deltaRowClass } from '../evalScore.jsx';
+import { pushNotice } from '../notices.jsx';
 
 // ===== 評価一覧の編集（au navi を正にする）=====
 // 保存先：eval_data/persons/{名前のキー}（1人分）、eval_data/kpi、eval_data/standard
@@ -92,6 +93,13 @@ export async function savePerson(before, after, userName) {
   await dbUpdateMany(up);
   for (const text of rankChanges(before, after)) await dbPush(`eval_data/persons/${after.key}/rankLog`, { at: Date.now(), by: userName || '管理者', text });
   await dbPush('eval_history', { key: after.key, name: after.info.name, by: userName || '管理者', at: Date.now(), summary: diffSummary(before, after).slice(0, 12).join('、') });
+  // 本人へのお知らせ（マイページ）。ランクが変わったときはその中身も書く
+  const rc = rankChanges(before, after);
+  if (before && after.info && after.info.name) {
+    await pushNotice({ tab: 'mypage', to: [after.info.name], by: userName || '管理者',
+      title: rc.length ? 'あなたの評価が更新されました' : 'あなたの評価の内容が更新されました',
+      body: rc.length ? rc.slice(0, 4).join('\n') : '評価・コメントなどが更新されました。マイページで確認してください' });
+  }
 }
 
 // ランクの札（EvalPage の Rank と同じ見た目。不可は文字なしのグレー）

@@ -22,7 +22,7 @@ const Icon = ({ k, size = 22 }) => <svg width={size} height={size} viewBox="0 0 
 
 // ホーム画面（案C）：中央に「au navi」と用語検索、その下にメニューのタイル
 // PC（900px以上）は3列×2段のタイル、スマホは1列のカード。右上のボタンで右側からメニューが開く（最初は閉じている）
-export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft, unreadCount = 0, streak, onGoEval, onGoMyPage, onGoBravePost }) {
+export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDevices, onGoOreTab, onGoNippou, onGoKpi, onLogout, onAdminLogin, draft, draftText, onResumeDraft, unreadCount = 0, streak, onGoEval, onGoMyPage, onGoBravePost, badges = {} }) {
   const count = Object.keys(terms || {}).length;
   const [q, setQ] = React.useState('');
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -89,7 +89,7 @@ export default function Home({ terms, testUser, onOpenFiltered, onGoTest, onGoDe
         <section className="hm2-tiles">
           {MENU.map(([title, desc, icon, fn]) => (
             <button key={title} className="hm2-tile" onClick={fn}>
-              <span className={`hm2-ico ${icon === 'bx' ? 'bx' : ''}`}>{icon === 'bx' ? <img src="/bx-logo-orange.png" alt="" /> : <Icon k={icon} size={28} />}{title === '用語一覧' && unreadCount > 0 && <span className="tn-badge" aria-label={`更新された用語 ${unreadCount}件`}>{unreadCount > 99 ? '99+' : unreadCount}</span>}</span>
+              <span className={`hm2-ico ${icon === 'bx' ? 'bx' : ''}`}>{icon === 'bx' ? <img src="/bx-logo-orange.png" alt="" /> : <Icon k={icon} size={28} />}{badges[title] > 0 && <span className="nt-badge" aria-label={`${title}のお知らせ ${badges[title]}件`}>{badges[title] > 99 ? '99+' : badges[title]}</span>}</span>
               <span className="hm2-tile-text"><span className="hm2-tile-title">{title}</span><span className="hm2-tile-desc">{desc}</span></span>
               <Arrow />
             </button>

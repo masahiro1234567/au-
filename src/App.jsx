@@ -3,7 +3,8 @@ import { useDbCollection } from './useFirebase.js';
 import { ref as npRef, onValue as npOnValue } from 'firebase/database';
 import { db as npDb, ensureAnonAuth } from './nippou/lib/firebase.js';
 import { loadDraft, draftPath, draftLabel } from './nippou/lib/draft.js';
-import { useSeen, isUnread } from './termNotify.js';
+import { useSeen, isUnread, markSeen as markTermSeen, termTs } from './termNotify.js';
+import { useNotices, NoticeBanner } from './notices.jsx';
 import { recordOpen, loginStreak } from './testStats.js';
 import { runAppBack, installTrackpadSwipe } from './backStack.js';
 import { resolveKnowledgeTypes, isDescMissing } from './utils.js';
@@ -63,7 +64,18 @@ export default function App() {
   const [npStart, setNpStart] = useState('/');
   // 用語の更新通知：その人の「見た」記録と、未読の更新件数
   const { seen, baseline } = useSeen(testUser, profiles);
-  const unreadCount = Object.entries(publicTerms).filter(([id, t]) => isUnread(id, t, seen, baseline)).length;
+  const unreadTerms = Object.entries(publicTerms).filter(([id, t]) => isUnread(id, t, seen, baseline));
+  const unreadCount = unreadTerms.length;
+  // ===== お知らせ：ホームの赤丸と、タブを開いたときの通知 =====
+  const glossaryCards = unreadTerms.length ? [{
+    key: 'glossary-terms', tab: 'glossary', title: `用語の更新が${unreadTerms.length}件あります`,
+    body: unreadTerms.slice(0, 3).map(([, t]) => `「${t.name || t.term || ''}」`).join('　') + (unreadTerms.length > 3 ? ` ほか${unreadTerms.length - 3}件` : ''),
+    at: Math.max(...unreadTerms.map(([, t]) => termTs(t))), ids: unreadTerms.map(([id]) => 'term:' + id),
+    onSeen: () => unreadTerms.forEach(([id]) => markTermSeen(testUser, id)),
+  }] : [];
+  const nt = useNotices(testUser, { glossary: glossaryCards });
+  const [ntHidden, setNtHidden] = useState({}); // 「あとで見る」で閉じたタブ（その画面を出るまで出さない）
+  const [ntPending, setNtPending] = useState(null); // オレタブは開く前にホームで出す
   const [loginNotice, setLoginNotice] = useState('');
   const handleLogout = (notice) => {
     // au navi からログアウトしたら、管理者モードも一緒に終わる
@@ -154,6 +166,8 @@ export default function App() {
     window.addEventListener('popstate', onPop);
     return () => { window.removeEventListener('popstate', onPop); offSwipe(); };
   }, []);
+  // 画面が変わったら「あとで見る」をリセット（次にそのタブを開いたら、また出す）
+  useEffect(() => { setNtHidden({}); }, [page]);
   // オレタブ以外の画面に移ったら、全画面表示と横向き固定を必ず解除する（×・← 戻る・スワイプ、どの戻り方でも）
   useEffect(() => {
     if (page === 'oretab') return;
@@ -211,7 +225,11 @@ export default function App() {
       }}
       onGoTest={goTest}
       onGoDevices={() => setPage('devices')}
-      onGoOreTab={() => { tryLandscape(); setPage('oretab'); }}
+      onGoOreTab={() => {
+        const go = () => { tryLandscape(); setPage('oretab'); };
+        if ((nt.cards.oretab || []).length) setNtPending(() => go); else go();
+      }}
+      badges={{ 用語一覧: nt.count('glossary'), 機種比較: nt.count('devices'), オレタブ: nt.count('oretab'), KPI: nt.count('kpi'), 日報: nt.count('nippou'), 'Brave X': nt.count('bx'), テスト: nt.count('test'), 評価一覧: nt.count('eval'), マイページ: nt.count('mypage') }}
       onGoNippou={() => { setNpStart('/'); setPage('nippou'); }}
       unreadCount={unreadCount}
       streak={testUser ? loginStreak(userActivity, testUser.name) : null}
@@ -240,7 +258,7 @@ export default function App() {
       );
       break;
     case 'bravepost':
-      content = <BravePost user={testUser} onBack={() => setPage('home')} />;
+      content = <BravePost user={testUser} onBack={() => setPage('home')} ntIsNew={nt.isNew} ntMarkSeen={nt.markSeen} />;
       break;
     case 'mypage':
       content = <MyPage user={testUser} onBack={() => setPage('home')} onGoKpi={() => { setNpStart('/kpi'); setPage('nippou'); }} />;
@@ -348,9 +366,21 @@ export default function App() {
       content = homeEl;
   }
 
+  // 今の画面がどのタブか（お知らせの出し先）
+  const ntTab = !testUser ? '' : ntPending ? 'oretab' : ({ glossary: 'glossary', devices: 'devices', bravepost: 'bx', 'test-home': 'test', eval: 'eval', mypage: 'mypage' }[page] || (page === 'nippou' ? (npStart === '/kpi' ? 'kpi' : 'nippou') : ''));
+  const ntCards = ntTab ? (nt.cards[ntTab] || []) : [];
+  const ntShow = ntTab && ntCards.length > 0 && !ntHidden[ntTab];
+  const ntDone = () => { if (ntPending) { const go = ntPending; setNtPending(null); go(); } };
+
   return (
     <>
       {content}
+      {ntShow && (
+        <NoticeBanner tab={ntTab} cards={ntCards}
+          onConfirm={async (c) => { await nt.confirm(c); if (ntCards.length <= 1) ntDone(); }}
+          onConfirmAll={async () => { await nt.confirm(ntCards); ntDone(); }}
+          onLater={() => { setNtHidden((h) => ({ ...h, [ntTab]: true })); ntDone(); }} />
+      )}
       <div id="toast" />
     </>
   );

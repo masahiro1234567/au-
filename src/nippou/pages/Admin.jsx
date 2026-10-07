@@ -8,6 +8,7 @@ import { db } from '../lib/firebase';
 import { useFirebaseList } from '../lib/useFirebaseList';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { pushNotice } from '../../notices.jsx';
 import MonthPicker from '../components/MonthPicker';
 
 // 販路の一覧は lib/frames の CHANNELS を使う
@@ -360,6 +361,14 @@ function AdminKpiTab() {
     };
     if (editing.id) { await set(ref(db, `fp_kpi/${editing.id}`), data); }
     else { await set(push(ref(db, 'fp_kpi')), data); }
+
+    // KPIに入っている人へのお知らせ（その人の日だけ書く）
+    try {
+      const byName = {};
+      Object.entries(data.dateMembers || {}).forEach(([dt, ms]) => (ms || []).forEach((m) => { const n = m && String(m.member || '').trim(); if (n && n !== '他社') (byName[n] = byName[n] || []).push(dt); }));
+      const md = (d) => { const x = new Date(d + 'T00:00:00'); return `${x.getMonth() + 1}/${x.getDate()}`; };
+      await Promise.all(Object.entries(byName).map(([n, ds]) => pushNotice({ tab: 'kpi', to: [n], title: editing.id ? 'KPIが更新されました' : 'KPIにあなたが入りました', body: `${data.store}：${ds.sort().map(md).join('・')}` })));
+    } catch (e) { /* お知らせが送れなくても保存は済んでいる */ }
     showToast('保存しました');
     setShowForm(false); setEditing(null);
   }

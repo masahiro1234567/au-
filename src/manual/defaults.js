@@ -13,7 +13,7 @@ export const SCREENS = [
   { group: '一般の画面', keys: ['home', 'glossary', 'term', 'devices', 'bravepost', 'test', 'eval', 'mypage'] },
   { group: '日報・KPI', keys: ['nippou_home', 'nippou_new', 'nippou_form', 'nippou_preview', 'nippou_list', 'nippou_pick', 'nippou_detail', 'nippou_results', 'nippou_stats', 'nippou_stores', 'kpi', 'personal'] },
   { group: 'オレタブ（タブで切り替え）', keys: ['oretab_can', 'oretab_login', 'oretab_map', 'oretab_cond'], oretab: true },
-  { group: '管理画面', keys: ['admin_nippou', 'admin_glossary', 'admin_member', 'admin_eval', 'admin_rtest', 'admin_manual'] },
+  { group: '管理画面', keys: ['admin_nippou', 'admin_glossary', 'admin_member', 'admin_eval', 'admin_rtest', 'admin_notice', 'admin_manual'] },
 ];
 
 export const DEFAULT_MANUALS = {
@@ -138,6 +138,11 @@ export const DEFAULT_MANUALS = {
   admin_rtest: { title: '定期テスト（管理）', sections: [
     CAN(['定期テストを作って公開し、提出された答えを採点できます', '答え方は、穴埋め・〇×・ひとこと・いくつか答える・並び替え・記述・ケース問題の7種類です']),
     HOW(['【＋ 新しいテストを作る】で下書きを作ります（知識試験のひな形からも作れます）', '【問題を作る】で、名前・期間・受ける人・編・問題・正解・配点を入れます', '穴埋めは、文章に {①} のように書いたところが空欄になります', '【メンバーの画面で確認】で見え方を確かめてから【公開する】', '【採点・結果】で、記述とケース問題に〇・△・×と点数・ひとことを付けて【結果を本人に公開】']),
+  ] },
+  admin_notice: { title: 'お知らせ（管理）', sections: [
+    CAN(['好きなタブにお知らせを出せます（オレタブの新機能・機種比較の更新など）', 'ホームのタイルに赤丸が付き、そのタブを開いたときに通知が出ます。【確認】を押した人には2回目は出ません']),
+    HOW(['よく使う文から選ぶか、出すタブ・見出し・くわしくを入れます', '全員か、1人ずつ選んで【お知らせを出す】', '下の一覧で、何人が確認したかが分かります。【取り消す】で消せます']),
+    TIP('Brave X の投稿・回答、用語の更新、KPI、定期テスト、評価の更新は、自動でお知らせが出ます。'),
   ] },
   admin_manual: { title: 'マニュアル（管理）', sections: [
     CAN(['各画面の右上〔マニュアル〕で開く文章を、追加・編集・削除できます', '直しながら、スマホで開いたときの見え方をプレビューで確認できます']),

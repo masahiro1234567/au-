@@ -1,5 +1,6 @@
 import AdminManualTab from '../manual/AdminManualTab.jsx';
 import AdminRTest from '../rtest/AdminRTest.jsx';
+import AdminNoticeTab from './AdminNoticeTab.jsx';
 import AdminTermRequests from '../bravepost/AdminTermRequests.jsx';
 import { useDbCollection } from '../useFirebase.js';
 import { ManualButton } from '../manual/Manual.jsx';
@@ -260,10 +261,12 @@ export default function Admin({ terms, ghostIds, results, profiles, knowledgeTyp
           <button className={`tab ${area === 'member' ? 'active' : ''}`} onClick={() => setArea('member')}>メンバー管理</button>
           <button className={`tab ${area === 'eval' ? 'active' : ''}`} onClick={() => setArea('eval')}>評価一覧</button>
           <button className={`tab ${area === 'rtest' ? 'active' : ''}`} onClick={() => setArea('rtest')}>定期テスト</button>
+          <button className={`tab ${area === 'notice' ? 'active' : ''}`} onClick={() => setArea('notice')}>お知らせ</button>
           <button className={`tab ${area === 'manual' ? 'active' : ''}`} onClick={() => setArea('manual')}>マニュアル</button>
         </div>
         {area === 'manual' && <AdminManualTab user={user} />}
         {area === 'rtest' && <AdminRTest user={user} />}
+        {area === 'notice' && <AdminNoticeTab user={user} />}
         {area === 'member' && <MemberAdmin profiles={profiles} results={results} terms={terms} />}
         {area === 'eval' && <EvalPage embedded isAdmin user={user} />}
         {area === 'nippou' && <React.Suspense fallback={<div className="loading"><div className="spinner" /></div>}><NippouAdmin user={user} /></React.Suspense>}

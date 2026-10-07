@@ -6,7 +6,7 @@ import { getSavedResult, resultFromFrames, kpiMembers } from '../nippou/lib/kpiL
 import { RANK_STYLE, RANKS5, normName } from '../evalSheets.js';
 import { AutoTA, savePerson, TOTAL_LABELS } from './EvalEditors.jsx';
 import { showToast } from '../utils.js';
-import { autoTotals, totalsFromSkills, DeltaTag } from '../evalScore.jsx';
+import { autoTotals, totalsFromSkills, DeltaTag, NextText, ScoreGuide } from '../evalScore.jsx';
 
 // ===== 評価作成（管理者だけ）：1人を選んで、今のステータスを見ながら次の評価をつける =====
 // 下書き：eval_drafts/{名前のキー} = { next: { 't:キャッチャー': '良', s0: '優', ... }, cmt: { s0: '...' }, work: { date, store, text }, at, by }
@@ -216,10 +216,11 @@ export default function EvalCreate({ list, user, standard }) {
               <div className="ec-trow" key={t.label}>
                 <b>{t.label}</b><RankChip v={t.rank} />
                 <span className="ec-row">{a ? <RankChip v={a.rank} /> : <span className="ec-small">項目なし</span>}{a && <DeltaTag now={a.rank} prev={t.rank} />}</span>
-                <span className="ec-small">{a ? `${a.score} / ${a.max}点` : ''}</span>
+                <span className="ec-small">{a ? `${a.score} / ${a.max}点` : ''}{a && <><br /><NextText a={a} /></>}</span>
               </div>
             ); })}
-            <div className="ec-small sm" style={{ marginTop: 6 }}>項目（秀5・優4・良3・可2・不可1）の合計＋現場評価（キャッチ×3・クローズ×6・ディレクター×3）。点数は管理者の画面だけに出ます。</div>
+            <ScoreGuide />
+            <div className="ec-small sm" style={{ marginTop: 6 }}>項目（秀5・優4・良3・可2・不可1）の合計＋現場評価（キャッチ×3・クローズ×6・ディレクター×3）。点数はメンバーの画面にも出ます。</div>
           </div>
           {sections.map((sec) => (
             <div className="ec-card" key={sec}>

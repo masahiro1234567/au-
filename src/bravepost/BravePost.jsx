@@ -45,7 +45,7 @@ const Ico = ({ k, s = 18 }) => <svg width={s} height={s} viewBox="0 0 24 24" ari
 const Logo = () => <span className="bp-logo"><img src="/bx-logo-white.png" alt="Brave X" /></span>;
 const initial = (n) => String(n || '？').replace(/\s/g, '').slice(0, 1);
 
-export default function BravePost({ user, onBack }) {
+export default function BravePost({ user, onBack, ntIsNew = () => false, ntMarkSeen = () => {} }) {
   const me = user?.name || '';
   const myKey = nameKey(me);
   const [posts] = useDbCollection('bp_posts');
@@ -71,7 +71,12 @@ export default function BravePost({ user, onBack }) {
   const replyList = (pid) => Object.entries((replies || {})[pid] || {}).filter(([, r]) => r && r.text).map(([rid, r]) => ({ rid, ...r })).sort((a, b) => a.at - b.at);
   const tagsOf = (pid) => { const t = savedMap[pid] && savedMap[pid].tags; return Array.isArray(t) ? t : Object.values(t || {}); };
 
-  const open = (id) => { setFrom(scr === 'thread' ? from : scr); setCur(id); setScr('thread'); setEdit(null); };
+  const open = (id) => {
+    setFrom(scr === 'thread' ? from : scr); setCur(id); setScr('thread'); setEdit(null);
+    // 開いた投稿の「NEW」と新しい回答の赤丸は、開いたら消す
+    const ids = [`bxp_${id}`, ...replyList(id).map((r) => `bxr_${id}_${r.rid}`)].filter((x) => ntIsNew(x));
+    if (ids.length) ntMarkSeen(ids);
+  };
   const go = (s) => { setScr(s); setMenu(false); setEdit(null); };
   const back = () => go(scr === 'thread' || scr === 'compose' ? from : scr === 'request' ? 'thread' : 'tl');
 
@@ -144,7 +149,7 @@ export default function BravePost({ user, onBack }) {
         <div className="bp-av" aria-hidden="true">{initial(p.by)}</div>
         <div className="bp-pmain">
           <button className="bp-open" onClick={() => !full && open(p.id)} disabled={full}>
-            <div className="bp-meta"><b>{p.by}</b><span>{ago(p.at)}{p.editedAt ? '（編集済み）' : ''}</span></div>
+            <div className="bp-meta"><b>{p.by}</b><span>{ago(p.at)}{p.editedAt ? '（編集済み）' : ''}</span>{ntIsNew(`bxp_${p.id}`) && <span className="bp-new">NEW</span>}</div>
             <div className="bp-meta" style={{ marginTop: 4 }}><span className={`bp-tag ${p.type === '質問' ? 'q' : 's'}`}>{p.type}</span><span className="bp-tag c">{p.cat}</span></div>
             {!editing && <div className="bp-txt">{p.text}</div>}
           </button>
@@ -156,7 +161,7 @@ export default function BravePost({ user, onBack }) {
           )}
           {mine && !editing && <div className="bp-row" style={{ margin: '2px 0 4px' }}><button className="bp-own" onClick={() => setEdit({ id: p.id, text: p.text })}>編集</button><button className="bp-own del" onClick={() => removePost(p)}>削除</button></div>}
           <div className="bp-acts">
-            <button className="bp-act" onClick={() => open(p.id)} aria-label="回答・コメントを見る"><Ico k="chat" />{replyList(p.id).length}</button>
+            <button className="bp-act" onClick={() => open(p.id)} aria-label="回答・コメントを見る"><Ico k="chat" />{replyList(p.id).length}{(() => { const n = replyList(p.id).filter((r) => ntIsNew(`bxr_${p.id}_${r.rid}`)).length; return n > 0 ? <span className="bp-newrep" aria-label={`新しい回答 ${n}件`}>{n}</span> : null; })()}</button>
             <button className={`bp-act ${repd ? 'rp' : ''}`} onClick={() => repost(p)} aria-label={repd ? 'リポストを取り消す' : 'リポスト'}><Ico k="rep" />{keys(p.reposts).length}</button>
             <button className={`bp-act ${liked ? 'on' : ''}`} onClick={() => like(p)} aria-label={liked ? 'いいねを取り消す' : 'いいね'}><Ico k={liked ? 'heartF' : 'heart'} />{keys(p.likes).length}</button>
             <button className={`bp-act ${saved ? 'sv' : ''}`} style={{ marginLeft: 'auto' }} onClick={() => setSaveFor(p.id)} aria-label={saved ? '保存のタグを変える' : '保存する'}><Ico k={saved ? 'bmF' : 'bm'} /></button>

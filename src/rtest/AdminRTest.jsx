@@ -8,6 +8,7 @@ import { AutoTA } from '../components/EvalEditors.jsx';
 import { TestRunner, ResultView } from './TakeTest.jsx';
 import { QTYPES, QTYPE_LABEL, MANUAL_TYPES, POSITIONS, normTest, normQuestion, uid, testMax, maxOf, allQuestions, autoGrade, keyHits, computeTotals, isTarget, knowledgeTemplate, mdLabel } from './core.js';
 import './rtest.css';
+import { pushNotice } from '../notices.jsx';
 
 const arr = (v) => (Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : []);
 const clean = (x) => JSON.parse(JSON.stringify(x)); // undefined を消す（Firebase に保存できる形に）
@@ -166,6 +167,12 @@ function TestEditor({ id, saved, users, hasAnswers, onPreview }) {
     if (hasAnswers && dirty && !window.confirm('すでに答えている人がいます。問題を変えると、その人の採点にも反映されます。保存しますか？')) return;
     const data = clean({ ...t, status: status || t.status, updatedAt: Date.now() });
     await dbSet(`rtests/${id}`, data); setDirty(false);
+    // 初めて受付中にしたとき：受ける人に「定期テストが公開されました」
+    if (status === 'open' && t.status !== 'open') {
+      const tg = data.target || {};
+      const to = tg.mode === 'roles' ? users.filter((u) => (tg.roles || []).includes(u.position)).map((u) => u.name) : tg.mode === 'people' ? (tg.people || []) : null;
+      await pushNotice({ tab: 'test', to, title: '定期テストが公開されました', body: `「${data.title}」${data.end ? `　提出期限 ${mdLabel(data.end)}` : ''}` });
+    }
     showToast(status === 'open' ? '公開しました（受付中）' : status === 'closed' ? '受付を終わりました' : '保存しました');
   };
   const people = users.map((u) => u.name);
@@ -248,6 +255,7 @@ function Grader({ id, test, answers, users }) {
     const up = { [`rtest_answers/${id}/${cur.key}/manual`]: rec.manual, [`rtest_answers/${id}/${cur.key}/total`]: tot.total, [`rtest_answers/${id}/${cur.key}/max`]: tot.max, [`rtest_answers/${id}/${cur.key}/auto`]: tot.auto };
     if (publish) { up[`rtest_answers/${id}/${cur.key}/status`] = 'published'; up[`rtest_answers/${id}/${cur.key}/publishedAt`] = Date.now(); }
     await dbUpdateMany(up); setDirty(false);
+    if (publish && cur.rec.status !== 'published') await pushNotice({ tab: 'test', to: [cur.name], title: '定期テストの結果が出ました', body: `「${test.title}」の結果をテスト画面の「定期テスト」から確認できます` });
     showToast(publish ? '結果を本人に公開しました' : '採点を保存しました');
   };
   const publishAll = async () => {
@@ -256,7 +264,9 @@ function Grader({ id, test, answers, users }) {
     if (!window.confirm(`採点が終わっている${ready.length}人の結果を公開します。よろしいですか？`)) return;
     const up = {};
     ready.forEach((r) => { const tot = computeTotals(test, r.rec); up[`rtest_answers/${id}/${r.key}/status`] = 'published'; up[`rtest_answers/${id}/${r.key}/publishedAt`] = Date.now(); up[`rtest_answers/${id}/${r.key}/total`] = tot.total; up[`rtest_answers/${id}/${r.key}/max`] = tot.max; });
-    await dbUpdateMany(up); showToast('公開しました');
+    await dbUpdateMany(up);
+    await pushNotice({ tab: 'test', to: ready.map((r) => r.name), title: '定期テストの結果が出ました', body: `「${test.title}」の結果をテスト画面の「定期テスト」から確認できます` });
+    showToast('公開しました');
   };
   const csv = () => {
     const head = ['名前', '状態', '合計', '満点', ...test.sections.map((s) => s.name)];

@@ -8,7 +8,7 @@ import { parseBook, RANK_STYLE, RANKS5, normName } from '../evalSheets.js';
 import { AutoTA, PersonEditor, KpiEditor, StandardEditor, normPerson, newPerson, downloadCsv, TOTAL_LABELS, WorkList, SelfTable, SectionEdit } from './EvalEditors.jsx';
 import { dbPush, dbUpdateMany } from '../useFirebase.js';
 import EvalCreate from './EvalCreate.jsx';
-import { autoTotals, DeltaTag, deltaRowClass } from '../evalScore.jsx';
+import { autoTotals, DeltaTag, deltaRowClass, PointText, NextText, ScoreGuide } from '../evalScore.jsx';
 const SEC_LABEL = { キャッチ力: 'キャッチャー', クローズ力: 'クローズ', ディレクション力: 'ディレクター' };
 
 // ===== 評価一覧（Googleスプレッドシートを読み取って表示）=====
@@ -399,6 +399,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                           <WorkList person={p.person} isAdmin={isAdmin} kpiData={kpiData} userName={user && user.name} legacy={p.reviews} />
                         ) : p.reviews.length > 0 && (<><div className="ev-h">具体評価</div>
                           {p.reviews.map((x) => <div key={x.label} className="ev-review"><small>{x.label}{x.store ? `（${x.store}）` : ''}</small>{x.text && <p>{x.text}</p>}</div>)}</>)}
+                        {p.person && p.secs.length > 0 && <ScoreGuide />}
                         {p.secs.map((sec) => {
                           const k = p.key + '|' + sec.name, so = !!openSec[k];
                           const at = p.person ? autoTotals(p.person.skills)[SEC_LABEL[sec.name]] : null;
@@ -406,7 +407,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                             <div key={sec.name} className="ev-secbox">
                               <button className="ev-secbtn" onClick={(e) => keepPlace(e.currentTarget, () => setOpenSec({ ...openSec, [k]: !so }))} aria-expanded={so}>
                                 <b>{sec.name}</b>
-                                {isAdmin && at && <span className="ev-autoscore">{at.score} / {at.max}点</span>}
+                                {at && <span className="ev-autoscore">{at.score} / {at.max}点</span>}<NextText a={at} />
                                 {sec.total && <Rank v={sec.total} />}{at && <DeltaTag now={at.rank} prev={at.prevRank} />}
                                 <span className="ev-arrow">{so ? '▲' : '▼'}</span>
                               </button>
@@ -416,7 +417,7 @@ export default function EvalPage({ isAdmin, onBack, user, embedded }) {
                                 <div className="ev-srow dt head"><span>評価項目</span><span>前回</span><span>今回</span><span>比較</span></div>
                                 {sec.items.map((x) => (
                                   <div key={x.item} className={deltaRowClass(x.rank, x.prev)}>
-                                    <div className="ev-srow dt"><span>{x.item}</span><span><Rank v={x.prev} /></span><span><Rank v={x.rank} /></span><span><DeltaTag now={x.rank} prev={x.prev} /></span></div>
+                                    <div className="ev-srow dt"><span>{x.item}</span><span><Rank v={x.prev} /></span><span className="ev-rk-pt"><Rank v={x.rank} /><PointText s={x} /></span><span><DeltaTag now={x.rank} prev={x.prev} /></span></div>
                                     {x.comment && <div className="ev-skill-c" style={{ padding: '0 4px 8px' }}>{x.comment}</div>}
                                   </div>
                                 ))}
