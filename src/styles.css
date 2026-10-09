@@ -1491,3 +1491,47 @@ html,body{overflow-x:hidden;overflow-x:clip;}
   .cx-row{grid-template-columns:1fr;gap:2px;}
 }
 .cx-side>.ev-inp{flex:none;height:40px;}.cx-side .cx-chips,.cx-side .cx-list{flex:none;}
+/* 他社比較：一覧 */
+.rv-all{margin-bottom:4px;gap:8px;}
+.rv-all svg{flex-shrink:0;color:#b84a00;}
+.rv-backlist{border:1.5px solid #ffd9c0;background:#fff;color:#b84a00;font-weight:800;font-family:inherit;border-radius:9px;padding:4px 10px;cursor:pointer;font-size:.8rem;}
+.rv-lgroup{background:#fff;border:1.5px solid #ffd9c0;border-radius:16px;overflow:hidden;}
+.rv-lgh{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#2a1a10;color:#fef6f0;font-weight:800;font-size:.9rem;}
+.rv-lgh small{font-weight:600;font-size:.7rem;opacity:.8;}
+.rv-lhead,.rv-lrow{display:grid;grid-template-columns:170px repeat(3,minmax(0,1fr));}
+.rv-lhead{background:#fbe9dc;font-size:.7rem;font-weight:800;color:#8a3700;}
+.rv-lhead span{padding:6px 12px;}
+.rv-lrow{border-top:1px solid #f6e7da;}
+.rv-lrow:nth-child(even){background:#fffbf7;}
+.rv-lname{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px;border:none;background:transparent;text-align:left;font-family:inherit;cursor:pointer;color:#1a0f08;}
+.rv-lname b{font-size:.95rem;}
+.rv-lname small{font-size:.66rem;color:#7a5a48;}
+.rv-lgo{font-size:.72rem;font-weight:800;color:#b84a00;margin-top:2px;}
+.rv-lname:hover b{color:#b84a00;}
+.rv-lcell{padding:12px;font-size:.8rem;line-height:1.6;border-left:1px solid #f6e7da;}
+.rv-lcell i{display:none;font-style:normal;}
+.rv-lcell.good{border-left:3px solid #ffb27a;}
+.rv-lcell.bad{border-left:3px solid #c9bdb4;}
+@media (max-width:800px){
+  .rv-lhead{display:none;}
+  .rv-lrow{grid-template-columns:1fr;padding:4px 0 10px;}
+  .rv-lname{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:8px;}
+  .rv-lgo{margin-left:auto;}
+  .rv-lcell{border-left:none;padding:4px 12px;}
+  .rv-lcell.good,.rv-lcell.bad{border-left:none;}
+  .rv-lcell i{display:inline-block;font-size:.66rem;font-weight:800;color:#fff;background:#8a6e5e;border-radius:5px;padding:0 6px;margin-right:6px;}
+  .rv-lcell.good i{background:#c2410c;}
+  .rv-lcell.bad i{background:#5a4334;}
+  .rv-all{order:-1;}
+}
+/* 他社比較・獲得例蓄積：画面の中でスクロールできるように（.page は高さ固定・はみ出し非表示のため） */
+.rv-body,.cx-body{flex:1;min-height:0;}
+.rv-side,.rv-main,.cx-side,.cx-main{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.rv-listwrap{flex:1;min-height:0;overflow-y:auto;}
+@media (max-width:800px){
+  .rv-body,.cx-body{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .rv-main,.cx-main{overflow:visible;flex:none;}
+  .rv-side{overflow-y:visible;flex:none;}
+  .cx-side{flex:none;}
+}
+.rv-main>*,.cx-view>*,.cx-form>*,.cx-side>*{flex-shrink:0;}

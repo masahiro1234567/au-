@@ -10,6 +10,7 @@ import { CATS, CAT_DESC, DATA, SECS, AI_SEED, AI_BY, COMPANIES } from './data.js
 //   rival_docs/{会社id}/{id}           = { tag: 'PDF'|'カタログ'|'Web', title, url, order }  公式の資料（管理者が追加・削除）
 //   rival_posts/{会社id}/{項目}/{id}   = { text, by, uid, at, ai? }                          みんなの書き込み（本人と管理者が編集・削除）
 //   rival_config/seeded                = 最初の資料とAI生成の書き込みを入れたら true
+const LIST = '__list';
 const TAG_CLASS = { PDF: 'pdf', カタログ: 'cat', Web: 'web' };
 const host = (u) => String(u || '').replace(/^https?:\/\//, '').split('/')[0];
 const when = (t) => { if (!t) return ''; const d = new Date(t); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`; };
@@ -32,8 +33,8 @@ export default function RivalPage({ user, isAdmin, onBack }) {
   const [docsAll] = useDbCollection('rival_docs');
   const [postsAll] = useDbCollection('rival_posts');
   const [cat, setCat] = useState('mobile');
-  const [view, setView] = useState('docs'); // docs ／ list
-  const [sel, setSel] = useState({ mobile: 'sb', net: 'dhikari', sub: 'ddenki' });
+  // 左の一覧で選んでいるもの。LIST＝一番上の「一覧」（最初はここ）
+  const [sel, setSel] = useState({ mobile: LIST, net: LIST, sub: LIST });
   const [writing, setWriting] = useState(''); // 書いている項目
   const [draft, setDraft] = useState('');
   const [editId, setEditId] = useState(''); // 「項目/id」
@@ -44,12 +45,13 @@ export default function RivalPage({ user, isAdmin, onBack }) {
 
   const groups = DATA[cat];
   const companies = useMemo(() => COMPANIES.filter((c) => c.cat === cat), [cat]);
+  const isList = sel[cat] === LIST;
   const cur = companies.find((c) => c.id === sel[cat]) || companies[0];
   const postsOf = (cid, k) => arr(postsAll[cid] && postsAll[cid][k]).sort((a, b) => (b.at || 0) - (a.at || 0));
   const countOf = (cid) => SECS.reduce((n, [k]) => n + postsOf(cid, k).length, 0);
   const docs = arr(docsAll[cur.id]).sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.at || 0) - (b.at || 0));
   const canEdit = (p) => isAdmin || (!p.ai && p.uid && user && p.uid === user.uid);
-  const pick = (id) => { setSel({ ...sel, [cat]: id }); setWriting(''); setEditId(''); setAddDoc(null); };
+  const pick = (id) => { setSel({ ...sel, [cat]: id }); setWriting(''); setEditId(''); setAddDoc(null); document.querySelectorAll('.rv-main,.rv-body').forEach((el) => { el.scrollTop = 0; }); };
 
   const save = async (k) => {
     const t = draft.trim();
@@ -84,30 +86,53 @@ export default function RivalPage({ user, isAdmin, onBack }) {
       </header>
       <div className="rv-bar">
         <div className="rv-seg">
-          {CATS.map(([id, label]) => <button key={id} className={cat === id ? 'on' : ''} onClick={() => { setCat(id); setWriting(''); setEditId(''); setAddDoc(null); }}>{label}<small>{CAT_DESC[id]}</small></button>)}
-        </div>
-        <div className="rv-seg sm">
-          <button className={view === 'docs' ? 'on' : ''} onClick={() => setView('docs')}>会社ごと</button>
-          <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>一覧で比べる</button>
+          {CATS.map(([id, label]) => <button key={id} className={cat === id ? 'on' : ''} onClick={() => { setCat(id); setWriting(''); setEditId(''); setAddDoc(null); document.querySelectorAll('.rv-main,.rv-body').forEach((el) => { el.scrollTop = 0; }); }}>{label}<small>{CAT_DESC[id]}</small></button>)}
         </div>
       </div>
 
-      {view === 'docs' ? (
-        <div className="rv-body">
+      <div className="rv-body">
           <nav className="rv-side" aria-label="会社をえらぶ">
+            <button className={`rv-co rv-all ${isList ? 'on' : ''}`} onClick={() => pick(LIST)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+              <b>一覧</b><small>{companies.length}社</small>
+            </button>
             {groups.map(([g, items]) => (
               <div key={g} className="rv-group">
                 <div className="rv-gname">{g}</div>
                 {items.map(([id, name]) => {
                   const n = countOf(id);
-                  return <button key={id} className={`rv-co ${cur.id === id ? 'on' : ''}`} onClick={() => pick(id)}><b>{name}</b>{n > 0 && <small>{n}件</small>}</button>;
+                  return <button key={id} className={`rv-co ${!isList && cur.id === id ? 'on' : ''}`} onClick={() => pick(id)}><b>{name}</b>{n > 0 && <small>{n}件</small>}</button>;
                 })}
               </div>
             ))}
           </nav>
 
+          {isList ? (
           <main className="rv-main">
-            <div className="rv-title"><h2>{cur.name}</h2><span className="rv-pill">{cur.group}</span></div>
+            <div className="rv-title"><h2>{CATS.find(([id]) => id === cat)[1]}の一覧</h2><span className="rv-pill">{CAT_DESC[cat]}</span></div>
+            <div className="ev-note">各社の特徴・メリット・デメリット（いちばん新しい書き込み）を並べています。会社名を押すと、資料とくわしい書き込みが開きます。</div>
+            {groups.map(([g, items]) => (
+              <section key={g} className="rv-lgroup">
+                <div className="rv-lgh">{g}<small>{items.length}社</small></div>
+                <div className="rv-lhead" aria-hidden="true"><span>会社</span><span>特徴</span><span>メリット</span><span>デメリット</span></div>
+                {items.map(([id, name]) => {
+                  const nd = arr(docsAll[id]).length;
+                  return (
+                    <div key={id} className="rv-lrow">
+                      <button className="rv-lname" onClick={() => pick(id)}><b>{name}</b><small>{nd ? `資料 ${nd}件` : ''}{countOf(id) ? `・書き込み ${countOf(id)}件` : ''}</small><span className="rv-lgo">くわしく ›</span></button>
+                      <div className="rv-lcell"><i>特徴</i>{first(id, 'feat')}</div>
+                      <div className="rv-lcell good"><i>メリット</i>{first(id, 'merit')}</div>
+                      <div className="rv-lcell bad"><i>デメリット</i>{first(id, 'demerit')}</div>
+                    </div>
+                  );
+                })}
+              </section>
+            ))}
+            <div className="rv-ai-note">「{AI_BY}」の内容も含まれます。AIが2026年10月時点の公開情報を調べて書いたものなので、お客様に案内する前に原本で確認してください。</div>
+          </main>
+          ) : (
+          <main className="rv-main">
+            <div className="rv-title"><button className="rv-backlist" onClick={() => pick(LIST)}>‹ 一覧</button><h2>{cur.name}</h2><span className="rv-pill">{cur.group}</span></div>
 
             <section className="rv-card">
               <div className="rv-card-h"><b>公式の資料（原本）</b><span className="rv-sub">公式サイトで、いつも最新の原本が開きます</span><span className="rv-grow" />
@@ -176,26 +201,8 @@ export default function RivalPage({ user, isAdmin, onBack }) {
             </div>
             <div className="ev-note">メンバーはだれでも書けます。書いた人の名前が出ます。書いた本人と管理者が、編集・削除できます。</div>
           </main>
-        </div>
-      ) : (
-        <div className="rv-listwrap">
-          <div className="rv-table-box">
-            <table className="rv-table">
-              <thead><tr><th>会社</th><th>種類</th><th>特徴</th><th>メリット</th><th>デメリット</th><th /></tr></thead>
-              <tbody>
-                {companies.map((c) => (
-                  <tr key={c.id}>
-                    <th>{c.name}</th><td className="sub">{c.group}</td>
-                    <td>{first(c.id, 'feat')}</td><td>{first(c.id, 'merit')}</td><td>{first(c.id, 'demerit')}</td>
-                    <td><button className="ev-btn" onClick={() => { pick(c.id); setView('docs'); }}>開く</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="ev-note">各項目で、いちばん新しい書き込みが出ます。</div>
-        </div>
-      )}
+          )}
+      </div>
     </div>
   );
 }
