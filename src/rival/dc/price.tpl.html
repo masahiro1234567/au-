@@ -5,7 +5,7 @@
 .dcv .num{font-variant-numeric:tabular-nums}
 </style>
 </helmet>
-<div class="dcv" style="width:1700px;height:1060px;background:#f6e04a;padding:26px 30px;display:flex;flex-direction:column;gap:16px">
+<div class="dcv" style="position:relative;width:1700px;height:1060px;background:#f6e04a;padding:26px 30px;display:flex;flex-direction:column;gap:16px">
 <div style="display:flex;align-items:center;gap:22px">
 <div style="background:#1f3d9c;color:#fff;border-radius:10px;padding:14px 22px;display:flex;flex-direction:column;align-items:center;line-height:1.1"><span style="font-size:15px;font-weight:800">au navi</span><span style="font-size:13px;font-weight:700;opacity:.9">他社比較</span></div>
 <div style="display:flex;flex-direction:column;gap:2px">
@@ -19,10 +19,36 @@
 <div style="flex:1;min-height:0;background:#1f3d9c;border-radius:22px;padding:14px">
 <div style="{{ gridStyle }}">
 <sc-for list="{{ cells }}" as="c" hint-placeholder-count="60">
-<div style="{{ c.style }}">{{ c.text }}<sc-if value="{{ c.hasSub }}" hint-placeholder-val="{{ false }}"><span style="{{ c.subStyle }}">{{ c.sub }}</span></sc-if></div>
+<div style="{{ c.style }}" onClick="{{ c.open }}">{{ c.text }}<sc-if value="{{ c.hasSub }}" hint-placeholder-val="{{ false }}"><span style="{{ c.subStyle }}">{{ c.sub }}</span></sc-if></div>
 </sc-for>
 </div>
 </div>
 
-<div style="font-size:11.5px;line-height:1.55;color:#1a1a1a">※1 家族3回線以上・ドコモ光・dカード GOLD 以上・ドコモでんき・長期利用20年以上の場合。※2 ドコモ光・dカード GOLD 以上・ドコモでんき（ドコモmini は11/30で新規受付終了、12月から mini2）。※3 ahamo は12/1から 40GB 3,135円の段階制。※4 家族割プラス（3人以上）＋auスマートバリュー＋au PAYカードお支払い割。※5 新みんな家族割（3回線以上）＋おうち割 光セット＋PayPayカード ゴールド。※6 最強家族プログラム。※7 13か月間 660円引き。※8 自宅セット割＋au PAYカード（5GB以下の月はさらに1,100円引き）。※9 おうち割 光セット＋PayPayカード ゴールド（要確認）。△はキャリアメールが有料の持ち運び。税込・機種代は含まない。AI が公開情報をもとに作成（要確認）。</div>
+<div style="font-size:11.5px;line-height:1.55;color:#1a1a1a">※1 家族3回線以上・ドコモ光・dカード GOLD 以上・ドコモでんき・長期利用20年以上の場合。※2 ドコモ光・dカード GOLD 以上・ドコモでんき（ドコモmini は11/30で新規受付終了、12月から mini2）。※3 ahamo は12/1から 40GB 3,135円の段階制。※4 家族割プラス（3人以上）＋auスマートバリュー＋au PAYカードお支払い割。※5 新みんな家族割（3回線以上）＋おうち割 光セット＋PayPayカード ゴールド。※6 最強家族プログラム。※7 13か月間 660円引き。※8 自宅セット割＋au PAYカード（5GB以下の月はさらに1,100円引き）。※9 おうち割 光セット(A)＋PayPayカード ゴールド。黄色の数字を押すと、何が引かれているかが出ます。△はキャリアメールが有料の持ち運び。税込・機種代は含まない。AI が公開情報をもとに作成（要確認）。</div>
+<sc-if value="{{ hasPop }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ close }}" style="position:absolute;inset:0;background:rgba(10,20,60,.45);z-index:5"></div>
+<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:680px;max-height:96%;overflow-y:auto;background:#fff;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.35);z-index:6;overflow:hidden">
+<div style="background:{{ pop.bg }};color:{{ pop.fg }};padding:16px 22px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #e5e5e5">
+<div style="display:flex;flex-direction:column;gap:2px;flex:1"><span style="font-size:18.2px;font-weight:800;opacity:.9">{{ pop.brand }}</span><b style="font-size:31.2px;line-height:1.25">{{ pop.plan }}</b></div>
+<button onClick="{{ close }}" aria-label="閉じる" style="width:46px;height:46px;border-radius:50%;border:none;background:rgba(255,255,255,.85);color:#1a1a1a;font-size:20.8px;font-weight:900;cursor:pointer;font-family:inherit">✕</button>
+</div>
+<div style="padding:16px 22px 20px;display:flex;flex-direction:column;gap:0">
+<div style="display:flex;align-items:baseline;padding:10px 0;border-bottom:1px solid #eee"><span style="font-size:22.1px;font-weight:700">月額料金</span><span style="flex:1"></span><b style="font-size:31.2px;color:#c8102e">{{ pop.base }}</b><span style="font-size:18.2px;font-weight:700;color:#c8102e;margin-left:2px">円</span></div>
+<sc-for list="{{ pop.lines }}" as="l" hint-placeholder-count="3">
+<div style="display:flex;align-items:baseline;padding:10px 0 10px 14px;border-bottom:1px dashed #e3e3e3"><span style="font-size:20.8px;font-weight:700;color:#333">{{ l.k }}</span><span style="flex:1"></span><b style="font-size:27.3px;color:#1f3d9c">－{{ l.v }}</b><span style="font-size:16.9px;font-weight:700;color:#1f3d9c;margin-left:2px">円</span></div>
+</sc-for>
+<div style="display:flex;align-items:baseline;margin-top:12px;background:#fbee9a;border-radius:12px;padding:12px 16px"><span style="font-size:22.1px;font-weight:900">割引後</span><span style="font-size:16.9px;font-weight:700;color:#555;margin-left:8px">{{ pop.total }}</span><span style="flex:1"></span><b style="font-size:41.6px;color:#c8102e">{{ pop.after }}</b><span style="font-size:19.5px;font-weight:800;color:#c8102e;margin-left:2px">円</span></div>
+<sc-if value="{{ pop.hasAlt }}" hint-placeholder-val="{{ true }}">
+<div style="margin-top:16px;border:2px solid #1f3d9c;border-radius:14px;overflow:hidden">
+<div style="background:#1f3d9c;color:#fff;font-size:17px;font-weight:900;padding:8px 14px">ほかに使える割引<span style="font-size:13px;font-weight:700;opacity:.85;margin-left:8px">お客様の状況に合わせて</span></div>
+<sc-for list="{{ pop.alts }}" as="a" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #e3e7f3"><div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0"><b style="font-size:18px;color:#1a1a1a">{{ a.k }}</b><span style="font-size:14px;color:#555;line-height:1.5">{{ a.sub }}</span></div><b style="font-size:22px;color:#1f3d9c;white-space:nowrap">－{{ a.v }}<span style="font-size:14px;margin-left:2px">円</span></b></div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ pop.hasNote }}" hint-placeholder-val="{{ true }}"><div style="margin-top:12px;font-size:17.6px;line-height:1.7;color:#333;background:#f4f6fb;border-radius:10px;padding:10px 12px">{{ pop.note }}</div></sc-if>
+<div style="margin-top:10px;font-size:15px;color:#7a3d00">AI生成（要確認）・税込・2026年10月時点</div>
+</div>
+</div>
+</sc-if>
 </div>
