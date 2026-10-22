@@ -4,6 +4,12 @@ import { showToast } from '../utils.js';
 import { ManualButton } from '../manual/Manual.jsx';
 import { AutoTA } from '../components/EvalEditors.jsx';
 import { CATS, CAT_DESC, DATA, SECS, AI_SEED, AI_BY, COMPANIES } from './data.js';
+import { useRebuttals, RebuttalSide, RebuttalMain } from './Rebuttals.jsx';
+import { DcView, FitBox } from './dc/DcView.jsx';
+import priceTpl from './dc/price.tpl.html?raw';
+import PriceLogic from './dc/price.logic.js';
+import simTpl from './dc/sim.tpl.html?raw';
+import SimLogic from './dc/sim.logic.js';
 
 // ===== 他社比較 =====
 // 保存場所（au-data-base）
@@ -11,6 +17,9 @@ import { CATS, CAT_DESC, DATA, SECS, AI_SEED, AI_BY, COMPANIES } from './data.js
 //   rival_posts/{会社id}/{項目}/{id}   = { text, by, uid, at, ai? }                          みんなの書き込み（本人と管理者が編集・削除）
 //   rival_config/seeded                = 最初の資料とAI生成の書き込みを入れたら true
 const LIST = '__list';
+const PRICE = '__price'; // モバイルの料金表（割引前・最大割引後）
+const SIM = '__sim'; // 料金シミュレーター
+const REBUT = 'rebut'; // 上のタブ「切り返し集」
 const TAG_CLASS = { PDF: 'pdf', カタログ: 'cat', Web: 'web' };
 const host = (u) => String(u || '').replace(/^https?:\/\//, '').split('/')[0];
 const when = (t) => { if (!t) return ''; const d = new Date(t); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`; };
@@ -40,12 +49,17 @@ export default function RivalPage({ user, isAdmin, onBack }) {
   const [editId, setEditId] = useState(''); // 「項目/id」
   const [editText, setEditText] = useState('');
   const [addDoc, setAddDoc] = useState(null);
+  const [rbFilter, setRbFilter] = useState({ kind: 'all', who: 'all' });
+  const rebuttals = useRebuttals(config, cfgLoaded);
 
   useEffect(() => { if (cfgLoaded && !config.seeded) seedOnce().catch(() => {}); }, [cfgLoaded, config.seeded]);
 
-  const groups = DATA[cat];
-  const companies = useMemo(() => COMPANIES.filter((c) => c.cat === cat), [cat]);
+  const isRebut = cat === REBUT;
+  const groups = DATA[cat] || [];
+  const companies = useMemo(() => COMPANIES.filter((c) => c.cat === (cat === REBUT ? 'mobile' : cat)), [cat]);
   const isList = sel[cat] === LIST;
+  const isPrice = cat === 'mobile' && sel.mobile === PRICE;
+  const isSim = cat === 'mobile' && sel.mobile === SIM;
   const cur = companies.find((c) => c.id === sel[cat]) || companies[0];
   const postsOf = (cid, k) => arr(postsAll[cid] && postsAll[cid][k]).sort((a, b) => (b.at || 0) - (a.at || 0));
   const countOf = (cid) => SECS.reduce((n, [k]) => n + postsOf(cid, k).length, 0);
@@ -87,27 +101,57 @@ export default function RivalPage({ user, isAdmin, onBack }) {
       <div className="rv-bar">
         <div className="rv-seg">
           {CATS.map(([id, label]) => <button key={id} className={cat === id ? 'on' : ''} onClick={() => { setCat(id); setWriting(''); setEditId(''); setAddDoc(null); document.querySelectorAll('.rv-main,.rv-body').forEach((el) => { el.scrollTop = 0; }); }}>{label}<small>{CAT_DESC[id]}</small></button>)}
+          <button className={isRebut ? 'on' : ''} onClick={() => { setCat(REBUT); setWriting(''); setEditId(''); setAddDoc(null); }}>切り返し集<small>お客様の一言から</small></button>
         </div>
       </div>
 
+      {isRebut ? (
+      <div className="rv-body">
+        <RebuttalSide items={rebuttals} filter={rbFilter} setFilter={(f) => { setRbFilter(f); document.querySelectorAll('.rv-main,.rv-body').forEach((el) => { el.scrollTop = 0; }); }} />
+        <RebuttalMain items={rebuttals} filter={rbFilter} setFilter={setRbFilter} user={user} isAdmin={isAdmin} />
+      </div>
+      ) : (
       <div className="rv-body">
           <nav className="rv-side" aria-label="会社をえらぶ">
             <button className={`rv-co rv-all ${isList ? 'on' : ''}`} onClick={() => pick(LIST)}>
               <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
               <b>一覧</b><small>{companies.length}社</small>
             </button>
+            {cat === 'mobile' && <>
+              <button className={`rv-co rv-all ${isPrice ? 'on' : ''}`} onClick={() => pick(PRICE)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M3 9h18M9 9v11" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
+                <b>料金表</b>
+              </button>
+              <button className={`rv-co rv-all ${isSim ? 'on' : ''}`} onClick={() => pick(SIM)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                <b>シミュレーター</b>
+              </button>
+            </>}
             {groups.map(([g, items]) => (
               <div key={g} className="rv-group">
                 <div className="rv-gname">{g}</div>
                 {items.map(([id, name]) => {
                   const n = countOf(id);
-                  return <button key={id} className={`rv-co ${!isList && cur.id === id ? 'on' : ''}`} onClick={() => pick(id)}><b>{name}</b>{n > 0 && <small>{n}件</small>}</button>;
+                  return <button key={id} className={`rv-co ${!isList && !isPrice && !isSim && cur.id === id ? 'on' : ''}`} onClick={() => pick(id)}><b>{name}</b>{n > 0 && <small>{n}件</small>}</button>;
                 })}
               </div>
             ))}
           </nav>
 
-          {isList ? (
+          {isPrice ? (
+          <main className="rv-main">
+            <div className="rv-title"><h2>スマホ料金プラン比較</h2><span className="rv-pill">2026年10月9日時点・税込</span></div>
+            <div className="ev-note">割引前の月額と、割引をすべて受けたときの月額です。割引の条件は表の下の※を見てください。機種代は含みません。</div>
+            <FitBox width={1700} min={0.5}><DcView tpl={priceTpl} Logic={PriceLogic} /></FitBox>
+            <div className="rv-ai-note">AI生成（要確認）：AIが2026年10月時点の公開情報をもとに作った表です。料金や条件は変わることがあるので、お客様に案内する前に各社の公式で確認してください。</div>
+          </main>
+          ) : isSim ? (
+          <main className="rv-main">
+            <div className="rv-title"><h2>料金シミュレーター</h2><span className="rv-pill">今の契約と、乗り換え後を月ごとに比べる</span></div>
+            <FitBox width={1440} min={0.62}><DcView tpl={simTpl} Logic={SimLogic} /></FitBox>
+            <div className="rv-ai-note">AI生成（要確認）：料金・割引・期間はAIが2026年10月時点の公開情報をもとに入れたものです。お客様に案内する前に公式で確認してください。</div>
+          </main>
+          ) : isList ? (
           <main className="rv-main">
             <div className="rv-title"><h2>{CATS.find(([id]) => id === cat)[1]}の一覧</h2><span className="rv-pill">{CAT_DESC[cat]}</span></div>
             <div className="ev-note">各社の特徴・メリット・デメリット（いちばん新しい書き込み）を並べています。会社名を押すと、資料とくわしい書き込みが開きます。</div>
@@ -203,6 +247,7 @@ export default function RivalPage({ user, isAdmin, onBack }) {
           </main>
           )}
       </div>
+      )}
     </div>
   );
 }

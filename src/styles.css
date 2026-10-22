@@ -1535,3 +1535,22 @@ html,body{overflow-x:hidden;overflow-x:clip;}
   .cx-side{flex:none;}
 }
 .rv-main>*,.cx-view>*,.cx-form>*,.cx-side>*{flex-shrink:0;}
+
+/* ===== 切り返し集（他社比較の中） ===== */
+.rb-kind{display:flex;align-items:center;gap:6px;width:100%;border:none;background:transparent;font-family:inherit;cursor:pointer;text-align:left;border-radius:8px;}
+.rb-kind small{margin-left:auto;font-size:.64rem;font-weight:700;color:#9a6e57;}
+.rb-kind.on{color:#cc4f00;background:#fff1e6;}
+.rb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.rb .search-box{flex-shrink:0;}
+.rb .terms-count{margin-bottom:-6px;}
+.rb .active-filters{margin-bottom:-6px;}
+.rb-card .term-name{font-size:.95rem;}
+.rb-foot{font-size:.7rem;color:var(--sub);margin-top:6px;}
+.rb-foot .ai,.rb-by .ai{color:#a16207;}
+.rb-say{background:#fff7f0;border-radius:10px;padding:10px 12px;}
+.rb-by{font-size:.76rem;color:var(--sub);}
+.rb-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rb-row2 label{display:flex;flex-direction:column;gap:4px;}
+@media (min-width:1100px){.rb .terms-grid{grid-template-columns:repeat(3,1fr);}}
+@media (max-width:899px){.rb-kind{width:auto;white-space:nowrap;padding:0 4px;}}
+.dcv-fit{flex-shrink:0;border-radius:14px;}

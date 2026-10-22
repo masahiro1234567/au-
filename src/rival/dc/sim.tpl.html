@@ -1,0 +1,178 @@
+<helmet>
+<style>
+.dcv{font-family:"Noto Sans JP","Hiragino Sans",sans-serif;color:#1f1712;background:#f4f1ee;box-sizing:border-box;font-feature-settings:"palt"}
+.dcv *{box-sizing:border-box}
+.dcv select,.dcv input{font-family:inherit;font-size:13px;height:36px;border:1px solid #d8cec6;border-radius:9px;background:#fff;padding:0 8px;color:#1f1712;min-width:0;width:100%}
+.dcv select:focus,.dcv input:focus{outline:2px solid #ff6600;outline-offset:1px}
+.dcv .num{font-variant-numeric:tabular-nums}
+.dcv .lab{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:#6b5a4e}
+</style>
+</helmet>
+<div class="dcv" style="width:1440px;min-height:1900px;display:flex;flex-direction:column">
+<div style="height:60px;background:#fff;border-bottom:1px solid #e6ddd6;display:flex;align-items:center;gap:12px;padding:0 24px;flex-shrink:0">
+<span style="width:34px;height:34px;border-radius:9px;background:#ff6600;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:13px">au</span>
+<b style="font-size:18px">料金シミュレーター</b>
+<span style="font-size:12.5px;color:#6b5a4e">スマホ・家のネット・電話・でんきをまとめて、月ごとに比べる（機種代は含まない）</span>
+<span style="flex:1"></span>
+<span style="font-size:12px;font-weight:700;color:#7a3d00;background:#fff4d6;border:1px solid #f2d27a;border-radius:999px;padding:4px 12px">2026/10/9時点・AI作成（要確認）</span>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 470px;gap:20px;padding:18px 20px 30px;align-items:start">
+
+<div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12.5px;font-weight:800;color:#5a4334">お住まい</span><div style="display:flex;gap:2px;background:#e9e3de;border-radius:10px;padding:3px"><button onClick="{{ toHouse }}" style="{{ segHouse }}">戸建て</button><button onClick="{{ toMansion }}" style="{{ segMansion }}">マンション</button></div></div>
+<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12.5px;font-weight:800;color:#5a4334">比べる期間</span><div style="display:flex;gap:2px;background:#e9e3de;border-radius:10px;padding:3px"><button onClick="{{ to12 }}" style="{{ seg12 }}">1年</button><button onClick="{{ to24 }}" style="{{ seg24 }}">2年</button><button onClick="{{ to36 }}" style="{{ seg36 }}">3年</button></div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);align-items:end">
+<div style="display:flex;align-items:center;gap:8px"><span style="width:26px;height:26px;border-radius:8px;background:#3a2c24;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center">今</span><b style="font-size:16px">今の契約</b></div>
+<span></span>
+<div style="display:flex;align-items:center;gap:8px"><span style="width:26px;height:26px;border-radius:8px;background:#ff6600;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center">後</span><b style="font-size:16px;color:#c2410c">乗り換え後</b></div>
+</div>
+
+<div style="font-size:13px;font-weight:900;color:#3a2c24;border-bottom:2px solid #e6ddd6;padding-bottom:6px">① 家のネット・電話・テレビ・でんき</div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);align-items:center">
+<div style="background:#fff;border:1px solid #e6ddd6;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0">
+<div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:13px">家のネット</b><span style="flex:1"></span><b class="num" style="font-size:19px">{{ netCur.nowT }}</b><span style="font-size:11px;color:#8a7a6e">／月（電話・テレビこみ）</span></div>
+<select aria-label="今の家のネット" value="{{ netCur.net }}" onChange="{{ netCur.setNet }}"><sc-for list="{{ netOpts }}" as="o" hint-placeholder-count="14"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+<sc-if value="{{ netCur.isCustom }}" hint-placeholder-val="{{ false }}"><label class="lab">月額（円）<input type="number" value="{{ netCur.custom }}" onInput="{{ netCur.setCustom }}"></label></sc-if>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px">
+<select aria-label="今の家のネットの契約期間" value="{{ netCur.mo }}" onChange="{{ netCur.setMo }}"><sc-for list="{{ elapsedOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+<sc-if value="{{ netCur.hasPh }}" hint-placeholder-val="{{ true }}"><button onClick="{{ netCur.togglePh }}" style="{{ netCur.phStyle }}">{{ netCur.phT }}</button></sc-if>
+</div>
+<sc-if value="{{ netCur.tvIn }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;font-weight:700;color:#0a6b47;background:#e7f5ee;border-radius:8px;padding:7px 10px">テレビはネットの料金に込み（CS・BS）</div></sc-if>
+<select aria-label="今のテレビ" value="{{ netCur.tv }}" onChange="{{ netCur.setTv }}"><sc-for list="{{ tvOpts }}" as="o" hint-placeholder-count="8"><option value="{{ o.v }}">テレビ：{{ o.t }}</option></sc-for></select>
+<select aria-label="今の専門チャンネル" value="{{ netCur.tvAdd }}" onChange="{{ netCur.setTvAdd }}"><sc-for list="{{ tvAddOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}">専門チャンネル：{{ o.t }}</option></sc-for></select>
+<sc-if value="{{ netCur.hasTvNote }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#8a6e5e;line-height:1.5">テレビ：{{ netCur.tvNote }}</div></sc-if>
+<sc-if value="{{ netCur.isTvCustom }}" hint-placeholder-val="{{ false }}"><label class="lab">テレビの月額（円）<input type="number" value="{{ netCur.tvCustom }}" onInput="{{ netCur.setTvCustom }}"></label></sc-if>
+<sc-if value="{{ netCur.hasTvWarn }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;font-weight:800;color:#fff;background:#9a3412;border-radius:6px;padding:3px 8px;align-self:flex-start">{{ netCur.tvWarn }}</div></sc-if>
+<select aria-label="今のでんき" value="{{ netCur.denki }}" onChange="{{ netCur.setDenki }}"><sc-for list="{{ denkiOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o.v }}">でんき：{{ o.t }}</option></sc-for></select>
+<div style="font-size:11.5px;color:#5a4334;line-height:1.55"><b>料金の流れ：</b>{{ netCur.schedT }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:4px"><span style="{{ netCur.setStyle }}">{{ netCur.setT }}</span></div>
+<sc-if value="{{ netCur.hasNote }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#8a6e5e;line-height:1.5">{{ netCur.note }}</div></sc-if>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l9 7-9 7z" fill="#ff9a55"></path></svg><span class="num" style="{{ netDStyle }}">{{ netDT }}</span></div>
+<div style="background:#fff;border:1.5px solid #fbd5b8;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0">
+<div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:13px">家のネット</b><span style="flex:1"></span><b class="num" style="font-size:19px;color:#c2410c">{{ netProp.nowT }}</b><span style="font-size:11px;color:#8a7a6e">／月（電話・テレビこみ・1か月目）</span></div>
+<select aria-label="乗り換え後の家のネット" value="{{ netProp.net }}" onChange="{{ netProp.setNet }}"><sc-for list="{{ netOpts }}" as="o" hint-placeholder-count="14"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+<sc-if value="{{ netProp.isCustom }}" hint-placeholder-val="{{ false }}"><label class="lab">月額（円）<input type="number" value="{{ netProp.custom }}" onInput="{{ netProp.setCustom }}"></label></sc-if>
+<sc-if value="{{ netProp.tvIn }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;font-weight:700;color:#0a6b47;background:#e7f5ee;border-radius:8px;padding:7px 10px">テレビはネットの料金に込み（CS・BS）</div></sc-if>
+<select aria-label="乗り換え後のテレビ" value="{{ netProp.tv }}" onChange="{{ netProp.setTv }}"><sc-for list="{{ tvOpts }}" as="o" hint-placeholder-count="8"><option value="{{ o.v }}">テレビ：{{ o.t }}</option></sc-for></select>
+<select aria-label="乗り換え後の専門チャンネル" value="{{ netProp.tvAdd }}" onChange="{{ netProp.setTvAdd }}"><sc-for list="{{ tvAddOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}">専門チャンネル：{{ o.t }}</option></sc-for></select>
+<sc-if value="{{ netProp.hasTvNote }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#8a6e5e;line-height:1.5">テレビ：{{ netProp.tvNote }}</div></sc-if>
+<sc-if value="{{ netProp.isTvCustom }}" hint-placeholder-val="{{ false }}"><label class="lab">テレビの月額（円）<input type="number" value="{{ netProp.tvCustom }}" onInput="{{ netProp.setTvCustom }}"></label></sc-if>
+<sc-if value="{{ netProp.hasTvWarn }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;font-weight:800;color:#fff;background:#9a3412;border-radius:6px;padding:3px 8px;align-self:flex-start">{{ netProp.tvWarn }}</div></sc-if>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px">
+<select aria-label="乗り換え後のでんき" value="{{ netProp.denki }}" onChange="{{ netProp.setDenki }}"><sc-for list="{{ denkiOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o.v }}">でんき：{{ o.t }}</option></sc-for></select>
+<sc-if value="{{ netProp.hasPh }}" hint-placeholder-val="{{ true }}"><button onClick="{{ netProp.togglePh }}" style="{{ netProp.phStyle }}">{{ netProp.phT }}</button></sc-if>
+</div>
+<div style="font-size:11.5px;color:#5a4334;line-height:1.55"><b>料金の流れ：</b>{{ netProp.schedT }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:4px"><span style="{{ netProp.setStyle }}">{{ netProp.setT }}</span></div>
+<sc-if value="{{ netProp.hasNote }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;color:#8a6e5e;line-height:1.5">{{ netProp.note }}</div></sc-if>
+</div>
+</div>
+
+<div style="display:flex;align-items:flex-end;gap:10px;border-bottom:2px solid #e6ddd6;padding-bottom:6px;flex-wrap:wrap">
+<span style="font-size:13px;font-weight:900;color:#3a2c24">② スマホ（{{ nOn }}回線）</span>
+<span style="flex:1"></span>
+<span style="font-size:11.5px;font-weight:700;color:#8a3700">乗り換え後をまとめて：</span>
+<sc-for list="{{ presets }}" as="p" hint-placeholder-count="7"><button onClick="{{ p.pick }}" style="{{ p.style }}"><span style="{{ p.dot }}"></span>{{ p.t }}</button></sc-for>
+</div>
+
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);align-items:center">
+<div style="{{ row.left.box }}">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="width:24px;height:24px;border-radius:7px;background:#efe8e3;color:#4a3a30;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ row.no }}</span>
+<span style="width:9px;height:9px;border-radius:50%;background:{{ row.left.color }};flex-shrink:0"></span><b style="font-size:13px">{{ row.left.carrierName }}</b>
+<span style="flex:1"></span><span class="num" style="font-size:12px;color:#8a7a6e;text-decoration:line-through">{{ row.left.baseT }}</span><b class="num" style="font-size:19px">{{ row.left.afterT }}</b>
+<sc-if value="{{ row.left.canRemove }}" hint-placeholder-val="{{ true }}"><button onClick="{{ row.left.remove }}" aria-label="この回線を外す" title="この回線を外す" style="width:26px;height:26px;border-radius:50%;border:none;background:#efe8e3;color:#7a6a60;font-weight:900;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0">−</button></sc-if>
+</div>
+<div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:6px;margin-top:8px">
+<select aria-label="今の会社" value="{{ row.left.carrier }}" onChange="{{ row.left.setCarrier }}"><sc-for list="{{ carrierOpts }}" as="o" hint-placeholder-count="9"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+<select aria-label="今のプラン" value="{{ row.left.plan }}" onChange="{{ row.left.setPlan }}"><sc-for list="{{ row.left.planOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) 96px;gap:6px;margin-top:6px">
+<select aria-label="今の支払い" value="{{ row.left.card }}" onChange="{{ row.left.setCard }}"><sc-for list="{{ row.left.cardOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+<select aria-label="今の通話オプション" value="{{ row.left.call }}" onChange="{{ row.left.setCall }}"><sc-for list="{{ row.left.callOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+<select aria-label="年齢" value="{{ row.left.age }}" onChange="{{ row.left.setAge }}"><sc-for list="{{ ageOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+</div>
+<sc-if value="{{ row.left.timed }}" hint-placeholder-val="{{ false }}"><div style="margin-top:6px"><select aria-label="今のプランの契約期間" value="{{ row.left.mo }}" onChange="{{ row.left.setMo }}"><sc-for list="{{ elapsedOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select></div></sc-if>
+<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:7px"><sc-for list="{{ row.left.chips }}" as="c" hint-placeholder-count="2"><span class="num" style="{{ row.left.chip }}">{{ c }}</span></sc-for><sc-for list="{{ row.left.notes }}" as="n" hint-placeholder-count="1"><span class="num" style="{{ n.style }}">{{ n.t }}</span></sc-for></div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l9 7-9 7z" fill="#ff9a55"></path></svg><span class="num" style="{{ row.dStyle }}">{{ row.dT }}</span></div>
+<div style="{{ row.right.box }}">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="width:24px;height:24px;border-radius:7px;background:#fff1e6;color:#c2410c;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ row.no }}</span>
+<span style="width:9px;height:9px;border-radius:50%;background:{{ row.right.color }};flex-shrink:0"></span><b style="font-size:13px">{{ row.right.carrierName }}</b>
+<span style="flex:1"></span><span class="num" style="font-size:12px;color:#8a7a6e;text-decoration:line-through">{{ row.right.baseT }}</span><b class="num" style="font-size:19px;color:#c2410c">{{ row.right.afterT }}</b>
+</div>
+<div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:6px;margin-top:8px">
+<select aria-label="乗り換え先の会社" value="{{ row.right.carrier }}" onChange="{{ row.right.setCarrier }}"><sc-for list="{{ carrierOpts }}" as="o" hint-placeholder-count="9"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+<select aria-label="乗り換え先のプラン" value="{{ row.right.plan }}" onChange="{{ row.right.setPlan }}"><sc-for list="{{ row.right.planOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:6px;margin-top:6px">
+<select aria-label="乗り換え後の支払い" value="{{ row.right.card }}" onChange="{{ row.right.setCard }}"><sc-for list="{{ row.right.cardOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+<select aria-label="乗り換え後の通話オプション" value="{{ row.right.call }}" onChange="{{ row.right.setCall }}"><sc-for list="{{ row.right.callOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for></select>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:7px"><sc-for list="{{ row.right.chips }}" as="c" hint-placeholder-count="2"><span class="num" style="{{ row.right.chip }}">{{ c }}</span></sc-for><sc-for list="{{ row.right.notes }}" as="n" hint-placeholder-count="1"><span class="num" style="{{ n.style }}">{{ n.t }}</span></sc-for></div>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{ canAdd }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr)"><button onClick="{{ addLine }}" style="height:44px;border-radius:14px;border:1.5px dashed #c9bdb4;background:transparent;color:#5a4334;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer">{{ addLabel }}</button></div>
+</sc-if>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:12px">
+<div style="background:#fff;border:1px solid #e6ddd6;border-radius:18px;padding:16px 18px;display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);align-items:center">
+<div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;font-weight:800;color:#6b5a4e">今　1か月目</span><b class="num" style="font-size:28px;letter-spacing:-.5px">{{ c1T }}</b></div>
+<svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l9 7-9 7z" fill="#ff6600"></path></svg>
+<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span style="font-size:12px;font-weight:800;color:#c2410c">乗り換え後　1か月目</span><b class="num" style="font-size:28px;letter-spacing:-.5px;color:#c2410c">{{ q1T }}</b></div>
+<div style="grid-column:1/-1;margin-top:8px;padding-top:8px;border-top:1px dashed #e6ddd6;display:flex;align-items:baseline;gap:6px"><span style="{{ firstStyle }}">1か月目は {{ d1T }} {{ d1Word }}</span><span style="flex:1"></span><span style="font-size:11.5px;color:#6b5a4e">{{ propName }}</span></div>
+</div>
+
+<div style="{{ heroStyle }}">
+<span style="font-size:13px;font-weight:800;opacity:.92">{{ Tlabel }}か月の合計で</span>
+<div style="display:flex;align-items:baseline;gap:8px"><b class="num" style="font-size:46px;line-height:1.05;letter-spacing:-1px">{{ dTT }}</b><b style="font-size:20px">{{ dTWord }}</b></div>
+<div class="num" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px;font-size:12.5px;font-weight:700">
+<div style="background:rgba(255,255,255,.16);border-radius:10px;padding:8px 10px">月平均の差<br><b style="font-size:18px">{{ dAvgT }}</b></div>
+<div style="background:rgba(255,255,255,.16);border-radius:10px;padding:8px 10px">ポイント込み（月平均）<br><b style="font-size:18px">{{ dRealT }}</b> {{ dRealWord }}</div>
+</div>
+<div class="num" style="font-size:11.5px;opacity:.85;margin-top:2px">今 {{ cTotT }}（月平均 {{ cAvgT }}）／ 乗り換え後 {{ qTotT }}（月平均 {{ qAvgT }}）</div>
+</div>
+
+<div style="background:#fff;border:1px solid #e6ddd6;border-radius:18px;padding:14px 16px">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><b style="font-size:13.5px">月ごとの合計</b><span style="flex:1"></span><span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#6b5a4e"><i style="width:10px;height:10px;border-radius:3px;background:#b9aaa0;display:inline-block"></i>今</span><span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#6b5a4e"><i style="width:10px;height:10px;border-radius:3px;background:#ff6600;display:inline-block"></i>乗り換え後</span></div>
+<div style="height:170px;display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid #e6ddd6">
+<sc-for list="{{ bars }}" as="b" hint-placeholder-count="24">
+<div title="{{ b.tip }}" style="flex:1;display:flex;align-items:flex-end;gap:1px;height:100%"><i style="flex:1;height:{{ b.hc }};background:#cfc4bb;border-radius:2px 2px 0 0;display:block"></i><i style="flex:1;height:{{ b.hq }};background:#ff6600;border-radius:2px 2px 0 0;display:block"></i></div>
+</sc-for>
+</div>
+<div style="display:flex;gap:2px;margin-top:3px"><sc-for list="{{ bars }}" as="b" hint-placeholder-count="24"><span style="flex:1;font-size:10px;color:#8a7a6e;text-align:center"><sc-if value="{{ b.showM }}" hint-placeholder-val="{{ false }}">{{ b.m }}</sc-if></span></sc-for></div>
+</div>
+
+<div style="background:#fff;border:1px solid #e6ddd6;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+<b style="font-size:13.5px">料金が変わる月</b>
+<sc-for list="{{ events }}" as="e" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #f1ebe6">
+<b class="num" style="font-size:12.5px;width:84px;flex-shrink:0">{{ e.when }}</b><span style="{{ e.tag }}">{{ e.who }}</span><span style="font-size:12px;flex:1;min-width:0">{{ e.label }}</span><span class="num" style="{{ e.arrow }}">{{ e.txt }}</span>
+</div>
+</sc-for>
+<sc-if value="{{ noEvents }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#8a7a6e">期間中に料金が変わるものはありません</span></sc-if>
+</div>
+
+<div style="background:#fff;border:1px solid #e6ddd6;border-radius:18px;padding:14px 16px">
+<b style="font-size:13.5px">1か月目の内訳</b>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px 110px;margin-top:8px;font-size:12.5px">
+<span style="font-weight:800;color:#6b5a4e;padding:4px 0"></span><span style="font-weight:800;color:#6b5a4e;text-align:right;padding:4px 0">今</span><span style="font-weight:800;color:#c2410c;text-align:right;padding:4px 0">乗り換え後</span>
+<sc-for list="{{ breakdown }}" as="b" hint-placeholder-count="5"><span style="padding:5px 0;border-top:1px solid #f1ebe6">{{ b.k }}</span><span class="num" style="padding:5px 0;border-top:1px solid #f1ebe6;text-align:right">{{ b.a }}</span><span class="num" style="padding:5px 0;border-top:1px solid #f1ebe6;text-align:right;color:#c2410c;font-weight:700">{{ b.b }}</span></sc-for>
+<b style="padding:7px 0;border-top:2px solid #e6ddd6">合計</b><b class="num" style="padding:7px 0;border-top:2px solid #e6ddd6;text-align:right">{{ c1T }}</b><b class="num" style="padding:7px 0;border-top:2px solid #e6ddd6;text-align:right;color:#c2410c">{{ q1T }}</b>
+</div>
+<div style="font-size:11px;color:#8a7a6e;margin-top:8px;line-height:1.55">ポイントは目安（dカード GOLD：ドコモMAX の10%、au PAY ゴールド：最大10%、テイガク無制限：PayPay 200円、ほかのカード：1%）。でんき代そのものは含まない（セット割だけ反映）。</div>
+</div>
+</div>
+
+</div>
+</div>
