@@ -1,4 +1,5 @@
 // AI生成のサンプル（canvas）から移したロジック。renderVals() が画面に出す値を返す
+// PC用（price.tpl）とスマホ用（priceSp.tpl：上下2段）で同じロジックを使う
 import { DCLogic } from "./DcView.jsx";
 
 export default class Component extends DCLogic {
@@ -39,41 +40,48 @@ export default class Component extends DCLogic {
       'テイガク 無制限|無制限': 'PayPayポイント200円分を充てると、実質4,948円。',
       'トクトク プラン2|5〜30GB': '', 'シンプル3 S|5GB': '', 'シンプル3 M|30GB': '', 'シンプル3 L|35GB': '',
     };
-    const n = B.reduce((a, b) => a + b[3].length, 0);
-    const gridStyle = `display:grid;grid-template-columns:132px repeat(${n}, minmax(0,1fr));grid-template-rows:minmax(64px,.85fr) minmax(92px,1.15fr) minmax(88px,1.1fr) minmax(76px,1fr) 34px minmax(104px,1.35fr) minmax(56px,.75fr) minmax(56px,.75fr) minmax(50px,.7fr);column-gap:0;row-gap:0;height:100%`;
     const st = this.state || {};
     const flat = [];
     B.forEach(([brand, bg, fg, plans]) => plans.forEach((p) => flat.push({ brand, bg, fg, p })));
-    const cells = [];
-    const lab = (t, sub, extra) => cells.push({ text: t, sub: sub || '', hasSub: !!sub, subStyle: 'display:block;font-size:12px;font-weight:700;margin-top:2px', style: 'background:#1f3d9c;color:#fff;font-weight:900;font-size:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.2;' + (extra || '') });
-    const cellBase = 'background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-left:1px solid #c9c9c9;border-top:1px solid #dcdcdc;padding:4px 3px;';
-    const first = [];
-    B.forEach(([, , , plans]) => plans.forEach((p, j) => first.push(j === 0)));
-    const edge = (k) => (first[k] ? 'border-left:6px solid #1f3d9c;' : '');
-    // 1行目：ブランド
-    lab('');
-    B.forEach(([name, bg, fg, plans]) => cells.push({ text: name, hasSub: false, style: `grid-column:span ${plans.length};background:${bg};color:${fg};font-weight:900;font-size:24px;display:flex;align-items:center;justify-content:center;border-radius:14px 14px 0 0;border-left:6px solid #1f3d9c;letter-spacing:.5px` }));
-    let k;
-    // 2行目：プラン名
-    lab('プラン'); k = 0;
-    B.forEach(([, , , plans]) => plans.forEach((p) => { cells.push({ text: p[0], hasSub: false, style: cellBase + edge(k) + 'font-weight:800;font-size:15px;line-height:1.3' }); k++; }));
-    // 3行目：データ量
-    lab('データ量'); k = 0;
-    B.forEach(([, , , plans]) => plans.forEach((p) => { const big = /\d/.test(p[1]); cells.push({ text: p[1], sub: p[2], hasSub: !!p[2], subStyle: 'display:block;font-size:10.5px;font-weight:800;color:#fff;background:' + (p[2] ? '#2a8fd6' : 'transparent') + ';border-radius:5px;padding:1px 5px;margin-top:4px', style: cellBase + edge(k) + 'font-weight:900;font-size:' + (big ? '24px' : '18px') }); k++; }));
-    // 4行目：月額
-    lab('月額料金', '税込'); k = 0;
-    B.forEach(([, , , plans]) => plans.forEach((p) => { cells.push({ text: p[3], sub: '円', hasSub: true, subStyle: 'font-size:12px;font-weight:800;color:#c8102e', style: cellBase + edge(k) + 'flex-direction:row;align-items:baseline;gap:1px;font-weight:900;font-size:' + (p[3].length > 6 ? '17px' : '24px') + ';color:#c8102e' }); k++; }));
-    // 5行目：矢印
-    cells.push({ text: '▼', hasSub: false, style: 'background:#1f3d9c;color:#e8382b;font-size:20px;display:flex;align-items:center;justify-content:center' }); k = 0;
-    B.forEach(([, , , plans]) => plans.forEach(() => { cells.push({ text: '▼', hasSub: false, style: 'background:#fff;color:#e8382b;font-size:18px;display:flex;align-items:center;justify-content:center;border-left:1px solid #c9c9c9;' + edge(k) }); k++; }));
-    // 6行目：割引後（黄色）
-    lab('割引後', '最大まで割引'); k = 0;
-    B.forEach(([, , , plans]) => plans.forEach((p) => { const none = p[4] === '－'; const idx = k; cells.push({ open: () => this.setState({ pop: idx }), text: p[4], sub: none ? p[5] : (p[5] ? '円 ' + p[5] : '円'), hasSub: true, subStyle: 'display:block;font-size:11.5px;font-weight:800;color:#c8102e;margin-top:2px', style: cellBase + edge(k) + 'cursor:pointer;background:' + (none ? '#fff' : '#fbee9a') + ';font-weight:900;font-size:' + (p[4].length > 6 ? '17px' : '27px') + ';color:' + (none ? '#555' : '#c8102e') }); k++; }));
-    const mark = (label, i, sub) => { lab(label, sub); k = 0; B.forEach(([, , , plans]) => plans.forEach((p) => { const v = p[i]; cells.push({ text: v.split(' ')[0], sub: v.includes(' ') ? v.split(' ').slice(1).join(' ') : '', hasSub: v.includes(' '), subStyle: 'display:block;font-size:11px;font-weight:700;color:#333', style: cellBase + edge(k) + 'font-size:24px;font-weight:900;color:' + (v.startsWith('×') ? '#555' : '#1a1a1a') }); k++; })); };
-    mark('店頭申込', 6);
-    mark('キャリアメール', 7);
-    lab('5G対応'); k = 0;
-    B.forEach(([, , , plans]) => plans.forEach(() => { cells.push({ text: '○', hasSub: false, style: cellBase + edge(k) + 'font-size:24px;font-weight:900' }); k++; }));
+    // 表をつくる。BB：入れる会社、off：flat の何番目からか、sp：スマホ用（文字を大きく・高さは中身なり）
+    const build = (BB, off, sp) => {
+      const z = (v) => (sp ? Math.round(v * 1.25) : v) + 'px';
+      // スマホ：変なところで改行しないよう、区切りたい所にだけスペースを入れて、スペースでだけ折り返す
+      const SPBR = { '使い放題MAX＋': '使い放題 MAX＋', 'ドコモMAX': 'ドコモ MAX', 'ドコモmini': 'ドコモ mini', 'コミコミ プランバリュー': 'コミコミ プラン バリュー', '12/1から段階制': '12/1から 段階制', 'Pontaパス付き': 'Pontaパス 付き', '30日間・トッピング': '30日間 トッピング', 'LINE無制限': 'LINE 無制限', '10分以内かけ放題': '10分以内 かけ放題', '使わなくてもトク': '使わなくても トク', '1,628〜2,728': '1,628〜 2,728', 'キャリアメール': 'キャリア メール', '5〜30GB': '5〜 30GB' };
+      const br = (t) => (sp && SPBR[t]) || t;
+      const zn = (v) => (sp ? Math.round(v * 0.82) : v) + 'px'; // 数字（スマホは列が細いので少し小さく）
+      const n = BB.reduce((a, b) => a + b[3].length, 0);
+      const rows = sp ? '64px 104px 118px 66px 28px 104px 54px 54px 48px' : 'minmax(64px,.85fr) minmax(92px,1.15fr) minmax(88px,1.1fr) minmax(76px,1fr) 34px minmax(104px,1.35fr) minmax(56px,.75fr) minmax(56px,.75fr) minmax(50px,.7fr)';
+      const gridStyle = `display:grid;grid-template-columns:${sp ? 88 : 132}px repeat(${n}, minmax(0,1fr));grid-template-rows:${rows};column-gap:0;row-gap:0;${sp ? '' : 'height:100%'}`;
+      const cells = [];
+      const lab = (t, sub, extra) => cells.push({ text: br(t), sub: sub || '', hasSub: !!sub, subStyle: 'display:block;font-size:' + z(12) + ';font-weight:700;margin-top:2px', style: 'background:#1f3d9c;color:#fff;font-weight:900;font-size:' + (sp ? '16px' : '17px') + ';display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.2;' + (sp ? 'word-break:keep-all;' : '') + (extra || '') });
+      const cellBase = 'background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-left:1px solid #c9c9c9;border-top:1px solid #dcdcdc;padding:4px 3px;min-width:0;overflow:hidden;' + (sp ? 'word-break:keep-all;overflow-wrap:normal;' : 'overflow-wrap:anywhere;');
+      const first = [];
+      BB.forEach(([, , , plans]) => plans.forEach((p, j) => first.push(j === 0)));
+      const edge = (k) => (first[k] ? 'border-left:6px solid #1f3d9c;' : '');
+      const each = (fn) => { let k = 0; BB.forEach(([, , , plans]) => plans.forEach((p) => { fn(p, k); k++; })); };
+      lab('');
+      BB.forEach(([name, bg, fg, plans]) => cells.push({ text: name, hasSub: false, style: `grid-column:span ${plans.length};background:${bg};color:${fg};font-weight:900;font-size:${z(24)};display:flex;align-items:center;justify-content:center;border-radius:14px 14px 0 0;border-left:6px solid #1f3d9c;letter-spacing:.5px` }));
+      lab('プラン');
+      each((p, k) => cells.push({ text: br(p[0]), hasSub: false, style: cellBase + edge(k) + 'font-weight:800;font-size:' + (sp ? '12.5px' : '15px') + ';line-height:1.3' }));
+      lab('データ量');
+      each((p, k) => { const big = /\d/.test(p[1]); cells.push({ text: br(p[1]), sub: br(p[2]), hasSub: !!p[2], subStyle: 'display:block;font-size:' + (sp ? '10.5px' : '10.5px') + ';line-height:1.25;font-weight:800;color:#fff;background:' + (p[2] ? '#2a8fd6' : 'transparent') + ';border-radius:5px;padding:2px 4px;margin-top:4px;max-width:100%', style: cellBase + edge(k) + 'font-weight:900;font-size:' + (big ? zn(24) : z(15)) }); });
+      lab('月額料金', '税込');
+      each((p, k) => cells.push({ text: p[3], sub: '円', hasSub: true, subStyle: 'font-size:' + zn(12) + ';font-weight:800;color:#c8102e', style: cellBase + edge(k) + 'flex-direction:row;align-items:baseline;gap:1px;font-weight:900;font-size:' + zn(p[3].length > 6 ? 17 : 24) + ';color:#c8102e' }));
+      cells.push({ text: '▼', hasSub: false, style: 'background:#1f3d9c;color:#e8382b;font-size:20px;display:flex;align-items:center;justify-content:center' });
+      each((p, k) => cells.push({ text: '▼', hasSub: false, style: 'background:#fff;color:#e8382b;font-size:18px;display:flex;align-items:center;justify-content:center;border-left:1px solid #c9c9c9;' + edge(k) }));
+      lab('割引後', '最大まで割引');
+      each((p, k) => { const none = p[4] === '－'; const idx = off + k; cells.push({ open: () => this.setState({ pop: idx }), text: br(p[4]), sub: none ? p[5] : (p[5] ? '円 ' + p[5] : '円'), hasSub: true, subStyle: 'display:block;font-size:' + (sp ? '12.5px' : '11.5px') + ';font-weight:800;color:#c8102e;margin-top:2px', style: cellBase + edge(k) + 'cursor:pointer;background:' + (none ? '#fff' : '#fbee9a') + ';font-weight:900;font-size:' + (sp ? (p[4].length > 6 ? '15px' : '25px') : (p[4].length > 6 ? '17px' : '27px')) + ';color:' + (none ? '#555' : '#c8102e') }); });
+      const mark = (label, i) => { lab(label); each((p, k) => { const v = p[i]; cells.push({ text: v, hasSub: false, style: cellBase + edge(k) + 'font-size:' + z(24) + ';font-weight:900;color:' + (v.startsWith('×') ? '#555' : '#1a1a1a') }); }); };
+      mark('店頭申込', 6);
+      mark('キャリアメール', 7);
+      lab('5G対応');
+      each((p, k) => cells.push({ text: '○', hasSub: false, style: cellBase + edge(k) + 'font-size:' + z(24) + ';font-weight:900' }));
+      return { gridStyle, cells: cells.map((c) => ({ open: () => {}, ...c })) };
+    };
+    const all = build(B, 0, false);
+    const top = build(B.slice(0, 3), 0, true);
+    const bot = build(B.slice(3), B.slice(0, 3).reduce((a, b) => a + b[3].length, 0), true);
     const f = flat[st.pop];
     let pop = { lines: [] };
     if (f) {
@@ -89,6 +97,6 @@ export default class Component extends DCLogic {
       const extras = (EXTRA[key] || []).map(([k, v, sub, res, term]) => ({ k, sub, v: v ? '－' + yen(v) + '円' : '', res: (v ? yen(Math.max(0, afterNum - v)) + '円' : res), term }));
       Object.assign(pop, { note, hasNote: !!note, alts, hasAlt: alts.length > 0, extras, hasExtra: extras.length > 0 });
     }
-    return { gridStyle, cells: cells.map((c) => ({ open: () => {}, ...c })), hasPop: !!f, pop, close: () => this.setState({ pop: null }) };
+    return { gridStyle: all.gridStyle, cells: all.cells, gridTop: top.gridStyle, cellsTop: top.cells, gridBot: bot.gridStyle, cellsBot: bot.cells, hasPop: !!f, popTop: (st.pop >= B.slice(0, 3).reduce((a, b) => a + b[3].length, 0) ? 900 : 200) + 'px', pop, close: () => this.setState({ pop: null }) };
   }
 }

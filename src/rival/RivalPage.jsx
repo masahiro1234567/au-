@@ -7,6 +7,7 @@ import { CATS, CAT_DESC, DATA, SECS, AI_SEED, AI_BY, COMPANIES } from './data.js
 import { useRebuttals, RebuttalSide, RebuttalMain } from './Rebuttals.jsx';
 import { DcView, FitBox } from './dc/DcView.jsx';
 import priceTpl from './dc/price.tpl.html?raw';
+import priceSpTpl from './dc/priceSp.tpl.html?raw';
 import PriceLogic from './dc/price.logic.js';
 
 // ===== 他社比較 =====
@@ -46,6 +47,9 @@ export default function RivalPage({ user, isAdmin, onBack }) {
   const [editId, setEditId] = useState(''); // 「項目/id」
   const [editText, setEditText] = useState('');
   const [addDoc, setAddDoc] = useState(null);
+  // スマホ（幅700px未満）は、料金表を上下2段にする
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 700);
+  useEffect(() => { const f = () => setNarrow(window.innerWidth < 700); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
   const [rbFilter, setRbFilter] = useState({ kind: 'all', who: 'all' });
   const rebuttals = useRebuttals(config, cfgLoaded);
 
@@ -134,7 +138,7 @@ export default function RivalPage({ user, isAdmin, onBack }) {
           <main className="rv-main">
             <div className="rv-title"><h2>スマホ料金プラン比較</h2><span className="rv-pill">2026年10月9日時点・税込</span></div>
             <div className="ev-note">割引前の月額と、割引をすべて受けたときの月額です。割引の条件は表の下の※を見てください。機種代は含みません。</div>
-            <FitBox width={1700} min={0.5}><DcView tpl={priceTpl} Logic={PriceLogic} /></FitBox>
+            {narrow ? <FitBox width={860} min={0.3}><DcView tpl={priceSpTpl} Logic={PriceLogic} /></FitBox> : <FitBox width={1700} min={0.5}><DcView tpl={priceTpl} Logic={PriceLogic} /></FitBox>}
             <div className="rv-ai-note">AI生成（要確認）：AIが2026年10月時点の公開情報をもとに作った表です。料金や条件は変わることがあるので、お客様に案内する前に各社の公式で確認してください。</div>
           </main>
           ) : isList ? (
